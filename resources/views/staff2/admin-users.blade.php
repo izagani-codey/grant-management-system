@@ -5,7 +5,7 @@
                 <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">User Management</h1>
                 <p class="text-gray-600 mt-1">Manage system users and roles</p>
             </div>
-            <a href="{{ route('staff2.admin') }}" 
+            <a href="{{ route('admin.dashboard') }}" 
                class="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 transition-all shadow-lg">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>

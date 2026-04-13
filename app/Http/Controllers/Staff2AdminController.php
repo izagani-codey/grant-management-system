@@ -8,15 +8,17 @@ use App\Models\RequestType;
 use App\Models\User;
 use App\Models\FormTemplate;
 use App\Models\AuditLog;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class Staff2AdminController extends BaseController
 {
+    private const MANAGEABLE_ROLES = ['admission', 'staff1', 'staff2', 'dean', 'admin'];
+
     public function index()
     {
-        // Authorization check - allow both admin and staff2 for backward compatibility
-        if (!auth()->user()->canAccessAdminPanel() && !auth()->user()->isStaff2()) {
-            abort(403, 'Unauthorized access to admin panel');
-        }
+        $this->ensureAdminAccess();
 
         // System Stats
         $totalRequests = GrantRequest::count();
@@ -54,9 +56,7 @@ class Staff2AdminController extends BaseController
             ->take(5)
             ->get();
 
-        $view = auth()->user()->isAdmin() ? 'admin.dashboard' : 'staff2.admin-panel';
-        
-        return view($view, compact(
+        return view('admin.dashboard', compact(
             'totalRequests',
             'submitted',
             'staff1Approved',
@@ -76,16 +76,136 @@ class Staff2AdminController extends BaseController
 
     public function users()
     {
-        $users = User::query()
-            ->orderBy('role')
-            ->orderBy('name')
-            ->paginate(20);
+        $this->ensureAdminAccess();
 
-        return view('staff2.admin-users', compact('users'));
+        $filters = request()->only(['search', 'role']);
+
+        $users = User::query()
+            ->when($filters['search'] ?? null, function ($query, $search) {
+                $query->where(function ($userQuery) use ($search) {
+                    $userQuery->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('staff_id', 'like', "%{$search}%");
+                });
+            })
+            ->when($filters['role'] ?? null, function ($query, $role) {
+                $query->where('role', $role);
+            })
+            ->orderByRaw("case role
+                when 'admin' then 1
+                when 'dean' then 2
+                when 'staff2' then 3
+                when 'staff1' then 4
+                when 'admission' then 5
+                else 6
+            end")
+            ->orderBy('name')
+            ->paginate(20)
+            ->withQueryString();
+
+        $roleCounts = User::query()
+            ->selectRaw('role, count(*) as aggregate')
+            ->groupBy('role')
+            ->pluck('aggregate', 'role');
+
+        $roleOptions = self::MANAGEABLE_ROLES;
+
+        return view('admin.users', compact('users', 'filters', 'roleCounts', 'roleOptions'));
+    }
+
+    public function storeUser(Request $request)
+    {
+        $this->ensureAdminAccess();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'role' => ['required', Rule::in(self::MANAGEABLE_ROLES)],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'staff_id' => ['nullable', 'string', 'max:255', 'unique:users,staff_id'],
+            'designation' => ['nullable', 'string', 'max:255'],
+            'department' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:255'],
+            'employee_level' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'role' => $validated['role'],
+            'password' => Hash::make($validated['password']),
+            'staff_id' => $validated['staff_id'] ?: null,
+            'designation' => $validated['designation'] ?: null,
+            'department' => $validated['department'] ?: null,
+            'phone' => $validated['phone'] ?: null,
+            'employee_level' => $validated['employee_level'] ?: null,
+        ]);
+
+        AuditLog::create([
+            'actor_id' => auth()->id(),
+            'actor_role' => auth()->user()->role,
+            'action' => 'user_created',
+            'note' => "Created user {$user->email} with role {$user->role}",
+        ]);
+
+        return redirect()
+            ->route('admin.users')
+            ->with('success', 'User created successfully.');
+    }
+
+    public function updateUser(Request $request, User $user)
+    {
+        $this->ensureAdminAccess();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'role' => ['required', Rule::in(self::MANAGEABLE_ROLES)],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'staff_id' => ['nullable', 'string', 'max:255', Rule::unique('users', 'staff_id')->ignore($user->id)],
+            'designation' => ['nullable', 'string', 'max:255'],
+            'department' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:255'],
+            'employee_level' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $this->guardAdminRoleChange($user, $validated['role']);
+
+        $originalRole = $user->role;
+
+        $updateData = [
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'role' => $validated['role'],
+            'staff_id' => $validated['staff_id'] ?: null,
+            'designation' => $validated['designation'] ?: null,
+            'department' => $validated['department'] ?: null,
+            'phone' => $validated['phone'] ?: null,
+            'employee_level' => $validated['employee_level'] ?: null,
+        ];
+
+        if (!empty($validated['password'])) {
+            $updateData['password'] = Hash::make($validated['password']);
+        }
+
+        $user->update($updateData);
+
+        AuditLog::create([
+            'actor_id' => auth()->id(),
+            'actor_role' => auth()->user()->role,
+            'action' => 'user_updated',
+            'note' => "Updated user {$user->email} from role {$originalRole} to {$user->role}",
+        ]);
+
+        return redirect()
+            ->route('admin.users')
+            ->with('success', 'User updated successfully.');
     }
 
     public function requestTypes()
     {
+        $this->ensureAdminAccess();
+
         $requestTypes = RequestType::query()
             ->withCount('requests')
             ->with('defaultTemplate')
@@ -170,6 +290,28 @@ class Staff2AdminController extends BaseController
 
     public function deploymentPlaybook()
     {
+        $this->ensureAdminAccess();
+
         return view('staff2.deployment-playbook');
+    }
+
+    private function ensureAdminAccess(): void
+    {
+        if (!auth()->user()?->canAccessAdminPanel()) {
+            abort(403, 'Unauthorized access to admin panel');
+        }
+    }
+
+    private function guardAdminRoleChange(User $user, string $newRole): void
+    {
+        if ($user->role !== 'admin' || $newRole === 'admin') {
+            return;
+        }
+
+        $adminCount = User::where('role', 'admin')->count();
+
+        if ($adminCount <= 1) {
+            abort(422, 'At least one admin account must remain in the system.');
+        }
     }
 }

@@ -13,7 +13,7 @@
                     </svg>
                     Add Request Type
                 </button>
-                <a href="{{ route('staff2.admin') }}" 
+                <a href="{{ route('admin.dashboard') }}" 
                    class="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 transition-all shadow-lg">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
@@ -55,7 +55,7 @@
                         Add New Request Type
                     </h3>
                     
-                    <form action="{{ route('staff2.admin.request-types.store') }}" method="POST" class="space-y-6">
+                    <form action="{{ route('admin.request-types.store') }}" method="POST" class="space-y-6">
                         @csrf
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -173,7 +173,7 @@
                                                 Edit
                                             </button>
                                             @if($type->requests_count === 0)
-                                                <form action="{{ route('staff2.admin.request-types.destroy', $type->id) }}" method="POST" 
+                                                <form action="{{ route('admin.request-types.destroy', $type->id) }}" method="POST" 
                                                       onsubmit="return confirm('Are you sure you want to delete this request type?')" class="inline">
                                                     @csrf
                                                     @method('DELETE')
@@ -280,7 +280,7 @@
             document.getElementById('edit-name').value = name;
             document.getElementById('edit-description').value = description;
             document.getElementById('edit-template').value = defaultTemplateId || '';
-            document.getElementById('edit-form').action = '/staff2/admin/request-types/' + id;
+            document.getElementById('edit-form').action = '/admin/request-types/' + id;
             document.getElementById('edit-modal').classList.remove('hidden');
         }
         

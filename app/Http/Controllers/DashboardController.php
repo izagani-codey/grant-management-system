@@ -15,6 +15,11 @@ class DashboardController extends BaseController
     public function index(Request $request)
     {
         $user = $this->currentUser();
+
+        if ($user->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+
         $filters = $request->only([
             'search', 'status', 'type', 'priority', 
             'date_from', 'date_to', 'urgent'

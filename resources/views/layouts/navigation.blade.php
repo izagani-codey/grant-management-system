@@ -41,12 +41,6 @@
                         </div>
                     </x-nav-link>
 
-                    @if(auth()->user()->role === 'staff2')
-                        <x-nav-link :href="route('staff2.admin')" :active="request()->routeIs('staff2.admin')">
-                            {{ __('Staff 2 Admin') }}
-                        </x-nav-link>
-                    @endif
-
                     @if(auth()->user()->role === 'admin')
                         <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')">
                             {{ __('Admin Dashboard') }}
@@ -64,7 +58,7 @@
                     @endif
                     --}}
 
-                    @if(in_array(auth()->user()->role, ['staff1', 'staff2'], true))
+                    @if(in_array(auth()->user()->role, ['staff1', 'staff2', 'admin'], true))
                         <x-nav-link :href="route('form-templates.index')" :active="request()->routeIs('form-templates.*')">
                             {{ __('Blank Forms') }}
                         </x-nav-link>
@@ -146,12 +140,6 @@
                 </div>
             </x-responsive-nav-link>
 
-            @if(auth()->user()->role === 'staff2')
-                <x-responsive-nav-link :href="route('staff2.admin')" :active="request()->routeIs('staff2.admin')">
-                    {{ __('Staff 2 Admin') }}
-                </x-responsive-nav-link>
-            @endif
-
             @if(auth()->user()->role === 'admin')
                 <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')">
                     {{ __('Admin Dashboard') }}
@@ -161,7 +149,7 @@
                 </x-responsive-nav-link>
             @endif
 
-            @if(in_array(auth()->user()->role, ['staff1', 'staff2'], true))
+            @if(in_array(auth()->user()->role, ['staff1', 'staff2', 'admin'], true))
                 <x-responsive-nav-link :href="route('form-templates.index')" :active="request()->routeIs('form-templates.*')">
                     {{ __('Blank Forms') }}
                 </x-responsive-nav-link>

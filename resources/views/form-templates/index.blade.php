@@ -5,7 +5,7 @@
                 <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Blank Forms</h1>
                 <p class="text-gray-600 mt-1">Upload, preview, and manage reusable blank form templates</p>
             </div>
-            @if(in_array(auth()->user()->role, ['staff1', 'staff2']))
+            @if(auth()->user()->role === 'admin')
                 <button onclick="document.getElementById('upload-form').classList.toggle('hidden')" 
                         class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -20,7 +20,7 @@
     <div class="py-6">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             <!-- Upload Form (Hidden by default) -->
-            @if(in_array(auth()->user()->role, ['staff1', 'staff2']))
+            @if(auth()->user()->role === 'admin')
                 <div id="upload-form" class="hidden">
                     <div class="bg-white rounded-2xl shadow-lg p-6">
                         <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
@@ -157,7 +157,7 @@
                                             <a href="{{ asset('storage/' . $template->file_path) }}" target="_blank" class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition">
                                                 View
                                             </a>
-                                            @if(auth()->user()->role === 'staff2')
+                                            @if(auth()->user()->role === 'admin')
                                                 <form action="{{ route('form-templates.destroy', $template->id) }}" method="POST" class="inline">
                                                     @csrf
                                                     @method('DELETE')

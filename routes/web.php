@@ -68,6 +68,9 @@ Route::middleware('auth')->group(function () {
         Route::patch('/requests/{id}/status', [RequestController::class, 'updateStatus'])->name('requests.updateStatus');
         Route::patch('/requests/{id}/priority', [RequestController::class, 'updatePriority'])->name('requests.updatePriority');
         Route::post('/requests/{id}/comments', [RequestController::class, 'addComment'])->name('requests.comment');
+    });
+
+    Route::middleware('role:staff1,staff2,dean,admin')->group(function () {
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
         Route::get('/form-templates', [FormTemplateController::class, 'index'])->name('form-templates.index');
     });
@@ -115,6 +118,8 @@ Route::middleware('auth')->group(function () {
         // Admin panel
         Route::get('/admin/dashboard', [Staff2AdminController::class, 'index'])->name('admin.dashboard');
         Route::get('/admin/users', [Staff2AdminController::class, 'users'])->name('admin.users');
+        Route::post('/admin/users', [Staff2AdminController::class, 'storeUser'])->name('admin.users.store');
+        Route::patch('/admin/users/{user}', [Staff2AdminController::class, 'updateUser'])->name('admin.users.update');
         Route::get('/admin/request-types', [Staff2AdminController::class, 'requestTypes'])->name('admin.request-types');
         Route::get('/admin/deployment-playbook', [Staff2AdminController::class, 'deploymentPlaybook'])->name('admin.deployment-playbook');
         Route::post('/admin/request-types', [Staff2AdminController::class, 'storeRequestType'])->name('admin.request-types.store');
@@ -133,18 +138,9 @@ Route::middleware('auth')->group(function () {
             ->name('requests.toggleOverrideMode');
     });
 
-    // Admin & Staff 2 shared routes
-    Route::middleware('role:admin,staff2')->group(function () {
-        // Excel export (shared with admin)
+    // Staff 2-only tools
+    Route::middleware('role:staff2')->group(function () {
         Route::get('/staff2/requests/export', [RequestController::class, 'exportExcel'])->name('requests.exportExcel');
-        
-        // Legacy routes for backward compatibility
-        Route::get('/staff2/admin-panel', [Staff2AdminController::class, 'index'])->name('staff2.admin');
-        Route::get('/staff2/admin/users', [Staff2AdminController::class, 'users'])->name('staff2.admin.users');
-        Route::get('/staff2/admin/request-types', [Staff2AdminController::class, 'requestTypes'])->name('staff2.admin.request-types');
-        Route::post('/staff2/admin/request-types', [Staff2AdminController::class, 'storeRequestType'])->name('staff2.admin.request-types.store');
-        Route::put('/staff2/admin/request-types/{id}', [Staff2AdminController::class, 'updateRequestType'])->name('staff2.admin.request-types.update');
-        Route::delete('/staff2/admin/request-types/{id}', [Staff2AdminController::class, 'destroyRequestType'])->name('staff2.admin.request-types.destroy');
     });
 });
 

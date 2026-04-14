@@ -47,6 +47,28 @@ $isEdit = $grantRequest !== null;
                         'grantRequest' => $grantRequest
                     ])
 
+                    {{-- Required Documents Notice (shown when request type is selected) --}}
+                    <div id="required-docs-notice" class="{{ old('request_type_id', $grantRequest?->request_type_id) ? '' : 'hidden' }} mb-6">
+                        @php
+                            $selectedTypeId = old('request_type_id', $grantRequest?->request_type_id);
+                            $selectedTypeForDocs = $requestTypes->firstWhere('id', $selectedTypeId);
+                            $requiredDocs = $selectedTypeForDocs?->required_documents ?? [];
+                        @endphp
+                        @if(! empty($requiredDocs))
+                            <div class="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4">
+                                <p class="text-sm font-semibold text-amber-800 mb-2">Required Supporting Documents</p>
+                                <p class="text-xs text-amber-700 mb-3">Please ensure you have the following documents ready to attach before submitting:</p>
+                                <ul class="space-y-1">
+                                    @foreach($requiredDocs as $doc)
+                                        <li class="flex items-center gap-2 text-sm text-amber-800">
+                                            <span class="text-amber-500">□</span> {{ $doc }}
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+                    </div>
+
                     {{-- SECTION 2: Dynamic Request Type Fields (Type-Specific) --}}
                     <div id="dynamic-fields-section" class="mb-6 border-b border-gray-200 pb-6 {{ old('request_type_id', $grantRequest?->request_type_id) ? '' : 'hidden' }}">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Request Details</h3>

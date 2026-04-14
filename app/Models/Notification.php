@@ -43,8 +43,21 @@ class Notification extends Model
         return $this->update(['is_read' => true]);
     }
 
-    public static function createForUser($userId, $type, $title, $message, $url = null, $data = null): self
+    public static function createForUser($userId, $type, $title, $message, $url = null, $data = null): ?self
     {
+        // Deduplication: skip if an identical unread notification was created in the last 5 minutes
+        $recentExists = self::where('user_id', $userId)
+            ->where('type', $type)
+            ->where('title', $title)
+            ->where('is_read', false)
+            ->where('created_at', '>=', now()->subMinutes(5))
+            ->when(isset($data['request_id']), fn ($q) => $q->whereJsonContains('data->request_id', $data['request_id']))
+            ->exists();
+
+        if ($recentExists) {
+            return null;
+        }
+
         return self::create([
             'user_id' => $userId,
             'type' => $type,

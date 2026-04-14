@@ -20,6 +20,12 @@
                 </div>
             @endif
 
+            @if(session('error'))
+                <div class="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">
+                    {{ session('error') }}
+                </div>
+            @endif
+
             @if($errors->any())
                 <div class="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">
                     <p class="font-semibold">Please fix the following issues:</p>
@@ -155,20 +161,41 @@
 
                     <div class="mt-6 space-y-4">
                         @forelse($users as $managedUser)
-                            <form method="POST" action="{{ route('admin.users.update', $managedUser) }}" class="rounded-2xl border border-gray-200 p-5">
+                            <div class="rounded-2xl border p-5 {{ $managedUser->is_active ? 'border-gray-200' : 'border-red-200 bg-red-50' }}">
+                                {{-- Deactivated user banner --}}
+                                @if(! $managedUser->is_active)
+                                    <div class="mb-4 flex items-center justify-between rounded-lg bg-red-100 px-4 py-2 text-sm text-red-800">
+                                        <span class="font-semibold">This account is deactivated — user cannot log in.</span>
+                                        <form method="POST" action="{{ route('admin.users.reactivate', $managedUser) }}">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit"
+                                                    class="rounded-lg bg-green-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-green-700">
+                                                Reactivate
+                                            </button>
+                                        </form>
+                                    </div>
+                                @endif
+
+                            <form method="POST" action="{{ route('admin.users.update', $managedUser) }}" class="">
                                 @csrf
                                 @method('PATCH')
 
                                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                     <div>
                                         <div class="flex items-center gap-3">
-                                            <h3 class="text-lg font-semibold text-gray-900">{{ $managedUser->name }}</h3>
+                                            <h3 class="text-lg font-semibold {{ $managedUser->is_active ? 'text-gray-900' : 'text-red-700 line-through' }}">{{ $managedUser->name }}</h3>
                                             <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-700">
                                                 {{ \Illuminate\Support\Str::headline($managedUser->role) }}
                                             </span>
                                             @if(auth()->id() === $managedUser->id)
                                                 <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
                                                     You
+                                                </span>
+                                            @endif
+                                            @if(! $managedUser->is_active)
+                                                <span class="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-700">
+                                                    Inactive
                                                 </span>
                                             @endif
                                         </div>
@@ -181,10 +208,20 @@
                                         </p>
                                     </div>
 
-                                    <button type="submit"
-                                            class="inline-flex items-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-black">
-                                        Save Changes
-                                    </button>
+                                    <div class="flex gap-2">
+                                        <button type="submit"
+                                                class="inline-flex items-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-black">
+                                            Save Changes
+                                        </button>
+
+                                        @if(auth()->id() !== $managedUser->id && $managedUser->is_active)
+                                            <button type="button"
+                                                    onclick="confirmDeactivate({{ $managedUser->id }}, '{{ addslashes($managedUser->name) }}')"
+                                                    class="inline-flex items-center rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700">
+                                                Deactivate
+                                            </button>
+                                        @endif
+                                    </div>
                                 </div>
 
                                 <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -253,6 +290,14 @@
                                     </div>
                                 </div>
                             </form>
+
+                            {{-- Hidden deactivate form --}}
+                            <form id="deactivate-form-{{ $managedUser->id }}" method="POST"
+                                  action="{{ route('admin.users.destroy', $managedUser) }}" class="hidden">
+                                @csrf
+                                @method('DELETE')
+                            </form>
+                            </div>{{-- end outer div --}}
                         @empty
                             <div class="rounded-2xl border border-dashed border-gray-300 px-5 py-10 text-center text-sm text-gray-500">
                                 No users matched the current filters.
@@ -269,4 +314,11 @@
             </div>
         </div>
     </div>
+<script>
+function confirmDeactivate(userId, userName) {
+    if (confirm('Are you sure you want to deactivate ' + userName + '? They will no longer be able to log in.')) {
+        document.getElementById('deactivate-form-' + userId).submit();
+    }
+}
+</script>
 </x-app-layout>

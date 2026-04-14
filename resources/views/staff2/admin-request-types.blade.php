@@ -168,7 +168,11 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div class="flex items-center space-x-2">
-                                            <button onclick="editType({{ $type->id }}, '{{ $type->name }}', '{{ $type->description ?? '' }}', {{ $type->default_template_id ?? 'null' }})" 
+                                            @php
+                                                $twoSigTpl = $type->requestTypeTemplates->firstWhere('signature_layout', 'two_signatures')?->form_template_id;
+                                                $threeSigTpl = $type->requestTypeTemplates->firstWhere('signature_layout', 'three_signatures')?->form_template_id;
+                                            @endphp
+                                            <button onclick="editType({{ $type->id }}, '{{ addslashes($type->name) }}', '{{ addslashes($type->description ?? '') }}', {{ $type->default_template_id ?? 'null' }}, {!! json_encode($type->required_documents ?? []) !!}, {{ $twoSigTpl ?? 'null' }}, {{ $threeSigTpl ?? 'null' }})"
                                                     class="text-green-600 hover:text-green-900 font-medium">
                                                 Edit
                                             </button>
@@ -225,46 +229,83 @@
 
     <!-- Edit Modal -->
     <div id="edit-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-xl bg-white">
+        <div class="relative top-10 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-xl bg-white">
             <div class="mt-3">
                 <h3 class="text-lg font-bold text-gray-900 mb-4">Edit Request Type</h3>
                 <form id="edit-form" method="POST">
                     @csrf
                     @method('PUT')
                     <input type="hidden" id="edit-id" name="id">
-                    
+
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Type Name</label>
                             <input type="text" id="edit-name" name="name" required
                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
                         </div>
-                        
+
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
                             <textarea id="edit-description" name="description" rows="3"
                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500"></textarea>
                         </div>
-                        
+
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Default Template</label>
-                            <select id="edit-template" name="default_template_id" 
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Default Template (fallback)</label>
+                            <select id="edit-template" name="default_template_id"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
                                 <option value="">No template</option>
                                 @foreach($formTemplates ?? [] as $template)
                                     <option value="{{ $template->id }}">{{ $template->name }} ({{ $template->template_type }})</option>
                                 @endforeach
                             </select>
-                            <p class="text-xs text-gray-500 mt-1">Template that will be auto-filled for this request type</p>
+                            <p class="text-xs text-gray-500 mt-1">Used when no layout-specific template is assigned</p>
+                        </div>
+
+                        <div class="rounded-lg border border-blue-100 bg-blue-50 p-3 space-y-3">
+                            <p class="text-xs font-semibold text-blue-800">Signature-Layout Templates</p>
+                            <p class="text-xs text-blue-700">Assign a specific form template for each signature layout. The system will automatically pick the correct one based on the workflow policy.</p>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Template — 2 Signatures (Admission + Staff 2)</label>
+                                <select id="edit-template-two-sig" name="template_two_sig"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">None</option>
+                                    @foreach($formTemplates ?? [] as $template)
+                                        <option value="{{ $template->id }}">{{ $template->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Template — 3 Signatures (Admission + Staff 2 + Dean)</label>
+                                <select id="edit-template-three-sig" name="template_three_sig"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">None</option>
+                                    @foreach($formTemplates ?? [] as $template)
+                                        <option value="{{ $template->id }}">{{ $template->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Required Supporting Documents</label>
+                            <p class="text-xs text-gray-500 mb-2">List documents applicants must attach when submitting this request type.</p>
+                            <div id="req-docs-list" class="space-y-2"></div>
+                            <button type="button" onclick="addReqDoc()"
+                                    class="mt-2 px-3 py-1 text-sm rounded bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100">
+                                + Add Document
+                            </button>
                         </div>
                     </div>
-                    
+
                     <div class="flex justify-end space-x-3 mt-6">
                         <button type="button" onclick="closeEditModal()"
                                 class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
                             Cancel
                         </button>
-                        <button type="submit" 
+                        <button type="submit"
                                 class="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all">
                             Update Type
                         </button>
@@ -275,15 +316,38 @@
     </div>
 
     <script>
-        function editType(id, name, description, defaultTemplateId) {
+        function editType(id, name, description, defaultTemplateId, requiredDocuments, twoSigTemplateId, threeSigTemplateId) {
             document.getElementById('edit-id').value = id;
             document.getElementById('edit-name').value = name;
             document.getElementById('edit-description').value = description;
             document.getElementById('edit-template').value = defaultTemplateId || '';
+            document.getElementById('edit-template-two-sig').value = twoSigTemplateId || '';
+            document.getElementById('edit-template-three-sig').value = threeSigTemplateId || '';
             document.getElementById('edit-form').action = '/admin/request-types/' + id;
+
+            // Populate required documents
+            const list = document.getElementById('req-docs-list');
+            list.innerHTML = '';
+            const docs = requiredDocuments || [];
+            docs.forEach(doc => addReqDoc(doc));
+
             document.getElementById('edit-modal').classList.remove('hidden');
         }
-        
+
+        function addReqDoc(value = '') {
+            const list = document.getElementById('req-docs-list');
+            const div = document.createElement('div');
+            div.className = 'flex gap-2';
+            div.innerHTML = `
+                <input type="text" name="required_documents[]" value="${value.replace(/"/g, '&quot;')}"
+                       placeholder="e.g. Conference invitation letter"
+                       class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-green-500 focus:border-green-500">
+                <button type="button" onclick="this.parentElement.remove()"
+                        class="px-2 py-1 text-red-600 hover:text-red-800 text-lg font-bold">×</button>
+            `;
+            list.appendChild(div);
+        }
+
         function closeEditModal() {
             document.getElementById('edit-modal').classList.add('hidden');
         }

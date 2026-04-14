@@ -347,7 +347,7 @@ class WorkflowTransitionService
      */
     private static function notifyRole(string $role, GrantRequest $request, string $type, string $title, string $message): void
     {
-        $users = \App\Models\User::where('role', $role)->get();
+        $users = \App\Models\User::where('role', $role)->where('is_active', true)->get();
         $url = route('requests.show', $request->id);
 
         foreach ($users as $user) {

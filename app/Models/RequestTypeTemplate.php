@@ -11,6 +11,7 @@ class RequestTypeTemplate extends Model
         'form_template_id',
         'is_default',
         'sort_order',
+        'signature_layout',
     ];
 
     protected $casts = [
@@ -49,6 +50,11 @@ class RequestTypeTemplate extends Model
     public function scopeOrdered($query)
     {
         return $query->orderBy('sort_order')->orderBy('created_at');
+    }
+
+    public function scopeForLayout($query, string $layout)
+    {
+        return $query->where('signature_layout', $layout);
     }
 
     // ==========================================

@@ -121,6 +121,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/users', [Staff2AdminController::class, 'users'])->name('admin.users');
         Route::post('/admin/users', [Staff2AdminController::class, 'storeUser'])->name('admin.users.store');
         Route::patch('/admin/users/{user}', [Staff2AdminController::class, 'updateUser'])->name('admin.users.update');
+        Route::delete('/admin/users/{user}', [Staff2AdminController::class, 'destroyUser'])->name('admin.users.destroy');
+        Route::patch('/admin/users/{user}/reactivate', [Staff2AdminController::class, 'reactivateUser'])->name('admin.users.reactivate');
         Route::get('/admin/request-types', [Staff2AdminController::class, 'requestTypes'])->name('admin.request-types');
         Route::get('/admin/deployment-playbook', [Staff2AdminController::class, 'deploymentPlaybook'])->name('admin.deployment-playbook');
         Route::post('/admin/request-types', [Staff2AdminController::class, 'storeRequestType'])->name('admin.request-types.store');

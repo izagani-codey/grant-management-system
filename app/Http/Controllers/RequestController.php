@@ -550,10 +550,13 @@ public function __construct(
         $requestType = RequestType::findOrFail($id);
         $fields = $requestType->field_schema ?? [];
 
+        $requiredDocuments = $requestType->required_documents ?? [];
+
         if (empty($fields)) {
             return response()->json([
                 'html' => '',
                 'fields' => [],
+                'required_documents' => $requiredDocuments,
             ]);
         }
 
@@ -566,6 +569,7 @@ public function __construct(
         return response()->json([
             'html' => $html,
             'fields' => $fields,
+            'required_documents' => $requiredDocuments,
         ]);
     }
 

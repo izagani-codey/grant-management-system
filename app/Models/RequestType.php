@@ -6,13 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class RequestType extends Model
 {
-    protected $fillable = ['name', 'slug', 'description', 'default_template_id', 'field_schema', 'requires_vot', 'metadata', 'is_active'];
+    protected $fillable = ['name', 'slug', 'description', 'default_template_id', 'field_schema', 'requires_vot', 'metadata', 'is_active', 'required_documents'];
 
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'field_schema' => 'array',
         'metadata' => 'array',
+        'required_documents' => 'array',
         'requires_vot' => 'boolean',
         'is_active' => 'boolean',
     ];
@@ -50,14 +51,26 @@ class RequestType extends Model
             ->orderBy('created_at');
     }
 
-    public function getDefaultTemplate()
+    public function getDefaultTemplate(?string $signatureLayout = null)
     {
-        // First try the legacy default_template_id
+        // If a layout is specified, look for a layout-specific template first
+        if ($signatureLayout) {
+            $layoutTemplate = $this->requestTypeTemplates()
+                ->with('formTemplate')
+                ->where('signature_layout', $signatureLayout)
+                ->first();
+
+            if ($layoutTemplate?->formTemplate) {
+                return $layoutTemplate->formTemplate;
+            }
+        }
+
+        // Fall back to the legacy default_template_id
         if ($this->default_template_id) {
             return $this->defaultTemplate;
         }
 
-        // Then try the new system
+        // Then try the new system (any layout)
         $defaultTemplate = $this->requestTypeTemplates()
             ->with('formTemplate')
             ->where('is_default', true)

@@ -267,6 +267,7 @@
             previewSection?.classList.add('hidden');
             dynamicSection?.classList.add('hidden');
             errorSection?.classList.add('hidden');
+            document.getElementById('required-docs-notice')?.classList.add('hidden');
             return;
         }
 
@@ -281,6 +282,26 @@
                 } else {
                     dynamicContainer.innerHTML = '';
                     dynamicSection.classList.add('hidden');
+                }
+
+                // Update required documents notice
+                const docsNotice = document.getElementById('required-docs-notice');
+                if (docsNotice) {
+                    const docs = data?.required_documents ?? [];
+                    if (docs.length > 0) {
+                        docsNotice.innerHTML = `
+                            <div class="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4">
+                                <p class="text-sm font-semibold text-amber-800 mb-2">Required Supporting Documents</p>
+                                <p class="text-xs text-amber-700 mb-3">Please ensure you have the following documents ready to attach before submitting:</p>
+                                <ul class="space-y-1">
+                                    ${docs.map(d => `<li class="flex items-center gap-2 text-sm text-amber-800"><span class="text-amber-500">□</span> ${d}</li>`).join('')}
+                                </ul>
+                            </div>`;
+                        docsNotice.classList.remove('hidden');
+                    } else {
+                        docsNotice.innerHTML = '';
+                        docsNotice.classList.add('hidden');
+                    }
                 }
             } catch (error) {
                 dynamicSection.classList.add('hidden');

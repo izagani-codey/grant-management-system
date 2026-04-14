@@ -6,212 +6,224 @@
     <title>{{ $request->ref_number }} — STRG Request</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'DejaVu Sans', 'Liberation Sans', Arial, sans-serif; 
-            font-size: 11px; 
-            color: #1a1a1a; 
+        body {
+            font-family: 'DejaVu Sans', 'Liberation Sans', Arial, sans-serif;
+            font-size: 11px;
+            color: #1a1a1a;
             padding: 20px;
             line-height: 1.4;
         }
-        
+
         @page {
             margin: 20mm;
             size: A4;
         }
 
-        .header { 
-            text-align: center; 
-            border-bottom: 3px solid #1F3864; 
-            padding-bottom: 12px; 
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #1F3864;
+            padding-bottom: 12px;
             margin-bottom: 16px;
             page-break-inside: avoid;
         }
-        .header .logo-text { 
-            font-size: 18px; 
-            font-weight: bold; 
-            color: #1F3864; 
-            letter-spacing: 1px; 
+        .header .logo-text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1F3864;
+            letter-spacing: 1px;
             font-family: 'Georgia', serif;
         }
-        .header .sub { 
-            font-size: 10px; 
-            color: #555; 
+        .header .sub {
+            font-size: 10px;
+            color: #555;
             margin-top: 3px;
             font-style: italic;
         }
-        .header h1 { 
-            font-size: 14px; 
-            margin-top: 8px; 
-            color: #1F3864; 
+        .header h1 {
+            font-size: 14px;
+            margin-top: 8px;
+            color: #1F3864;
             font-weight: bold;
         }
 
-        .ref-badge { 
-            display: inline-block; 
-            background: #1F3864; 
-            color: white; 
-            padding: 4px 12px; 
-            border-radius: 4px; 
-            font-size: 12px; 
-            font-weight: bold; 
+        .ref-badge {
+            display: inline-block;
+            background: #1F3864;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
             margin: 8px 0;
             font-family: 'Courier New', monospace;
         }
 
-        .section { 
+        .section {
             margin-bottom: 16px;
             page-break-inside: avoid;
         }
-        .section-title { 
-            background: #1F3864; 
-            color: white; 
-            padding: 6px 12px; 
-            font-weight: bold; 
-            font-size: 11px; 
+        .section-title {
+            background: #1F3864;
+            color: white;
+            padding: 6px 12px;
+            font-weight: bold;
+            font-size: 11px;
             margin-bottom: 6px;
             border-radius: 2px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        table.info-table { 
-            width: 100%; 
-            border-collapse: collapse; 
+        table.info-table {
+            width: 100%;
+            border-collapse: collapse;
             margin-bottom: 8px;
         }
-        table.info-table td { 
-            padding: 6px 10px; 
-            border: 1px solid #ccc; 
+        table.info-table td {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
             vertical-align: top;
             font-size: 10px;
         }
-        table.info-table td.label { 
-            background: #EEF2FF; 
-            font-weight: bold; 
-            width: 28%; 
+        table.info-table td.label {
+            background: #EEF2FF;
+            font-weight: bold;
+            width: 28%;
             white-space: nowrap;
             color: #1F3864;
         }
-        table.info-table td.value { 
-            width: 22%; 
+        table.info-table td.value {
+            width: 22%;
             word-wrap: break-word;
         }
 
-        table.vot-table { 
-            width: 100%; 
-            border-collapse: collapse; 
+        table.vot-table {
+            width: 100%;
+            border-collapse: collapse;
             margin-bottom: 8px;
         }
-        table.vot-table th { 
-            background: #1F3864; 
-            color: white; 
-            padding: 6px 10px; 
-            text-align: left; 
+        table.vot-table th {
+            background: #1F3864;
+            color: white;
+            padding: 6px 10px;
+            text-align: left;
             font-size: 10px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        table.vot-table td { 
-            padding: 6px 10px; 
-            border: 1px solid #ccc; 
+        table.vot-table td {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
             font-size: 10px;
         }
         table.vot-table tr:nth-child(even) td { background: #F0F4FF; }
-        table.vot-table td.amount { 
-            text-align: right; 
+        table.vot-table td.amount {
+            text-align: right;
             font-family: 'Courier New', monospace;
             font-weight: bold;
         }
-        table.vot-table tfoot td { 
-            font-weight: bold; 
-            background: #DCE6F1; 
+        table.vot-table tfoot td {
+            font-weight: bold;
+            background: #DCE6F1;
             font-size: 11px;
         }
 
-        .description-box { 
-            border: 1px solid #ccc; 
-            padding: 10px; 
-            min-height: 60px; 
+        .description-box {
+            border: 1px solid #ccc;
+            padding: 10px;
+            min-height: 60px;
             background: #FAFAFA;
             font-size: 10px;
             line-height: 1.5;
             page-break-inside: avoid;
         }
 
-        .signature-section { 
-            margin-top: 20px; 
-            border-top: 2px solid #1F3864; 
+        /* ── Signature section ─────────────────────────── */
+        .signature-section {
+            margin-top: 20px;
+            border-top: 2px solid #1F3864;
             padding-top: 16px;
             page-break-inside: avoid;
         }
-        .signature-grid { 
-            display: table; 
-            width: 100%; 
+
+        /* Shared two-column grid */
+        .sig-row {
+            display: table;
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
         }
-        .sig-col { 
-            display: table-cell; 
-            width: 50%; 
-            padding: 0 10px; 
+        .sig-cell {
+            display: table-cell;
+            width: 50%;
+            padding: 0 8px;
             vertical-align: top;
         }
-        .sig-box { 
-            border: 1px solid #999; 
-            min-height: 80px; 
-            background: #FAFAFA; 
-            text-align: center; 
-            padding: 6px;
-            border-radius: 2px;
-        }
-        .sig-img { 
-            max-width: 100%; 
-            max-height: 70px;
-            border-radius: 1px;
-        }
-        .sig-label { 
-            font-size: 9px; 
-            color: #666; 
-            margin-top: 6px; 
-            border-top: 1px solid #999; 
-            padding-top: 4px;
-            line-height: 1.3;
+        .sig-cell:first-child { padding-left: 0; }
+        .sig-cell:last-child  { padding-right: 0; }
+
+        /* Single-column (full-width) for dean in 3-sig */
+        .sig-row-single {
+            display: block;
+            width: 50%;
+            margin-top: 16px;
         }
 
-        .footer { 
-            margin-top: 24px; 
-            text-align: center; 
-            font-size: 9px; 
-            color: #888; 
-            border-top: 1px solid #ccc; 
+        .sig-role-label {
+            font-size: 9px;
+            font-weight: bold;
+            color: #1F3864;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 4px;
+        }
+        .sig-box {
+            border: 1px solid #bbb;
+            height: 75px;
+            background: #FAFAFA;
+            text-align: center;
+            position: relative;
+        }
+        .sig-box img.sig-img {
+            max-width: 100%;
+            max-height: 65px;
+            margin-top: 4px;
+        }
+        .sig-box .sig-placeholder {
+            color: #bbb;
+            font-size: 9px;
+            line-height: 75px;
+        }
+
+        /* Underline rows below the box */
+        .sig-info {
+            margin-top: 6px;
+            font-size: 9px;
+            color: #333;
+        }
+        .sig-info .sig-line {
+            border-bottom: 1px solid #555;
+            padding-bottom: 2px;
+            margin-bottom: 4px;
+            min-height: 14px;
+        }
+        .sig-info .sig-field-label {
+            font-size: 8px;
+            color: #888;
+        }
+        /* ─────────────────────────────────────────────── */
+
+        .footer {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 9px;
+            color: #888;
+            border-top: 1px solid #ccc;
             padding-top: 10px;
             page-break-inside: avoid;
         }
-        .status-badge { 
-            display: inline-block; 
-            padding: 3px 10px; 
-            border-radius: 3px; 
-            font-size: 10px; 
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        .status-pending { background: #FEF3C7; color: #92400E; }
-        .status-approved { background: #D1FAE5; color: #065F46; }
-        .status-declined { background: #FEE2E2; color: #991B1B; }
-        .status-returned { background: #E0E7FF; color: #3730A3; }
-        
-        .template-background {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            opacity: 1;
-            object-fit: cover;
-            pointer-events: none;
-        }
-        
-        /* Print-specific styles */
+
         @media print {
             body { padding: 0; }
             .section { page-break-inside: avoid; }
@@ -221,10 +233,7 @@
     </style>
 </head>
 <body>
-    @if(isset($background_image))
-        <img src="{{ $background_image }}" class="template-background" alt="Template Background">
-    @endif
-    
+
     <!-- Header -->
     <div class="header">
         <div class="logo-text">UNIVERSITI KUALA LUMPUR (UniKL)</div>
@@ -238,9 +247,9 @@
         </div>
     </div>
 
-    <!-- Submitter Information -->
+    <!-- Applicant Information -->
     <div class="section">
-        <div class="section-title">APPLICANT INFORMATION</div>
+        <div class="section-title">Applicant Information</div>
         <table class="info-table">
             <tr>
                 <td class="label">Full Name</td>
@@ -269,7 +278,7 @@
 
     <!-- Request Details -->
     <div class="section">
-        <div class="section-title">REQUEST DETAILS</div>
+        <div class="section-title">Request Details</div>
         <table class="info-table">
             <tr>
                 <td class="label">Request Type</td>
@@ -289,18 +298,14 @@
     <!-- Dynamic Request Type Fields -->
     @if($request->requestType->field_schema && !empty($request->payload['dynamic_fields']))
         <div class="section">
-            <div class="section-title">{{ strtoupper($request->requestType->name) }} DETAILS</div>
+            <div class="section-title">{{ $request->requestType->name }} Details</div>
             <table class="info-table">
                 @foreach($request->requestType->field_schema as $field)
                     @php
                         $fieldValue = $request->payload['dynamic_fields'][$field['name']] ?? null;
                         $displayValue = '';
-                        
                         if ($fieldValue !== null) {
                             switch ($field['type']) {
-                                case 'select':
-                                    $displayValue = $fieldValue;
-                                    break;
                                 case 'textarea':
                                     $displayValue = nl2br(e($fieldValue));
                                     break;
@@ -330,15 +335,15 @@
         </div>
     @endif
 
-    <!-- Description / Justification -->
+    <!-- Justification / Description -->
     <div class="section">
-        <div class="section-title">JUSTIFICATION / DESCRIPTION</div>
+        <div class="section-title">Justification / Description</div>
         <div class="description-box">{{ $request->payload['description'] ?? 'No description provided.' }}</div>
     </div>
 
-    <!-- VOT Items -->
+    <!-- VOT Breakdown -->
     <div class="section">
-        <div class="section-title">BUDGET / VOT BREAKDOWN</div>
+        <div class="section-title">Budget / VOT Breakdown</div>
         @php $votItems = $request->getVotItems(); @endphp
         @if(!empty($votItems))
             <table class="vot-table">
@@ -360,7 +365,7 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="2" style="text-align:right; padding-right:12px;">TOTAL</td>
+                        <td colspan="2" style="text-align:right; padding-right:12px; font-weight:bold;">TOTAL</td>
                         <td class="amount">RM {{ number_format((float)$request->total_amount, 2) }}</td>
                     </tr>
                 </tfoot>
@@ -370,104 +375,108 @@
         @endif
     </div>
 
-    <!-- Verification Trail (if available) -->
-    @if($request->verifiedBy || $request->recommendedBy)
-    <div class="section">
-        <div class="section-title">VERIFICATION TRAIL</div>
-        <table class="info-table">
-            <tr>
-                <td class="label">Verified by Staff 1</td>
-                <td class="value">{{ $request->verifiedBy?->name ?? 'Pending' }}</td>
-                <td class="label">Recommended By (Staff 2)</td>
-                <td class="value">{{ $request->recommendedBy?->name ?? 'Pending' }}</td>
-            </tr>
-        </table>
-    </div>
-    @endif
-
-    <!-- Rejection reason if applicable -->
+    <!-- Return / Rejection Reason -->
     @if($request->rejection_reason)
     <div class="section">
-        <div class="section-title" style="background:#991B1B;">RETURN / REJECTION REASON</div>
+        <div class="section-title" style="background:#991B1B;">Return / Rejection Reason</div>
         <div class="description-box" style="border-color:#FCA5A5; background:#FFF5F5;">{{ $request->rejection_reason }}</div>
     </div>
     @endif
 
-    <!-- Signature Section -->
+    <!-- ══════════════════════════════════════════════
+         DECLARATION & SIGNATURES
+         ══════════════════════════════════════════════ -->
     <div class="signature-section">
-        <div class="section-title">DECLARATION &amp; SIGNATURES</div>
-        <p style="font-size:10px; color:#555; margin: 8px 0;">
+        <div class="section-title">Declaration &amp; Signatures</div>
+        <p style="font-size:10px; color:#444; margin: 8px 0 4px;">
             I hereby declare that the information provided in this form is true and accurate to the best of my knowledge.
         </p>
 
-        <div class="signature-grid">
-            <div class="sig-col">
-                <strong style="font-size:10px; display:block; margin-bottom:4px;">APPLICANT SIGNATURE</strong>
+        @php
+            $applicantSig   = $request->signature_data;
+            $staff2Sig      = $request->getSignatureImageForRole('staff2');
+            $deanSig        = $request->getSignatureImageForRole('dean');
+
+            $applicantName  = $request->user->name;
+            $applicantDesig = $request->submitter_designation ?? $request->user->designation ?? '';
+            $applicantDate  = $request->signed_at?->format('d/m/Y');
+
+            $staff2Name     = $request->recommendedBy?->name;
+            $staff2Desig    = $request->recommendedBy?->designation ?? '';
+            $staff2Date     = $request->getSignedAtForRole('staff2')?->format('d/m/Y');
+
+            $deanName       = $request->deanApprovedBy?->name;
+            $deanDesig      = $request->deanApprovedBy?->designation ?? 'Dean';
+            $deanDate       = $request->getSignedAtForRole('dean')?->format('d/m/Y');
+        @endphp
+
+        {{-- Row 1: Applicant (left) | Staff 2 / Authorised Officer (right) --}}
+        <div class="sig-row">
+            {{-- Applicant --}}
+            <div class="sig-cell">
+                <div class="sig-role-label">Applicant</div>
                 <div class="sig-box">
-                    @if($request->signature_data)
-                        <img src="{{ $request->signature_data }}" class="sig-img" alt="Applicant Signature"/>
+                    @if($applicantSig)
+                        <img src="{{ $applicantSig }}" class="sig-img" alt="Applicant Signature"/>
                     @else
-                        <span style="color:#aaa; font-size:9px; line-height:65px;">No signature on file</span>
+                        <span class="sig-placeholder">No signature on file</span>
                     @endif
                 </div>
-                <div class="sig-label">
-                    {{ $request->user->name }}<br>
-                    {{ $request->submitter_designation ?? $request->user->designation ?? '' }}<br>
-                    Signed: {{ $request->signed_at?->format('d/m/Y H:i') ?? '&mdash;' }}
+                <div class="sig-info">
+                    <div class="sig-line">{{ $applicantName }}</div>
+                    <div class="sig-field-label">Name</div>
+                    <div class="sig-line" style="margin-top:6px;">{{ $applicantDesig }}</div>
+                    <div class="sig-field-label">Designation</div>
+                    <div class="sig-line" style="margin-top:6px;">{{ $applicantDate ?? '' }}</div>
+                    <div class="sig-field-label">Date</div>
+                </div>
+            </div>
+
+            {{-- Staff 2 / Authorised Officer --}}
+            <div class="sig-cell">
+                <div class="sig-role-label">Authorised Officer (Staff 2)</div>
+                <div class="sig-box">
+                    @if($staff2Sig)
+                        <img src="{{ $staff2Sig }}" class="sig-img" alt="Staff 2 Signature"/>
+                    @else
+                        <span class="sig-placeholder">Pending</span>
+                    @endif
+                </div>
+                <div class="sig-info">
+                    <div class="sig-line">{{ $staff2Name ?? '' }}</div>
+                    <div class="sig-field-label">Name</div>
+                    <div class="sig-line" style="margin-top:6px;">{{ $staff2Desig }}</div>
+                    <div class="sig-field-label">Designation</div>
+                    <div class="sig-line" style="margin-top:6px;">{{ $staff2Date ?? '' }}</div>
+                    <div class="sig-field-label">Date</div>
                 </div>
             </div>
         </div>
 
-        <!-- Staff 2 and optional Dean Signatures -->
-        <div class="signature-grid" style="margin-top: 20px;">
-            <div class="sig-col">
-                <strong style="font-size:10px; display:block; margin-bottom:4px;">STAFF 2 SIGNATURE</strong>
+        @if($layout === 'three_signatures')
+        {{-- Row 2: Dean (left-aligned, half-width) --}}
+        <div class="sig-row">
+            <div class="sig-cell">
+                <div class="sig-role-label">Dean / Faculty Approver</div>
                 <div class="sig-box">
-                    @php $staff2Signature = $request->getSignatureImageForRole('staff2'); @endphp
-                    @if($staff2Signature)
-                        <img src="{{ $staff2Signature }}" class="sig-img" alt="Staff 2 Signature"/>
+                    @if($deanSig)
+                        <img src="{{ $deanSig }}" class="sig-img" alt="Dean Signature"/>
                     @else
-                        <span style="color:#aaa; font-size:9px; line-height:65px;">Pending signature</span>
+                        <span class="sig-placeholder">Pending</span>
                     @endif
                 </div>
-                <div class="sig-label">
-                    @if($request->recommendedBy)
-                        {{ $request->recommendedBy->name }}<br>
-                        {{ $request->recommendedBy->designation ?? '' }}<br>
-                        Signed: {{ $request->getSignedAtForRole('staff2')?->format('d/m/Y H:i') ?? '—' }}
-                    @else
-                        Pending Staff 2 Review<br>
-                        Designation: —<br>
-                        Signed: —
-                    @endif
+                <div class="sig-info">
+                    <div class="sig-line">{{ $deanName ?? '' }}</div>
+                    <div class="sig-field-label">Name</div>
+                    <div class="sig-line" style="margin-top:6px;">{{ $deanDesig }}</div>
+                    <div class="sig-field-label">Designation</div>
+                    <div class="sig-line" style="margin-top:6px;">{{ $deanDate ?? '' }}</div>
+                    <div class="sig-field-label">Date</div>
                 </div>
             </div>
-
-            @if($layout === 'three_signatures')
-            <div class="sig-col">
-                <strong style="font-size:10px; display:block; margin-bottom:4px;">DEAN SIGNATURE</strong>
-                <div class="sig-box">
-                    @php $deanSignature = $request->getSignatureImageForRole('dean'); @endphp
-                    @if($deanSignature)
-                        <img src="{{ $deanSignature }}" class="sig-img" alt="Dean Signature"/>
-                    @else
-                        <span style="color:#aaa; font-size:9px; line-height:65px;">Pending signature</span>
-                    @endif
-                </div>
-                <div class="sig-label">
-                    @if($request->dean_approved_by)
-                        {{ $request->deanApprovedBy->name }}<br>
-                        Dean<br>
-                        Signed: {{ $request->getSignedAtForRole('dean')?->format('d/m/Y H:i') ?? '—' }}
-                    @else
-                        Pending Dean Review<br>
-                        Designation: Dean<br>
-                        Signed: —
-                    @endif
-                </div>
-            </div>
-            @endif
+            <div class="sig-cell"></div>{{-- spacer --}}
         </div>
+        @endif
     </div>
 
     <!-- Footer -->

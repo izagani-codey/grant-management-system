@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\RequestStatus;
 use App\Models\Request as GrantRequest;
 use App\Models\RequestType;
+use App\Models\RequestTypeTemplate;
 use App\Models\RequestTypeWorkflowPolicy;
 use App\Models\User;
 use App\Models\FormTemplate;
@@ -209,7 +210,7 @@ class Staff2AdminController extends BaseController
 
         $requestTypes = RequestType::query()
             ->withCount('requests')
-            ->with('defaultTemplate')
+            ->with(['defaultTemplate', 'requestTypeTemplates'])
             ->latest('created_at')
             ->paginate(20);
 
@@ -260,12 +261,48 @@ class Staff2AdminController extends BaseController
                 'name' => 'required|string|max:255|unique:request_types,name,' . $id,
                 'description' => 'nullable|string',
                 'default_template_id' => 'nullable|exists:form_templates,id',
+                'required_documents' => 'nullable|array',
+                'required_documents.*' => 'string|max:255',
+                'template_two_sig' => 'nullable|exists:form_templates,id',
+                'template_three_sig' => 'nullable|exists:form_templates,id',
             ]);
 
             // Update slug if name changed
             $validated['slug'] = \Str::slug($validated['name']);
 
-            $requestType->update($validated);
+            // Filter out empty document entries
+            $validated['required_documents'] = array_values(
+                array_filter($validated['required_documents'] ?? [], fn ($d) => trim($d) !== '')
+            ) ?: null;
+
+            $requestType->update([
+                'name' => $validated['name'],
+                'slug' => $validated['slug'],
+                'description' => $validated['description'] ?? null,
+                'default_template_id' => $validated['default_template_id'] ?? null,
+                'required_documents' => $validated['required_documents'],
+            ]);
+
+            // Save signature-layout-specific templates
+            foreach ([
+                'two_signatures' => $validated['template_two_sig'] ?? null,
+                'three_signatures' => $validated['template_three_sig'] ?? null,
+            ] as $layout => $templateId) {
+                // Remove existing layout-specific entry
+                RequestTypeTemplate::where('request_type_id', $requestType->id)
+                    ->where('signature_layout', $layout)
+                    ->delete();
+
+                if ($templateId) {
+                    RequestTypeTemplate::create([
+                        'request_type_id' => $requestType->id,
+                        'form_template_id' => $templateId,
+                        'is_default' => false,
+                        'sort_order' => 0,
+                        'signature_layout' => $layout,
+                    ]);
+                }
+            }
 
             return back()->with('success', 'Request type updated successfully.');
         } catch (\Exception $e) {
@@ -305,6 +342,49 @@ class Staff2AdminController extends BaseController
         if (!auth()->user()?->canAccessAdminPanel()) {
             abort(403, 'Unauthorized access to admin panel');
         }
+    }
+
+    public function destroyUser(User $user)
+    {
+        $this->ensureAdminAccess();
+
+        if (auth()->id() === $user->id) {
+            return redirect()->route('admin.users')->with('error', 'You cannot deactivate your own account.');
+        }
+
+        if ($user->role === 'admin') {
+            $adminCount = User::where('role', 'admin')->where('is_active', true)->count();
+            if ($adminCount <= 1) {
+                return redirect()->route('admin.users')->with('error', 'At least one active admin account must remain in the system.');
+            }
+        }
+
+        $user->update(['is_active' => false]);
+
+        AuditLog::create([
+            'actor_id' => auth()->id(),
+            'actor_role' => auth()->user()->role,
+            'action' => 'user_deactivated',
+            'note' => "Deactivated user {$user->email} (role: {$user->role})",
+        ]);
+
+        return redirect()->route('admin.users')->with('success', "User {$user->name} has been deactivated.");
+    }
+
+    public function reactivateUser(User $user)
+    {
+        $this->ensureAdminAccess();
+
+        $user->update(['is_active' => true]);
+
+        AuditLog::create([
+            'actor_id' => auth()->id(),
+            'actor_role' => auth()->user()->role,
+            'action' => 'user_reactivated',
+            'note' => "Reactivated user {$user->email} (role: {$user->role})",
+        ]);
+
+        return redirect()->route('admin.users')->with('success', "User {$user->name} has been reactivated.");
     }
 
     private function guardAdminRoleChange(User $user, string $newRole): void

@@ -142,26 +142,64 @@
                             <tr>
                                 <th class="px-6 py-4">Title</th>
                                 <th class="px-6 py-4">Uploaded By</th>
+                                <th class="px-6 py-4">Request Type</th>
                                 <th class="px-6 py-4">Date</th>
                                 <th class="px-6 py-4">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white">
                             @forelse($templates as $template)
+                                @php
+                                    $ext     = strtolower(pathinfo($template->file_path, PATHINFO_EXTENSION));
+                                    $isPdf   = $ext === 'pdf';
+                                    $fileUrl = asset('storage/' . $template->file_path);
+                                @endphp
                                 <tr class="border-b border-slate-200 odd:bg-white even:bg-slate-50">
-                                    <td class="px-6 py-4 font-medium text-slate-900">{{ $template->title }}</td>
+                                    <td class="px-6 py-4 font-medium text-slate-900 flex items-center gap-2">
+                                        @if($isPdf)
+                                            <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                                            </svg>
+                                        @else
+                                            <svg class="w-4 h-4 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+                                            </svg>
+                                        @endif
+                                        {{ $template->title }}
+                                    </td>
                                     <td class="px-6 py-4 text-slate-600">{{ $template->uploader?->name ?? 'N/A' }}</td>
+                                    <td class="px-6 py-4">
+                                        @if($template->requestTypes->isEmpty())
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">General</span>
+                                        @else
+                                            @foreach($template->requestTypes as $rt)
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 mr-1 mb-1">{{ $rt->name }}</span>
+                                            @endforeach
+                                        @endif
+                                    </td>
                                     <td class="px-6 py-4 text-slate-500">{{ $template->created_at?->format('d M Y') }}</td>
                                     <td class="px-6 py-4">
-                                        <div class="flex flex-wrap items-center gap-3">
-                                            <a href="{{ asset('storage/' . $template->file_path) }}" target="_blank" class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition">
-                                                View
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <button type="button"
+                                                onclick="openPreview('{{ addslashes($template->title) }}', '{{ $fileUrl }}', '{{ $isPdf ? 'pdf' : 'image' }}')"
+                                                class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition inline-flex items-center gap-1">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                                </svg>
+                                                Preview
+                                            </button>
+                                            <a href="{{ $fileUrl }}" target="_blank"
+                                               class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition">
+                                                Download
                                             </a>
                                             @if(auth()->user()->role === 'admin')
                                                 <form action="{{ route('form-templates.destroy', $template->id) }}" method="POST" class="inline">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-semibold text-red-700 hover:bg-red-100 transition">
+                                                    <button type="submit"
+                                                            onclick="return confirm('Delete &quot;{{ addslashes($template->title) }}&quot;? This cannot be undone.')"
+                                                            class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-semibold text-red-700 hover:bg-red-100 transition">
                                                         Delete
                                                     </button>
                                                 </form>
@@ -171,11 +209,83 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="px-6 py-10 text-center text-slate-500">No templates uploaded yet.</td>
+                                    <td colspan="5" class="px-6 py-10 text-center text-slate-500">No templates uploaded yet.</td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Preview Slide-over Modal -->
+    <div id="preview-modal" class="fixed inset-0 z-50 hidden">
+        <!-- Backdrop -->
+        <div id="preview-backdrop"
+             class="fixed inset-0 bg-black/50 backdrop-blur-sm opacity-0 transition-opacity duration-300"
+             onclick="closePreview()"></div>
+
+        <!-- Panel -->
+        <div id="preview-panel"
+             class="fixed top-0 right-0 h-full w-full max-w-4xl bg-white shadow-2xl flex flex-col translate-x-full transition-transform duration-300 ease-out">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 flex-shrink-0">
+                <div class="flex items-center gap-3 min-w-0">
+                    <!-- File type icon -->
+                    <div id="preview-icon-pdf" class="hidden flex-shrink-0 w-9 h-9 rounded-lg bg-red-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div id="preview-icon-img" class="hidden flex-shrink-0 w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <h2 id="preview-title" class="text-base font-semibold text-slate-900 truncate"></h2>
+                        <p id="preview-subtitle" class="text-xs text-slate-500"></p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 flex-shrink-0 ml-4">
+                    <a id="preview-download-link" href="#" target="_blank"
+                       class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        Download
+                    </a>
+                    <button type="button" onclick="closePreview()"
+                            class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition text-lg font-semibold leading-none">
+                        ×
+                    </button>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="flex-1 relative overflow-hidden bg-slate-100">
+                <!-- Loading spinner -->
+                <div id="preview-loading" class="absolute inset-0 flex items-center justify-center bg-slate-100 z-10">
+                    <div class="text-center">
+                        <svg class="animate-spin w-8 h-8 text-blue-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        <p class="text-sm text-slate-500">Loading preview…</p>
+                    </div>
+                </div>
+
+                <!-- PDF viewer -->
+                <iframe id="preview-iframe"
+                        class="w-full h-full border-0 hidden"
+                        title="Form Preview"
+                        src="about:blank"></iframe>
+
+                <!-- Image viewer -->
+                <div id="preview-image-wrap" class="hidden w-full h-full flex items-center justify-center p-6 overflow-auto">
+                    <img id="preview-img" src="" alt="Form Preview"
+                         class="max-w-full max-h-full object-contain rounded shadow-lg">
                 </div>
             </div>
         </div>
@@ -261,6 +371,87 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize on page load
     updateFileRequirement();
+});
+
+// ── Preview slide-over ──────────────────────────────────────────────────────
+
+function openPreview(title, url, type) {
+    const modal     = document.getElementById('preview-modal');
+    const backdrop  = document.getElementById('preview-backdrop');
+    const panel     = document.getElementById('preview-panel');
+    const loading   = document.getElementById('preview-loading');
+    const iframe    = document.getElementById('preview-iframe');
+    const imgWrap   = document.getElementById('preview-image-wrap');
+    const img       = document.getElementById('preview-img');
+    const iconPdf   = document.getElementById('preview-icon-pdf');
+    const iconImg   = document.getElementById('preview-icon-img');
+    const dlLink    = document.getElementById('preview-download-link');
+
+    // Populate header
+    document.getElementById('preview-title').textContent = title;
+    document.getElementById('preview-subtitle').textContent = type === 'pdf' ? 'PDF Document' : 'Image File';
+    dlLink.href = url;
+
+    // Show correct icon
+    iconPdf.classList.toggle('hidden', type !== 'pdf');
+    iconImg.classList.toggle('hidden', type !== 'image');
+
+    // Reset body
+    loading.classList.remove('hidden');
+    iframe.classList.add('hidden');
+    imgWrap.classList.add('hidden');
+    iframe.src = 'about:blank';
+    img.src = '';
+
+    // Show modal and animate
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            backdrop.classList.remove('opacity-0');
+            backdrop.classList.add('opacity-100');
+            panel.classList.remove('translate-x-full');
+            panel.classList.add('translate-x-0');
+        });
+    });
+
+    if (type === 'pdf') {
+        iframe.classList.remove('hidden');
+        let loaded = false;
+        iframe.onload = function () {
+            if (!loaded) { loaded = true; loading.classList.add('hidden'); }
+        };
+        // Fallback: hide spinner after 3s in case onload doesn't fire (some browsers)
+        setTimeout(() => { if (!loaded) { loaded = true; loading.classList.add('hidden'); } }, 3000);
+        iframe.src = url;
+    } else {
+        imgWrap.classList.remove('hidden');
+        img.onload  = () => loading.classList.add('hidden');
+        img.onerror = () => loading.classList.add('hidden');
+        img.src = url;
+    }
+}
+
+function closePreview() {
+    const modal    = document.getElementById('preview-modal');
+    const backdrop = document.getElementById('preview-backdrop');
+    const panel    = document.getElementById('preview-panel');
+    const iframe   = document.getElementById('preview-iframe');
+
+    backdrop.classList.remove('opacity-100');
+    backdrop.classList.add('opacity-0');
+    panel.classList.remove('translate-x-0');
+    panel.classList.add('translate-x-full');
+
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        iframe.src = 'about:blank'; // stop PDF stream
+        document.body.style.overflow = '';
+    }, 300);
+}
+
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closePreview();
 });
 </script>
 @endpush

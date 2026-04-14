@@ -151,7 +151,7 @@
             </div>
 
             <!-- Dev Switcher (Development Only) -->
-            @if(config('app.debug'))
+            @if(app()->environment('local') && Route::has('dev.login'))
                 <div class="mt-8">
                     @include('dashboard._dev-switcher')
                 </div>

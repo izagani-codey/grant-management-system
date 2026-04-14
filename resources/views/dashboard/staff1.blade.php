@@ -19,7 +19,9 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
-            @include('dashboard._dev-switcher')
+            @if(app()->environment('local') && Route::has('dev.login'))
+                @include('dashboard._dev-switcher')
+            @endif
 
             @if(session('success'))
                 <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-800 px-6 py-4 rounded-xl shadow-sm flex items-center">

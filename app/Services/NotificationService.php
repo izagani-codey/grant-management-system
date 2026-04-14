@@ -173,7 +173,7 @@ class NotificationService
     /**
      * Create notification for user.
      */
-    private function createNotification(User $user, array $data): void
+    public function createNotification(User $user, array $data): void
     {
         Notification::create([
             'user_id' => $user->id,

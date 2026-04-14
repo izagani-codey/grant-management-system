@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan:*)",
+      "Bash(command -v php)",
+      "Read(//c//**)",
+      "Bash(/c/Users/amru2/.config/herd/bin/php84 artisan:*)",
+      "Bash(/c/Users/amru2/.config/herd/bin/php84/php.exe artisan:*)"
+    ]
+  }
+}

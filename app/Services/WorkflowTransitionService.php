@@ -83,7 +83,8 @@ class WorkflowTransitionService
         $workflowPolicy = $request->requestType()->with('workflowPolicy')->first()?->workflowPolicy;
 
         if ($workflowPolicy === null) {
-            throw new \RuntimeException("No workflow policy configured for request type {$request->request_type_id}");
+            // Fall back to a safe default so existing request types without a policy still work.
+            $workflowPolicy = (object) ['requires_dean_signature' => true, 'allows_override' => false];
         }
         
         // 1. Validate transition authorization

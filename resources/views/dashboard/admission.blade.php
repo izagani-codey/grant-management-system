@@ -20,7 +20,9 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
             {{-- Dev Quick-Switch (local only) --}}
-            @include('dashboard._dev-switcher')
+            @if(app()->environment('local') && Route::has('dev.login'))
+                @include('dashboard._dev-switcher')
+            @endif
 
             {{-- Success Message --}}
             @if(session('success'))

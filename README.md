@@ -2,6 +2,9 @@
 
 > **System for Travel Request Grant Management** - A comprehensive Laravel-based workflow platform for managing grant requests with multi-stage approvals, audit trails, and automated document generation.
 
+> **Assisted by AI** — This system was developed with the assistance of AI coding tools:
+> [ChatGPT](https://chat.openai.com) · [Claude](https://claude.ai) · [Windsurf](https://codeium.com/windsurf) · [OpenAI Codex](https://openai.com/blog/openai-codex)
+
 ---
 
 ## Table of Contents
@@ -430,6 +433,19 @@ This project is proprietary software developed for UniKL internal use. All right
 **Support Contact**: IT Support Department  
 **Documentation**: Internal Wiki  
 **Issue Reporting**: Help Desk System
+
+---
+
+## AI Assistance
+
+This project was built with the support of the following AI coding assistants:
+
+| Tool | Role |
+|------|------|
+| **ChatGPT** (OpenAI) | Architecture discussion, code generation, debugging |
+| **Claude** (Anthropic) | Code review, refactoring, audit, documentation |
+| **Windsurf** (Codeium) | In-editor AI pair programming and autocomplete |
+| **Codex** (OpenAI) | Code synthesis and boilerplate generation |
 
 ---
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\RequestStatus;
 use App\Models\Request as GrantRequest;
 use App\Models\RequestType;
+use App\Models\RequestTypeWorkflowPolicy;
 use App\Models\User;
 use App\Models\FormTemplate;
 use App\Models\AuditLog;
@@ -24,7 +25,7 @@ class Staff2AdminController extends BaseController
         $totalRequests = GrantRequest::count();
         $submitted = GrantRequest::where('status_id', RequestStatus::SUBMITTED->value)->count();
         $staff1Approved = GrantRequest::where('status_id', RequestStatus::STAFF1_APPROVED->value)->count();
-        $deanApproved = GrantRequest::where('status_id', RequestStatus::DEAN_APPROVED->value)->count();
+        $deanApproved = GrantRequest::trulyApproved()->count();
         $rejected = GrantRequest::where('status_id', RequestStatus::REJECTED->value)->count();
 
         // Request Types Stats
@@ -229,6 +230,10 @@ class Staff2AdminController extends BaseController
             $validated['slug'] = \Str::slug($validated['name']);
 
             $requestType = RequestType::create($validated);
+            RequestTypeWorkflowPolicy::create([
+                'request_type_id' => $requestType->id,
+                'requires_dean_signature' => true,
+            ]);
 
             // Log the action
             AuditLog::create([

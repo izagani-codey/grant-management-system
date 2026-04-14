@@ -83,6 +83,10 @@ class RequestPolicy
             return Response::deny('You cannot action this request at its current stage.');
         }
 
+        if ($user->role === 'dean' && !$request->requiresDeanSignature()) {
+            return Response::deny('Dean action is not available for this request type.');
+        }
+
         return true;
     }
 
@@ -105,7 +109,7 @@ class RequestPolicy
 
         // Staff2 can comment on requests they can action
         if ($user->role === 'staff2') {
-            if ($currentStatus->isFinal()) {
+            if ($request->isFinal()) {
                 return false;
             }
             // Staff 2 can only comment on requests they can action or override
@@ -114,7 +118,7 @@ class RequestPolicy
 
         // Dean can comment on requests they can action
         if ($user->role === 'dean') {
-            return $currentStatus->canBeActionedByDean();
+            return $request->canBeActionedByDean();
         }
 
         return false;

@@ -37,6 +37,11 @@ class RequestType extends Model
         return $this->hasMany(RequestTypeTemplate::class);
     }
 
+    public function workflowPolicy()
+    {
+        return $this->hasOne(RequestTypeWorkflowPolicy::class);
+    }
+
     public function templates()
     {
         return $this->belongsToMany(FormTemplate::class, 'request_type_templates')

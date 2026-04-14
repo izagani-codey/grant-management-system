@@ -418,7 +418,7 @@
             </div>
         </div>
 
-        <!-- Staff 2 and Dean Signatures -->
+        <!-- Staff 2 and optional Dean Signatures -->
         <div class="signature-grid" style="margin-top: 20px;">
             <div class="sig-col">
                 <strong style="font-size:10px; display:block; margin-bottom:4px;">STAFF 2 SIGNATURE</strong>
@@ -443,6 +443,7 @@
                 </div>
             </div>
 
+            @if($layout === 'three_signatures')
             <div class="sig-col">
                 <strong style="font-size:10px; display:block; margin-bottom:4px;">DEAN SIGNATURE</strong>
                 <div class="sig-box">
@@ -465,6 +466,7 @@
                     @endif
                 </div>
             </div>
+            @endif
         </div>
     </div>
 
@@ -476,4 +478,3 @@
     </div>
 </body>
 </html>
-

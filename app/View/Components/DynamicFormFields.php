@@ -4,6 +4,7 @@ namespace App\View\Components;
 
 use Closure;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\ViewErrorBag;
 use Illuminate\View\Component;
 
 class DynamicFormFields extends Component
@@ -11,12 +12,16 @@ class DynamicFormFields extends Component
     public array $fields;
     public string $prefix;
     public array $values;
+    public ViewErrorBag $errorBag;
 
     public function __construct(array $fields, string $prefix = 'dynamic_fields', array $values = [])
     {
         $this->fields = $fields;
         $this->prefix = $prefix;
         $this->values = $values;
+        $this->errorBag = session('errors') instanceof ViewErrorBag
+            ? session('errors')
+            : new ViewErrorBag();
     }
 
     public function render(): View|Closure|string
@@ -45,7 +50,7 @@ class DynamicFormFields extends Component
      */
     public function hasError(string $fieldName): bool
     {
-        return $errors->has("{$this->prefix}.{$fieldName}");
+        return $this->errorBag->has("{$this->prefix}.{$fieldName}");
     }
 
     /**
@@ -53,6 +58,6 @@ class DynamicFormFields extends Component
      */
     public function getError(string $fieldName): ?string
     {
-        return $errors->first("{$this->prefix}.{$fieldName}");
+        return $this->errorBag->first("{$this->prefix}.{$fieldName}");
     }
 }

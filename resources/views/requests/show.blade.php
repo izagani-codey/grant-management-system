@@ -1,6 +1,6 @@
 <x-app-layout>
     @php
-        $isFinalStatus = in_array($grantRequest->status_id, [\App\Enums\RequestStatus::DEAN_APPROVED->value, \App\Enums\RequestStatus::REJECTED->value], true);
+        $isFinalStatus = $grantRequest->isFinal();
         $staff1Active = in_array($grantRequest->status_id, [\App\Enums\RequestStatus::SUBMITTED->value, \App\Enums\RequestStatus::RETURNED->value], true);
         $staff1Completed = in_array($grantRequest->status_id, [
             \App\Enums\RequestStatus::STAFF1_APPROVED->value,
@@ -15,6 +15,7 @@
             \App\Enums\RequestStatus::DEAN_APPROVED->value,
             \App\Enums\RequestStatus::REJECTED->value,
         ], true);
+        $completedStepDone = $grantRequest->isTrulyComplete() || $grantRequest->status_id === \App\Enums\RequestStatus::REJECTED->value;
     @endphp
 
     <x-slot name="header">
@@ -229,7 +230,7 @@
                         
                         <!-- Step 4: Completed -->
                         <div class="flex items-center">
-                            <div class="w-16 h-16 {{ $isFinalStatus ? 'bg-green-500' : 'bg-gray-300' }} rounded-full flex items-center justify-center text-white">
+                            <div class="w-16 h-16 {{ $completedStepDone ? 'bg-green-500' : 'bg-gray-300' }} rounded-full flex items-center justify-center text-white">
                                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                 </svg>
@@ -563,7 +564,7 @@
                 @endcan
 
                 {{-- DEAN ACTIONS --}}
-                @if(auth()->user()->role === 'dean' && $grantRequest->status_id === \App\Enums\RequestStatus::STAFF2_APPROVED->value)
+                @if(auth()->user()->role === 'dean' && $grantRequest->canBeActionedByDean())
                     <div class="mt-6 p-4 bg-purple-50 border-l-4 border-purple-500 rounded">
                         <h4 class="font-bold text-purple-800 mb-3 flex items-center">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

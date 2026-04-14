@@ -90,6 +90,7 @@ public function __construct(
     public function store(StoreRequestRequest $request)
     {
         $user = Auth::user();
+        $requestType = RequestType::with('workflowPolicy')->findOrFail((int) $request->input('request_type_id'));
         $documentPath = $request->hasFile('document')
             ? $request->file('document')->store('documents', 'public')
             : null;
@@ -99,9 +100,10 @@ public function __construct(
 
         $grantRequest = GrantRequest::create([
             'user_id' => $user->id,
-            'request_type_id' => (int) $request->input('request_type_id'),
+            'request_type_id' => $requestType->id,
             'ref_number' => $this->generateReferenceNumber(),
             'status_id' => RequestStatus::SUBMITTED->value,
+            'snapshot_requires_dean_signature' => $requestType->workflowPolicy?->requires_dean_signature ?? true,
             'file_path' => $documentPath,
             'payload' => [
                 'description' => $request->input('description'),
@@ -192,6 +194,7 @@ public function __construct(
     {
         $grantRequest = GrantRequest::findOrFail($id);
         $this->authorize('revise', $grantRequest);
+        $requestType = RequestType::with('workflowPolicy')->findOrFail($grantRequest->request_type_id);
 
         $documentPath = $grantRequest->file_path;
         if ($request->hasFile('document')) {
@@ -213,6 +216,7 @@ public function __construct(
 
         $grantRequest->update([
             'status_id' => RequestStatus::SUBMITTED->value,
+            'snapshot_requires_dean_signature' => $requestType->workflowPolicy?->requires_dean_signature ?? true,
             'file_path' => $documentPath,
             'vot_items' => $votItems,
             'total_amount' => $totalAmount,
@@ -518,7 +522,7 @@ public function __construct(
         }
 
         // If Staff 2 commented and request is at Dean stage, notify Dean
-        if ($commenter->role === 'staff2' && $currentStatus->canBeActionedByDean()) {
+        if ($commenter->role === 'staff2' && $grantRequest->canBeActionedByDean()) {
             $this->notificationService->sendRoleNotification(
                 'dean',
                 'New Internal Comment',
@@ -528,7 +532,7 @@ public function __construct(
         }
 
         // If Dean commented, notify Staff 2 if request is still active
-        if ($commenter->role === 'dean' && !$currentStatus->isFinal()) {
+        if ($commenter->role === 'dean' && !$grantRequest->isFinal()) {
             $this->notificationService->sendRoleNotification(
                 'staff2',
                 'New Internal Comment',

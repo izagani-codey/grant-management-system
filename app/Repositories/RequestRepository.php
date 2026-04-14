@@ -79,8 +79,8 @@ class RequestRepository extends BaseRepository
             'total' => (clone $base)->count(),
             'submitted' => (int) ($counts[RequestStatus::SUBMITTED->value] ?? 0),
             'staff1_approved' => (int) ($counts[RequestStatus::STAFF1_APPROVED->value] ?? 0),
-            'staff2_approved' => (int) ($counts[RequestStatus::STAFF2_APPROVED->value] ?? 0),
-            'dean_approved' => (int) ($counts[RequestStatus::DEAN_APPROVED->value] ?? 0),
+            'staff2_approved' => (clone $base)->pendingDeanReview()->count(),
+            'dean_approved' => (clone $base)->trulyApproved()->count(),
             'returned' => (int) ($counts[RequestStatus::RETURNED->value] ?? 0),
             'rejected' => (int) ($counts[RequestStatus::REJECTED->value] ?? 0),
             'high_priority' => (clone $base)->where('is_priority', true)->count(),
@@ -99,10 +99,7 @@ class RequestRepository extends BaseRepository
         return $this->newQuery()
             ->where('deadline', '>=', now())
             ->where('deadline', '<=', now()->addDays(3))
-            ->whereNotIn('status_id', [
-                RequestStatus::DEAN_APPROVED->value,
-                RequestStatus::REJECTED->value
-            ])
+            ->notTrulyComplete()
             ->with(['requestType', 'user'])
             ->orderBy('deadline')
             ->limit($limit)
@@ -146,10 +143,7 @@ class RequestRepository extends BaseRepository
     {
         return $this->newQuery()
             ->with(['requestType', 'user'])
-            ->whereNotIn('status_id', [
-                RequestStatus::DEAN_APPROVED->value,
-                RequestStatus::REJECTED->value
-            ])
+            ->notTrulyComplete()
             ->latest()
             ->paginate(15);
     }
@@ -200,10 +194,7 @@ class RequestRepository extends BaseRepository
         $query = $this->newQuery()
             ->where('deadline', '<=', now()->addDays($days))
             ->where('deadline', '>=', now())
-            ->whereNotIn('status_id', [
-                RequestStatus::DEAN_APPROVED->value,
-                RequestStatus::REJECTED->value
-            ]);
+            ->notTrulyComplete();
 
         if ($user->role === 'admission') {
             $query->where('user_id', $user->id);

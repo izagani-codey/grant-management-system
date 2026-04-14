@@ -141,7 +141,7 @@ class DashboardService
      */
     private function getApprovedToday(User $user): int
     {
-        $query = \App\Models\Request::where('status_id', \App\Enums\RequestStatus::DEAN_APPROVED->value)
+        $query = \App\Models\Request::trulyApproved()
             ->whereDate('updated_at', today());
 
         if ($user->role === 'admission') {
@@ -293,7 +293,7 @@ class DashboardService
         }
 
         $total = $query->count();
-        $approved = $query->where('status_id', \App\Enums\RequestStatus::DEAN_APPROVED->value)->count();
+        $approved = (clone $query)->trulyApproved()->count();
         $declined = $query->where('status_id', \App\Enums\RequestStatus::REJECTED->value)->count();
 
         return [

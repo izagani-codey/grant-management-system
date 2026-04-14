@@ -43,8 +43,8 @@ class StatisticsRepository
             'total' => (clone $base)->count(),
             'submitted' => (int) ($counts[RequestStatus::SUBMITTED->value] ?? 0),
             'staff1_approved' => (int) ($counts[RequestStatus::STAFF1_APPROVED->value] ?? 0),
-            'staff2_approved' => (int) ($counts[RequestStatus::STAFF2_APPROVED->value] ?? 0),
-            'dean_approved' => (int) ($counts[RequestStatus::DEAN_APPROVED->value] ?? 0),
+            'staff2_approved' => (clone $base)->pendingDeanReview()->count(),
+            'dean_approved' => (clone $base)->trulyApproved()->count(),
             'returned' => (int) ($counts[RequestStatus::RETURNED->value] ?? 0),
             'rejected' => (int) ($counts[RequestStatus::REJECTED->value] ?? 0),
             'high_priority' => (clone $base)->where('is_priority', true)->count(),
@@ -62,10 +62,10 @@ class StatisticsRepository
                 'total_users' => User::count(),
                 'submitted' => GrantRequest::where('status_id', RequestStatus::SUBMITTED->value)->count(),
                 'staff1_approved' => GrantRequest::where('status_id', RequestStatus::STAFF1_APPROVED->value)->count(),
-                'approved_today' => GrantRequest::where('status_id', RequestStatus::DEAN_APPROVED->value)
+                'approved_today' => GrantRequest::trulyApproved()
                     ->whereDate('updated_at', today())->count(),
                 'urgent_requests' => GrantRequest::where('deadline', '<=', now()->addDays(3))
-                    ->whereNotIn('status_id', [RequestStatus::DEAN_APPROVED->value, RequestStatus::REJECTED->value])
+                    ->notTrulyComplete()
                     ->count(),
             ];
         });
@@ -107,9 +107,9 @@ class StatisticsRepository
             return GrantRequest::selectRaw('
                     DATE_FORMAT(created_at, "%Y-%m") as month,
                     COUNT(*) as total,
-                    SUM(CASE WHEN status_id = ? THEN 1 ELSE 0 END) as approved,
+                    SUM(CASE WHEN status_id = ? OR (status_id = ? AND snapshot_requires_dean_signature = 0) THEN 1 ELSE 0 END) as approved,
                     SUM(CASE WHEN status_id = ? THEN 1 ELSE 0 END) as rejected
-                ', [RequestStatus::DEAN_APPROVED->value, RequestStatus::REJECTED->value])
+                ', [RequestStatus::DEAN_APPROVED->value, RequestStatus::STAFF2_APPROVED->value, RequestStatus::REJECTED->value])
                 ->where('created_at', '>=', now()->subMonths($months))
                 ->groupBy('month')
                 ->orderBy('month')
@@ -123,7 +123,7 @@ class StatisticsRepository
     public function getPerformanceMetrics(): array
     {
         return Cache::remember('performance_metrics', 1800, function () {
-            $avgProcessingTime = GrantRequest::where('status_id', RequestStatus::DEAN_APPROVED->value)
+            $avgProcessingTime = GrantRequest::trulyApproved()
                 ->selectRaw('AVG(TIMESTAMPDIFF(DAY, created_at, updated_at)) as avg_days')
                 ->value('avg_days') ?? 0;
 
@@ -135,7 +135,7 @@ class StatisticsRepository
                 'requests_per_day' => round($requestsPerDay, 1),
                 'approval_rate' => $this->calculateApprovalRate(),
                 'overdue_requests' => GrantRequest::where('deadline', '<', now())
-                    ->whereNotIn('status_id', [RequestStatus::DEAN_APPROVED->value, RequestStatus::REJECTED->value])
+                    ->notTrulyComplete()
                     ->count(),
             ];
         });
@@ -146,16 +146,14 @@ class StatisticsRepository
      */
     private function calculateApprovalRate(): float
     {
-        $total = GrantRequest::whereIn('status_id', [
-            RequestStatus::DEAN_APPROVED->value,
-            RequestStatus::REJECTED->value
-        ])->count();
+        $total = GrantRequest::where('status_id', RequestStatus::REJECTED->value)->count()
+            + GrantRequest::trulyApproved()->count();
 
         if ($total === 0) {
             return 0;
         }
 
-        $approved = GrantRequest::where('status_id', RequestStatus::DEAN_APPROVED->value)->count();
+        $approved = GrantRequest::trulyApproved()->count();
 
         return round(($approved / $total) * 100, 1);
     }

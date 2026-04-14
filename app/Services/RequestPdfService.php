@@ -19,7 +19,7 @@ class RequestPdfService
     {
         $request->loadMissing([
             'user',
-            'requestType',
+            'requestType.workflowPolicy',
             'verifiedBy',
             'recommendedBy',
             'deanApprovedBy',
@@ -61,6 +61,7 @@ class RequestPdfService
 
         $pdf = Pdf::loadView('pdf-template', array_merge([
             'request' => $request,
+            'layout' => $request->requiresDeanSignature() ? 'three_signatures' : 'two_signatures',
         ], $templateData ?? []))->setPaper('a4', 'portrait');
 
         $filename = 'requests/pdf/' . $request->ref_number . '_' . now()->format('Ymd_His') . '.pdf';

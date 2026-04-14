@@ -60,6 +60,10 @@ class RequestTimeline extends Component
 
     private function getCurrentStep(): int
     {
+        if ($this->request->isTrulyComplete()) {
+            return 3;
+        }
+
         $currentStatus = $this->request->getStatus();
         
         return match($currentStatus) {
@@ -67,7 +71,6 @@ class RequestTimeline extends Component
             RequestStatus::STAFF1_APPROVED => 1,
             RequestStatus::RETURNED => 1, // Back to verification
             RequestStatus::STAFF2_APPROVED => 2,
-            RequestStatus::DEAN_APPROVED => 3,
             RequestStatus::REJECTED => 2, // Rejected at any step
             default => 0,
         };

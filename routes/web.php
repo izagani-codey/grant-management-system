@@ -13,6 +13,7 @@ use App\Http\Controllers\FormTemplateController;
 use App\Http\Controllers\RequestTypeController;
 use App\Http\Controllers\DeanController;
 use App\Http\Controllers\OverrideController;
+use App\Http\Controllers\Staff2WorkflowController;
 
 // ─── Welcome ─────────────────────────────────────────────────────────────────
 Route::get('/', fn() => view('welcome'));
@@ -136,6 +137,11 @@ Route::middleware('auth')->group(function () {
         // Override functionality
         Route::post('/requests/toggle-override-mode', [RequestController::class, 'toggleOverrideMode'])
             ->name('requests.toggleOverrideMode');
+
+        Route::get('/workflow-settings', [Staff2WorkflowController::class, 'index'])
+            ->name('staff2.workflow.index');
+        Route::patch('/workflow-settings/{requestType}', [Staff2WorkflowController::class, 'update'])
+            ->name('staff2.workflow.update');
     });
 
     // Staff 2-only tools

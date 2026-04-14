@@ -14,9 +14,20 @@ class DeanController extends BaseController
 {
     public function dashboard()
     {
+        $pendingDeanQuery = \App\Models\Request::query()
+            ->pendingDeanReview()
+            ->where(function ($query) {
+                $query->where('snapshot_requires_dean_signature', true)
+                    ->orWhere(function ($fallbackQuery) {
+                        $fallbackQuery
+                            ->whereNull('snapshot_requires_dean_signature')
+                            ->whereHas('requestType.workflowPolicy', fn ($policyQuery) => $policyQuery->where('requires_dean_signature', true));
+                    });
+            });
+
         // Calculate Dean-specific stats
         $stats = [
-            'pending_dean' => \App\Models\Request::where('status_id', \App\Enums\RequestStatus::STAFF2_APPROVED->value)->count(),
+            'pending_dean' => (clone $pendingDeanQuery)->count(),
             'approved_this_month' => \App\Models\Request::where('status_id', \App\Enums\RequestStatus::DEAN_APPROVED->value)
                 ->whereMonth('updated_at', now()->month)
                 ->whereYear('updated_at', now()->year)->count(),
@@ -24,9 +35,16 @@ class DeanController extends BaseController
                 ->whereMonth('updated_at', now()->month)
                 ->whereYear('updated_at', now()->year)->count(),
             'total_approved' => \App\Models\Request::where('status_id', \App\Enums\RequestStatus::DEAN_APPROVED->value)->count(),
+            'approved' => \App\Models\Request::where('status_id', \App\Enums\RequestStatus::DEAN_APPROVED->value)
+                ->whereMonth('updated_at', now()->month)
+                ->whereYear('updated_at', now()->year)->count(),
+            'rejected' => \App\Models\Request::where('status_id', \App\Enums\RequestStatus::REJECTED->value)
+                ->whereMonth('updated_at', now()->month)
+                ->whereYear('updated_at', now()->year)->count(),
+            'total' => \App\Models\Request::count(),
         ];
         
-        $pendingRequests = \App\Models\Request::where('status_id', \App\Enums\RequestStatus::STAFF2_APPROVED->value)
+        $pendingRequests = (clone $pendingDeanQuery)
             ->with(['user', 'requestType'])
             ->latest()
             ->get();

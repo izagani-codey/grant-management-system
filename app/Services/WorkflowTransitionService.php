@@ -61,6 +61,10 @@ class WorkflowTransitionService
         $transitions = self::getAllowedTransitions();
         $roleTransitions = $transitions[$user->role] ?? [];
 
+        if ($user->role === 'dean' && !$request->requiresDeanSignature()) {
+            return false;
+        }
+
         if (!isset($roleTransitions[$request->status_id])) {
             return false;
         }
@@ -76,6 +80,11 @@ class WorkflowTransitionService
     public static function executeTransition(GrantRequest $request, RequestStatus $newStatus, array $data = []): GrantRequest
     {
         $user = Auth::user();
+        $workflowPolicy = $request->requestType()->with('workflowPolicy')->first()?->workflowPolicy;
+
+        if ($workflowPolicy === null) {
+            throw new \RuntimeException("No workflow policy configured for request type {$request->request_type_id}");
+        }
         
         // 1. Validate transition authorization
         if (!self::canTransition($request, $newStatus, $user)) {
@@ -308,9 +317,13 @@ class WorkflowTransitionService
                     'Request Ready for Recommendation', 
                     "Request {$request->ref_number} is ready for your review.");
             } elseif ($to === RequestStatus::STAFF2_APPROVED) {
-                self::notifyRole('dean', $request, 'request_pending_dean_approval', 
-                    'Request Pending Dean Approval', 
-                    "Request {$request->ref_number} is ready for your final approval.");
+                if ($request->requiresDeanSignature()) {
+                    self::notifyRole('dean', $request, 'request_pending_dean_approval',
+                        'Request Pending Dean Approval',
+                        "Request {$request->ref_number} is ready for your final approval.");
+                } else {
+                    self::notifyAdmission($request, 'Request approved');
+                }
             } elseif ($to === RequestStatus::RETURNED) {
                 self::notifyAdmission($request, 'Request returned for revision');
             } elseif ($to === RequestStatus::DEAN_APPROVED) {

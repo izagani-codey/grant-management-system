@@ -9,6 +9,7 @@ class Request extends Model
 {
     protected $fillable = [
         'user_id', 'request_type_id', 'ref_number', 'status_id',
+        'snapshot_requires_dean_signature',
         'file_path', 'payload',
         'vot_items', 'total_amount',
         'submitter_staff_id', 'submitter_designation', 'submitter_department',
@@ -31,6 +32,7 @@ class Request extends Model
         'payload'     => 'array',
         'vot_items'   => 'array',
         'is_priority' => 'boolean',
+        'snapshot_requires_dean_signature' => 'boolean',
         'deadline'    => 'date',
         'signed_at'   => 'datetime',
         'submitted_at' => 'datetime',
@@ -123,11 +125,26 @@ class Request extends Model
     public function getStatus(): RequestStatus       { return RequestStatus::from($this->status_id); }
     public function statusLabel(): string             { return $this->getStatus()->getLabel(); }
     public function statusClass(): string             { return $this->getStatus()->getColor(); }
-    public function isFinal(): bool                   { return $this->getStatus()->isFinal(); }
+    public function isFinal(): bool                   { return $this->isTrulyComplete() || $this->status_id === RequestStatus::REJECTED->value; }
     public function canBeEditedByAdmission(): bool    { return $this->getStatus()->canBeEditedByAdmission(); }
     public function canBeActionedByStaff1(): bool     { return $this->getStatus()->canBeActionedByStaff1(); }
     public function canBeActionedByStaff2(): bool     { return $this->getStatus()->canBeActionedByStaff2(); }
-    public function canBeActionedByDean(): bool       { return $this->getStatus()->canBeActionedByDean(); }
+    public function canBeActionedByDean(): bool       { return $this->status_id === RequestStatus::STAFF2_APPROVED->value && $this->requiresDeanSignature(); }
+
+    public function isTrulyComplete(): bool
+    {
+        return $this->status_id === RequestStatus::DEAN_APPROVED->value
+            || ($this->status_id === RequestStatus::STAFF2_APPROVED->value && !$this->requiresDeanSignature());
+    }
+
+    public function requiresDeanSignature(): bool
+    {
+        if ($this->snapshot_requires_dean_signature !== null) {
+            return $this->snapshot_requires_dean_signature;
+        }
+
+        return $this->requestType?->workflowPolicy?->requires_dean_signature ?? true;
+    }
 
     // ==========================================
     // Priority / deadline helpers
@@ -216,8 +233,48 @@ class Request extends Model
     public function scopeUrgent($query)
     {
         return $query->whereBetween('deadline', [now(), now()->addDays(3)])
-            ->whereNotIn('status_id', [RequestStatus::DEAN_APPROVED->value, RequestStatus::REJECTED->value])
+            ->notTrulyComplete()
             ->orderBy('deadline', 'asc');
+    }
+
+    public function scopeTrulyApproved($query)
+    {
+        return $query->where(function ($approvedQuery) {
+            $approvedQuery
+                ->where('status_id', RequestStatus::DEAN_APPROVED->value)
+                ->orWhere(function ($staff2ApprovedQuery) {
+                    $staff2ApprovedQuery
+                        ->where('status_id', RequestStatus::STAFF2_APPROVED->value)
+                        ->where('snapshot_requires_dean_signature', false);
+                });
+        });
+    }
+
+    public function scopeNotTrulyComplete($query)
+    {
+        return $query
+            ->where('status_id', '!=', RequestStatus::REJECTED->value)
+            ->where(function ($activeQuery) {
+                $activeQuery
+                    ->where('status_id', '!=', RequestStatus::DEAN_APPROVED->value)
+                    ->where(function ($staff2Query) {
+                        $staff2Query
+                            ->where('status_id', '!=', RequestStatus::STAFF2_APPROVED->value)
+                            ->orWhere('snapshot_requires_dean_signature', true)
+                            ->orWhereNull('snapshot_requires_dean_signature');
+                    });
+            });
+    }
+
+    public function scopePendingDeanReview($query)
+    {
+        return $query
+            ->where('status_id', RequestStatus::STAFF2_APPROVED->value)
+            ->where(function ($pendingQuery) {
+                $pendingQuery
+                    ->where('snapshot_requires_dean_signature', true)
+                    ->orWhereNull('snapshot_requires_dean_signature');
+            });
     }
     public function scopeByStatus($query, RequestStatus $status) { return $query->where('status_id', $status->value); }
 }

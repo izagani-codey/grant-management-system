@@ -27,7 +27,7 @@ class UpdatePrioritiesCommand extends Command
         $this->info('Starting priority update process...');
 
         $requests = Request::whereNotNull('deadline')
-            ->whereNotIn('status_id', [RequestStatus::DEAN_APPROVED->value, RequestStatus::REJECTED->value])
+            ->notTrulyComplete()
             ->get();
 
         $updatedCount = 0;

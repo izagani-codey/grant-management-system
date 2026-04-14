@@ -303,7 +303,7 @@ class RequestService
 
         return [
             'total' => $query->count(),
-            'approved' => $query->where('status_id', RequestStatus::DEAN_APPROVED->value)->count(),
+            'approved' => (clone $query)->trulyApproved()->count(),
             'declined' => $query->where('status_id', RequestStatus::REJECTED->value)->count(),
             'pending' => $query->whereIn('status_id', [
                 RequestStatus::SUBMITTED->value,

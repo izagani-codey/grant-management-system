@@ -42,7 +42,7 @@
                     <div>
                         <x-input-label for="designation" :value="__('Designation *')" />
                         <select id="designation" name="designation" required
-                            class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
+                            class="block mt-1 w-full border-gray-300 focus:border-blue-900 focus:ring-blue-900 rounded-md shadow-sm text-sm"
                             <option value="">— Select Designation —</option>
                             <optgroup label="Academic">
                                 <option value="Professor" @selected(old('designation') === 'Professor')>Professor</option>

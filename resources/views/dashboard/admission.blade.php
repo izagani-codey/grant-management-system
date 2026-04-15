@@ -2,11 +2,11 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <div>
-                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Request Dashboard</h1>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">Request Dashboard</h1>
                 <p class="text-gray-600 mt-1">Manage and track your grant applications</p>
             </div>
             <div class="flex items-center space-x-3">
-                <span class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-sm font-semibold rounded-full shadow-lg">
+                <span class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-500 text-white text-sm font-semibold rounded-full shadow-lg">
                     <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
                     </svg>
@@ -57,7 +57,7 @@
                     </div>
                     <div>
                         <a href="{{ route('requests.create') }}"
-                           class="inline-flex items-center bg-white text-indigo-600 font-bold px-6 py-3 rounded-xl hover:bg-gray-50 transition-all transform hover:scale-105 shadow-lg">
+                           class="inline-flex items-center bg-white text-blue-900 font-bold px-6 py-3 rounded-xl hover:bg-gray-50 transition-all transform hover:scale-105 shadow-lg">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                             </svg>
@@ -85,7 +85,7 @@
                     </div>
                 </div>
 
-                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
+                <div class="bg-gradient-to-br from-blue-50 to-blue-50 border border-blue-200 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
                     <div class="flex items-center">
                         <div class="flex-shrink-0 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-3 shadow-lg">
                             <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,7 +145,7 @@
                 <div class="flex items-center justify-between mb-6">
                     <div>
                         <h3 class="text-xl font-bold text-gray-900 flex items-center">
-                            <svg class="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-6 h-6 mr-2 text-blue-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                             </svg>
                             Blank Forms & Templates
@@ -158,18 +158,18 @@
                 @forelse($requestTypeTemplates as $requestType)
                     <div class="mb-6">
                         <h4 class="font-semibold text-gray-900 mb-3 flex items-center">
-                            <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 mr-2 text-blue-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                             </svg>
                             {{ $requestType->name }}
                         </h4>
                         <div class="grid grid-cols-1 gap-3">
                             @forelse($requestType->templates as $template)
-                                <div class="border border-gray-200 rounded-lg p-3 hover:border-indigo-300 hover:shadow-md transition-all">
+                                <div class="border border-gray-200 rounded-lg p-3 hover:border-blue-300 hover:shadow-md transition-all">
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center space-x-3">
-                                            <div class="bg-indigo-100 rounded-lg p-2">
-                                                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <div class="bg-blue-100 rounded-lg p-2">
+                                                <svg class="w-5 h-5 text-blue-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                                                 </svg>
                                             </div>
@@ -184,7 +184,7 @@
                                             </div>
                                         </div>
                                         <a href="{{ asset('storage/' . $template->file_path) }}" target="_blank"
-                                           class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+                                           class="inline-flex items-center px-3 py-1.5 bg-blue-900 text-white text-xs font-medium rounded-lg hover:bg-blue-950 transition-colors">
                                             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                             </svg>
@@ -216,7 +216,7 @@
                         </h4>
                         <div class="grid grid-cols-1 gap-3">
                             @foreach($formTemplates as $template)
-                                <div class="border border-gray-200 rounded-lg p-3 hover:border-indigo-300 hover:shadow-md transition-all">
+                                <div class="border border-gray-200 rounded-lg p-3 hover:border-blue-300 hover:shadow-md transition-all">
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center space-x-3">
                                             <div class="bg-gray-100 rounded-lg p-2">
@@ -285,7 +285,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <a href="{{ route('requests.show', $request->id) }}" 
-                                           class="text-indigo-600 hover:text-indigo-900 transition-colors">
+                                           class="text-blue-900 hover:text-blue-950 transition-colors">
                                             View Details
                                         </a>
                                     </td>
@@ -299,7 +299,7 @@
                                         <h3 class="text-lg font-medium text-gray-900 mb-2">No requests yet</h3>
                                         <p class="text-gray-600 mb-4">Get started by submitting your first request.</p>
                                         <a href="{{ route('requests.create') }}" 
-                                           class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+                                           class="inline-flex items-center px-4 py-2 bg-blue-900 text-white text-sm font-medium rounded-lg hover:bg-blue-950 transition-colors">
                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                             </svg>

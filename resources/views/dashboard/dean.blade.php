@@ -8,7 +8,7 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <!-- Dean Welcome Section -->
-            <div class="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-800 rounded-xl shadow-2xl p-8 mb-8 border border-purple-500/20">
+            <div class="bg-gradient-to-r from-blue-900 to-blue-700 rounded-xl shadow-2xl p-8 mb-8 border border-blue-700/30">
                 <div class="flex items-center justify-between">
                     <div>
                         <h1 class="text-3xl font-bold text-white mb-2">Dean Dashboard</h1>
@@ -23,7 +23,7 @@
 
             <!-- Quick Stats -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div class="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
+                <div class="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
                     <div class="flex items-center">
                         <div class="flex-shrink-0 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-3 shadow-lg">
                             <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -32,7 +32,7 @@
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-purple-600 truncate">Pending Approval</dt>
+                                <dt class="text-sm font-medium text-blue-900 truncate">Pending Approval</dt>
                                 <dd class="mt-1 text-3xl font-bold text-purple-900">{{ $dashboardStats['staff2_approved'] ?? 0 }}</dd>
                             </dl>
                         </div>
@@ -89,8 +89,8 @@
             </div>
 
             <!-- Pending Dean Approvals -->
-            <div class="bg-gradient-to-br from-white to-purple-50 border border-purple-200 rounded-xl shadow-xl overflow-hidden">
-                <div class="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4">
+            <div class="bg-gradient-to-br from-white to-blue-50 border border-blue-200 rounded-xl shadow-xl overflow-hidden">
+                <div class="bg-gradient-to-r from-blue-900 to-blue-700 px-6 py-4">
                     <h3 class="text-lg font-semibold text-white">Pending Dean Approval</h3>
                     <p class="text-purple-100 text-sm">Requests awaiting your final approval</p>
                 </div>
@@ -125,7 +125,7 @@
                                             {{ $request->statusLabel() }}
                                         </span>
                                         <a href="{{ route('requests.show', $request->id) }}" 
-                                           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200 shadow-md hover:shadow-lg">
+                                           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gradient-to-r from-blue-900 to-blue-700 hover:from-blue-950 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-800 transition-all duration-200 shadow-md hover:shadow-lg">
                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />

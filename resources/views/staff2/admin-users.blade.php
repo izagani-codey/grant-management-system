@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <div>
-                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">User Management</h1>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-600 bg-clip-text text-transparent">User Management</h1>
                 <p class="text-gray-600 mt-1">Manage system users and roles</p>
             </div>
             <a href="{{ route('admin.dashboard') }}" 

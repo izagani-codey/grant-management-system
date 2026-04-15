@@ -5,7 +5,7 @@
                 {{ __('Profile') }}
             </h2>
             <button onclick="saveProfile()" 
-               class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+               class="inline-flex items-center px-4 py-2 bg-blue-900 text-white text-sm font-medium rounded-lg hover:bg-blue-950 transition-colors">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                 </svg>
@@ -19,10 +19,10 @@
             
             {{-- Profile Overview Card --}}
             <div class="bg-white shadow-lg rounded-lg overflow-hidden">
-                <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-8">
+                <div class="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-8">
                     <div class="flex items-center">
                         <div class="bg-white rounded-full p-4">
-                            <svg class="w-12 h-12 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                            <svg class="w-12 h-12 text-blue-900" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
                             </svg>
                         </div>
@@ -163,8 +163,8 @@
                 <a href="{{ route('profile.edit') }}" 
                    class="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200">
                     <div class="flex items-center">
-                        <div class="bg-indigo-100 rounded-lg p-3">
-                            <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="bg-blue-100 rounded-lg p-3">
+                            <svg class="w-6 h-6 text-blue-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
                         </div>

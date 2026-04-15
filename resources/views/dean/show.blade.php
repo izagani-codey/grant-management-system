@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <div>
-                <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">Request Review</h1>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-900 to-blue-700 bg-clip-text text-transparent">Request Review</h1>
                 <p class="text-gray-600 mt-1">Reference: {{ $request->ref_number }}</p>
             </div>
             <a href="{{ route('dashboard') }}" 
@@ -27,7 +27,7 @@
 
         <!-- Request Details Card -->
         <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
-            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6">
+            <div class="bg-gradient-to-r from-blue-900 to-blue-700 text-white p-6">
                 <div class="flex justify-between items-start">
                     <div>
                         <h2 class="text-2xl font-bold">{{ $request->requestType->name }}</h2>

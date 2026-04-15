@@ -21,7 +21,7 @@ class RequestPolicy
         }
 
         // Staff and Dean users can view any request
-        return in_array($user->role, ['staff1', 'staff2', 'dean']);
+        return in_array($user->role, ['staff1', 'staff2', 'dean', 'admin']);
     }
 
     /**

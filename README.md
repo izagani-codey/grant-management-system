@@ -1,9 +1,9 @@
-# UniKL STRG System
+# UniKL MIIT — STRG Request Management System
 
-> **System for Travel Request Grant Management** - A comprehensive Laravel-based workflow platform for managing grant requests with multi-stage approvals, audit trails, and automated document generation.
+> **Short Term Research Grant (STRG) Request Management System** — A Laravel-based workflow platform for managing grant requests at Universiti Kuala Lumpur MIIT, covering multi-stage approvals, digital signatures, automated PDF generation, and a full audit trail.
 
-> **Assisted by AI** — This system was developed with the assistance of AI coding tools:
-> [ChatGPT](https://chat.openai.com) · [Claude](https://claude.ai) · [Windsurf](https://codeium.com/windsurf) · [OpenAI Codex](https://openai.com/blog/openai-codex)
+> **AI-Assisted Development** — This system was developed with the assistance of AI coding tools:
+> [Claude](https://claude.ai) · [ChatGPT](https://chat.openai.com) · [Windsurf](https://codeium.com/windsurf)
 
 ---
 
@@ -14,65 +14,69 @@
 - [Technical Architecture](#technical-architecture)
 - [Installation & Setup](#installation--setup)
 - [User Roles & Workflow](#user-roles--workflow)
+- [Template & Document System](#template--document-system)
 - [Development Guide](#development-guide)
-- [Testing & Quality Assurance](#testing--quality-assurance)
+- [Testing](#testing)
 - [Deployment](#deployment)
 - [Troubleshooting](#troubleshooting)
-- [API Documentation](#api-documentation)
-- [Contributing Guidelines](#contributing-guidelines)
 
 ---
 
 ## System Overview
 
-The UniKL STRG System is a **production-ready enterprise application** designed to streamline the grant request management process within academic institutions. The system provides a secure, scalable, and user-friendly platform for managing request workflows from submission through final approval.
+The UniKL MIIT STRG System digitises the full grant request lifecycle — from initial submission by academic staff through multi-level review, digital sign-off, and final PDF generation. It replaces paper-based processes with a transparent, auditable workflow.
 
 ### Business Objectives
 
-- **Streamline Workflow**: Reduce manual processing time and eliminate paperwork
-- **Enhance Accountability**: Maintain comprehensive audit trails for all actions
-- **Improve Efficiency**: Automate routine tasks and provide real-time status tracking
-- **Ensure Compliance**: Maintain proper documentation and approval processes
+- **Eliminate paperwork** — All forms, signatures, and documents are handled digitally
+- **Enforce accountability** — Every action is logged in an immutable audit trail
+- **Speed up approvals** — Role-based dashboards surface the right requests to the right people
+- **Ensure compliance** — Workflow rules are enforced by code, not by convention
 
 ### System Capabilities
 
-- **Multi-Role Access Control**: Granular permissions for different user types
-- **Dynamic Form Generation**: Configurable request types with custom fields
-- **Real-Time Notifications**: Automated alerts for workflow transitions
-- **Document Management**: Automated PDF generation with digital signatures
-- **Analytics & Reporting**: Comprehensive data export and analysis tools
+- Multi-role access control (Admission, Staff 1, Staff 2, Dean, Admin)
+- Dynamic request types with configurable field schemas
+- Dual signature-count workflows (2-signature and 3-signature paths)
+- Real-time in-app notifications per role
+- Automated PDF generation with embedded digital signatures
+- System-generated templates **and** admin-uploaded supporting documents — managed separately
+- CSV / Excel export of request data
 
 ---
 
 ## Key Features
 
-### Workflow Management
+### Workflow Engine
 
-- **Role-Based Dashboards**: Tailored interfaces for Admission, Staff 1, Staff 2, and Dean roles
-- **State Machine Implementation**: Controlled workflow transitions with validation
-- **Revision Management**: Structured return and resubmission processes
-- **Priority Management**: Automatic and manual priority assignment based on deadlines
+- **State machine** with 7 statuses: Draft → Submitted → Staff1 Approved → Staff2 Approved → Dean Approved / Returned / Rejected
+- **Single transition service** (`WorkflowTransitionService`) is the only code path that changes request status — no scattered status updates
+- **Policy-based authorisation** (`RequestPolicy`) controls who can view, edit, sign, or change status
+- **Staff 2 override** — can approve a request that is still at Submitted status (bypasses Staff 1) for urgent cases
+- **Revision cycle** — Returned requests can be edited and resubmitted; revision count is tracked
+
+### Signature System
+
+- Digital signature capture via canvas on browser (no third-party service required)
+- Applicant signs at submission; Staff 2 and Dean sign at approval
+- Signatures stored in a normalised `signatures` table (role: `applicant` / `staff2` / `dean`)
+- Legacy columns on the `requests` table kept for backward compatibility
+- Signature requirement is snapshotted at submission time (`snapshot_requires_dean_signature`) so policy changes don't affect in-flight requests
 
 ### Document Processing
 
-- **Dynamic PDF Generation**: Professional document creation with embedded data
-- **Digital Signature Capture**: Multi-role signature integration with audit trails
-- **Template Management**: Configurable templates for different request types
-- **File Upload System**: Secure document storage and retrieval
+- **System-generated PDF** — filled automatically from request data using DomPDF; layout switches between 2-signature and 3-signature based on the workflow policy
+- **Admin-uploaded templates** — blank form files linked to a request type (`template_type = 'request_type_form'`)
+- **Admin-uploaded supporting documents** — reference files linked to a request type (`template_type = 'supporting_document'`); shown separately from the generated form
+- **Applicant-uploaded documents** — main file and additional attachments stored per request
 
 ### Administrative Tools
 
-- **User Management**: Role-based user administration with profile management
-- **System Analytics**: Real-time statistics and performance metrics
-- **Export Capabilities**: Advanced data export in multiple formats (CSV, Excel, PDF)
-- **Override System**: Emergency bypass capabilities for urgent requests
-
-### Security & Compliance
-
-- **Comprehensive Audit Trail**: Complete logging of all system activities
-- **Input Validation**: Robust validation rules and sanitization
-- **Authentication & Authorization**: Secure access control with role-based permissions
-- **Data Protection**: Sensitive information handling and secure storage
+- User management with role assignment
+- Request type management with configurable field schemas and VOT item support
+- Template and supporting document upload with request-type linking
+- Priority flagging (auto-assigned based on deadline proximity; manually overridable)
+- Full audit log visible on each request
 
 ---
 
@@ -80,25 +84,48 @@ The UniKL STRG System is a **production-ready enterprise application** designed 
 
 ### Technology Stack
 
-- **Backend Framework**: Laravel 13.0 with PHP 8.3+
-- **Frontend**: Blade templating with Tailwind CSS and Vite
-- **Database**: SQLite (development) / MySQL (production)
-- **Document Processing**: DomPDF, PhpSpreadsheet, FPDI
-- **Authentication**: Laravel's built-in authentication system
+| Layer | Technology |
+|---|---|
+| Backend | Laravel 12 · PHP 8.3+ |
+| Frontend | Blade · Tailwind CSS · Vite · Alpine.js |
+| Database | SQLite (dev) · MySQL (production) |
+| PDF Generation | DomPDF (barryvdh/laravel-dompdf) |
+| Spreadsheet Export | PhpSpreadsheet · maatwebsite/excel |
+| Authentication | Laravel Breeze (session-based) |
 
-### Design Patterns
+### Application Structure
 
-- **Service Layer Architecture**: Business logic separation from controllers
-- **Repository Pattern**: Data access abstraction
-- **Policy-Based Authorization**: Granular permission management
-- **Event-Driven Architecture**: Decoupled system components
+```
+app/
+├── Enums/
+│   └── RequestStatus.php          # 7-state workflow enum
+├── Http/
+│   ├── Controllers/               # RequestController, FormTemplateController, etc.
+│   └── Requests/                  # StoreRequestRequest, UpdateStatusRequest, etc.
+├── Models/
+│   ├── Request.php                # Core request model
+│   ├── RequestType.php            # Request type + getDefaultTemplate()
+│   ├── RequestTypeTemplate.php    # Pivot: request type ↔ template + signature_layout
+│   ├── RequestTypeWorkflowPolicy.php
+│   ├── FormTemplate.php           # Templates and supporting documents
+│   ├── Signature.php              # Normalised multi-role signatures
+│   ├── AuditLog.php
+│   ├── Notification.php
+│   └── VotCode.php
+├── Policies/
+│   └── RequestPolicy.php          # view / changeStatus / revise / print
+└── Services/
+    ├── WorkflowTransitionService.php   # Single entry point for all status changes
+    ├── RequestPdfService.php           # PDF generation
+    ├── NotificationService.php         # Role-based notifications
+    └── ExcelExportService.php
+```
 
-### Database Schema
+### Database
 
-- **31 Migration Files**: Comprehensive database structure
-- **Normalized Design**: Proper relationships and constraints
-- **Audit Tables**: Complete tracking of system activities
-- **Index Optimization**: Performance-focused database design
+- **38 migration files** covering all tables, indexes, and incremental schema changes
+- Key tables: `requests`, `request_types`, `form_templates`, `request_type_templates`, `signatures`, `audit_logs`, `notifications`, `vot_codes`, `comments`
+- Unique constraint on `signatures(request_id, role)` — one signature per role per request
 
 ---
 
@@ -106,348 +133,271 @@ The UniKL STRG System is a **production-ready enterprise application** designed 
 
 ### Prerequisites
 
-- PHP 8.3 or higher
-- Composer 2.0 or higher
-- Node.js 18.0 or higher
-- MySQL 8.0 or SQLite 3.x
+- PHP 8.3+
+- Composer 2.x
+- Node.js 18+
+- SQLite 3.x (dev) or MySQL 8.0+ (production)
 
-### Quick Installation
+### Quick Start
 
 ```bash
-# Clone the repository
-git clone <repository-url> unikl-strg
-cd unikl-strg
-
-# Install dependencies
+# 1. Install PHP dependencies
 composer install
+
+# 2. Install JS dependencies
 npm install
 
-# Environment configuration
+# 3. Configure environment
 cp .env.example .env
 php artisan key:generate
 
-# Database setup
+# 4. Create and seed the database
 php artisan migrate --seed
 
-# Start development server
+# 5. Link public storage (for uploaded files and generated PDFs)
+php artisan storage:link
+
+# 6. Start the dev server (runs Laravel + Vite together)
 composer run dev
 ```
 
 ### Environment Configuration
 
 ```env
-# Application Settings
-APP_NAME="UniKL STRG System"
+APP_NAME="UniKL MIIT STRG"
 APP_ENV=local
 APP_DEBUG=true
 APP_URL=http://localhost
 
-# Database Configuration
+# SQLite (default for local dev)
 DB_CONNECTION=sqlite
 DB_DATABASE=database/database.sqlite
 
-# Email Configuration (for notifications)
+# Mail — use Mailpit locally for testing notifications
 MAIL_MAILER=smtp
 MAIL_HOST=127.0.0.1
 MAIL_PORT=1025
-MAIL_USERNAME=null
-MAIL_PASSWORD=null
-
-# Feature Flags
-FEATURE_DEAN_INTERFACE=true
-FEATURE_OVERRIDE_SYSTEM=true
+MAIL_FROM_ADDRESS="noreply@unikl.edu.my"
+MAIL_FROM_NAME="UniKL MIIT STRG"
 ```
 
 ---
 
 ## User Roles & Workflow
 
-### Role Definitions
+### Roles
 
-| Role | Responsibilities | Permissions |
-|------|------------------|-------------|
-| **Admission** | Submit and revise requests | Create, edit own requests, view status |
-| **Staff 1** | Verify request details | View all requests, verify, return with notes |
-| **Staff 2** | Recommend and prepare | Verify, recommend, override capabilities |
-| **Dean** | Final approval | Approve, reject, system administration |
+| Role | What they do |
+|---|---|
+| **Admission** | Submit new requests, revise returned requests, track own request status |
+| **Staff 1** | Verify submitted requests, forward to Staff 2 or return with notes |
+| **Staff 2** | Review, sign, and recommend requests; override capability for urgent cases |
+| **Dean** | Final sign-off for 3-signature request types |
+| **Admin** | User management, request type configuration, template/document upload |
 
-### Workflow States
+### Workflow State Machine
 
-```mermaid
-graph TD
-    A[DRAFT] --> B[SUBMITTED]
-    B --> C[STAFF1_APPROVED]
-    C --> D[STAFF2_APPROVED]
-    D --> E[DEAN_APPROVED]
-    B --> F[RETURNED]
-    C --> F
-    D --> F
-    F --> B
-    B --> G[REJECTED]
-    C --> G
-    D --> G
-    E --> H[COMPLETED]
 ```
+SUBMITTED ──► STAFF1_APPROVED ──► STAFF2_APPROVED ──► DEAN_APPROVED
+    │               │                    │
+    │           RETURNED ◄───────────────┘
+    │               │
+    └──────────► REJECTED
+    │
+    └──► STAFF2_APPROVED  (Staff 2 override, bypasses Staff 1)
+
+RETURNED ──► SUBMITTED  (Applicant resubmits after revision)
+```
+
+**Signature requirements by role:**
+- Staff 1 — no signature required (verification only)
+- Staff 2 — signature required to approve or reject
+- Dean — signature required to approve or reject (only for 3-signature request types)
 
 ### Demo Accounts
 
-All accounts use password: `password`
+All demo accounts use password: `password`
 
-- **Admission**: admissions@unikl.edu.my
-- **Staff 1**: staff1@unikl.edu.my
-- **Staff 2**: staff2@unikl.edu.my
-- **Dean**: dean@unikl.edu.my
+| Role | Email |
+|---|---|
+| Admission | admissions@unikl.edu.my |
+| Staff 1 | staff1@unikl.edu.my |
+| Staff 2 | staff2@unikl.edu.my |
+| Dean | dean@unikl.edu.my |
+| Admin | admin@unikl.edu.my |
+
+---
+
+## Template & Document System
+
+The system keeps two distinct types of files under `FormTemplate`, separated by `template_type`:
+
+| Type | `template_type` value | Purpose |
+|---|---|---|
+| System Template | `request_type_form` | Blank form file linked to a request type. Used as the basis for PDF generation. Selected based on `signature_layout` (2 or 3 signatures). |
+| Supporting Document | `supporting_document` | Admin-uploaded reference files (guidelines, instructions). Shown alongside a request — not filled or modified. |
+
+**Template selection logic** (`RequestType::getDefaultTemplate($signatureLayout)`):
+1. Look for a template with the matching `signature_layout` (`two_signatures` or `three_signatures`)
+2. Fall back to the request type's `default_template_id`
+3. Fall back to any template marked `is_default = true`
+
+**Signature layout determination:**
+- At submission, `RequestTypeWorkflowPolicy.requires_dean_signature` is snapshotted onto `Request.snapshot_requires_dean_signature`
+- This snapshot drives PDF layout for the lifetime of that request, independent of any future policy change
 
 ---
 
 ## Development Guide
 
-### Code Structure
-
-```
-app/
-|-- Console/Commands/          # Artisan commands
-|-- Http/
-|   |-- Controllers/          # Request handlers
-|   |-- Middleware/           # Request processing
-|   |-- Requests/            # Input validation
-|-- Models/                   # Eloquent models
-|-- Policies/                 # Authorization logic
-|-- Services/                 # Business logic
-|-- Enums/                    # System constants
-```
-
-### Development Commands
-
-```bash
-# Run tests
-php artisan test
-
-# Code formatting
-./vendor/bin/pint
-
-# Generate documentation
-php artisan docs:generate
-
-# Clear caches
-php artisan optimize:clear
-
-# Queue worker (if using queues)
-php artisan queue:work
-```
-
-### Coding Standards
-
-- **PSR-12**: Follow PHP coding standards
-- **Laravel Conventions**: Use framework best practices
-- **Type Declarations**: Strong typing where applicable
-- **Documentation**: Comprehensive PHPDoc blocks
-
----
-
-## Testing & Quality Assurance
-
-### Test Suite
+### Key Commands
 
 ```bash
 # Run all tests
 php artisan test
 
-# Run specific test
-php artisan test --filter RequestTest
+# Run a specific test class
+php artisan test --filter UserManagementTest
 
-# Generate coverage report
+# Generate test coverage report
 php artisan test --coverage
-```
 
-### Quality Checks
+# Code style (Laravel Pint)
+./vendor/bin/pint
 
-```bash
-# Static analysis
+# Static analysis (PHPStan)
 ./vendor/bin/phpstan analyse
 
-# Code style check
-./vendor/bin/pint --test
+# Clear all caches
+php artisan optimize:clear
 
-# Security audit
-composer audit
+# Refresh database with seed data
+php artisan migrate:fresh --seed
 ```
 
-### Performance Monitoring
+### Adding a New Request Type
+
+1. Log in as **Admin** → Admin Dashboard → Request Types → Add New
+2. Set name, description, field schema (JSON), and whether VOT items are required
+3. Set the workflow policy (requires dean signature: yes/no)
+4. Upload a system template file and link it with the correct `signature_layout`
+5. Optionally upload supporting documents for the request type
+
+### Adding a New Workflow Step
+
+All status transitions are controlled in `WorkflowTransitionService::getAllowedTransitions()`. Add the new `role → [from_status => [to_statuses]]` entry there. The policy, audit log, notifications, and PDF regeneration are handled automatically by `executeTransition()`.
+
+---
+
+## Testing
 
 ```bash
-# Production readiness check
-php scripts/production-readiness-check.php
+# Full test suite
+php artisan test
 
-# Database optimization
-php artisan db:optimize
+# Feature tests only
+php artisan test tests/Feature
 
-# Cache warm-up
-php artisan cache:warm
+# With coverage (requires Xdebug or PCOV)
+php artisan test --coverage --min=70
 ```
+
+Key test files:
+- `tests/Feature/UserManagementTest.php` — user creation, role assignment
+- Add request workflow tests in `tests/Feature/RequestWorkflowTest.php`
 
 ---
 
 ## Deployment
 
-### Production Setup
+### Production Checklist
 
 ```bash
-# Install production dependencies
+# Install production dependencies (no dev packages)
 composer install --no-dev --optimize-autoloader
-npm ci --production
 
-# Environment configuration
+# Build frontend assets
+npm ci && npm run build
+
+# Set environment
 cp .env.example .env
+# → Set APP_ENV=production, APP_DEBUG=false, DB_* for MySQL
+
 php artisan key:generate
+php artisan migrate --force
+php artisan storage:link
+
+# Cache config, routes, and views for performance
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
-
-# Database migration
-php artisan migrate --force
-
-# Link storage
-php artisan storage:link
 ```
 
-### Security Considerations
+### Security Checklist Before Go-Live
 
-- Disable debug mode in production
-- Configure proper file permissions
-- Set up SSL certificates
-- Implement rate limiting
-- Regular security updates
-
-### Monitoring & Logging
-
-- Configure application logging
-- Set up error tracking (Sentry recommended)
-- Monitor system performance
-- Regular backup procedures
+- [ ] `APP_DEBUG=false` in `.env`
+- [ ] `APP_ENV=production`
+- [ ] Strong `APP_KEY` generated
+- [ ] Database credentials are not default values
+- [ ] `storage/` and `bootstrap/cache/` are writable by the web server only
+- [ ] HTTPS configured (SSL certificate installed)
+- [ ] Mail credentials set for notification delivery
+- [ ] `php artisan storage:link` run so uploaded files are publicly accessible
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
-
-**Missing Dependencies**
+**Uploaded files not showing / 404 on documents**
 ```bash
-composer install --optimize-autoloader
-npm ci
+php artisan storage:link
 ```
 
-**Database Issues**
-```bash
-php artisan migrate:fresh --seed
-php artisan db:show
-```
+**Blank PDF generated**
+- Confirm at least one `FormTemplate` is linked to the request type with the correct `signature_layout`
+- Check `storage/app/public/requests/pdf/` is writable
 
-**Cache Problems**
+**Login redirect loop**
 ```bash
-php artisan optimize:clear
 php artisan config:clear
-php artisan route:clear
+php artisan cache:clear
 ```
 
-**Permission Issues**
+**Database out of sync**
 ```bash
-chmod -R 755 storage/
-chmod -R 755 bootstrap/cache/
+# Development only — destroys all data
+php artisan migrate:fresh --seed
 ```
 
-### Debug Mode
+**Permission errors on Windows (Herd)**
+- Herd manages permissions automatically; restart Herd if storage writes fail
 
-Enable detailed error reporting:
-```env
-APP_DEBUG=true
-LOG_LEVEL=debug
+**Vite assets not loading**
+```bash
+npm run build
+# or for hot reload:
+npm run dev
 ```
-
----
-
-## API Documentation
-
-### Authentication
-
-All API endpoints require authentication via Laravel's built-in session system.
-
-### Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/requests` | List requests (filtered by role) |
-| POST | `/api/requests` | Create new request |
-| GET | `/api/requests/{id}` | Get request details |
-| PATCH | `/api/requests/{id}/status` | Update request status |
-| GET | `/api/users` | List users (admin only) |
-
-### Response Format
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "ref_number": "STRG-2024-001",
-    "status": "submitted"
-  },
-  "message": "Request created successfully"
-}
-```
-
----
-
-## Contributing Guidelines
-
-### Development Workflow
-
-1. Create feature branch from `main`
-2. Implement changes with tests
-3. Run quality assurance checks
-4. Submit pull request with description
-5. Code review and merge
-
-### Code Review Standards
-
-- Follow existing code patterns
-- Include tests for new features
-- Update documentation as needed
-- Ensure backward compatibility
-
-### Release Process
-
-1. Update version numbers
-2. Update CHANGELOG.md
-3. Tag release in Git
-4. Deploy to staging environment
-5. Production deployment after approval
 
 ---
 
 ## License & Support
 
-This project is proprietary software developed for UniKL internal use. All rights reserved.
-
-**Support Contact**: IT Support Department  
-**Documentation**: Internal Wiki  
-**Issue Reporting**: Help Desk System
+This system is developed for internal use at **Universiti Kuala Lumpur MIIT**.  
+All rights reserved © {{ date('Y') }} Universiti Kuala Lumpur.
 
 ---
 
 ## AI Assistance
 
-This project was built with the support of the following AI coding assistants:
+This project was built with AI coding assistance:
 
-| Tool | Role |
-|------|------|
-| **ChatGPT** (OpenAI) | Architecture discussion, code generation, debugging |
-| **Claude** (Anthropic) | Code review, refactoring, audit, documentation |
-| **Windsurf** (Codeium) | In-editor AI pair programming and autocomplete |
-| **Codex** (OpenAI) | Code synthesis and boilerplate generation |
+| Tool | Primary Use |
+|---|---|
+| **Claude** (Anthropic) | Architecture, code review, bug fixes, audit, documentation |
+| **ChatGPT** (OpenAI) | Feature planning, code generation |
+| **Windsurf** (Codeium) | In-editor autocomplete and pair programming |
 
 ---
 
-*Last Updated: April 2026*  
-*Version: 1.0.0*
+*Last Updated: April 2026 · Version: 1.0.0*

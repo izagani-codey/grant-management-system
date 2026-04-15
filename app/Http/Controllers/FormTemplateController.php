@@ -27,6 +27,7 @@ class FormTemplateController extends BaseController
             'title' => ['required', 'string', 'max:120', 'regex:/^[a-zA-Z0-9\s\-_\.]+$/'],
             'request_type_id' => ['nullable', 'exists:request_types,id'],
             'is_default' => ['nullable', 'boolean'],
+            'template_type' => ['nullable', 'string', 'in:request_type_form,supporting_document,general_form'],
         ];
 
         // File is required unless setting as default template for existing request type
@@ -99,9 +100,14 @@ class FormTemplateController extends BaseController
             
             // Create new template if we have a file or if it's not a default template setting
             if ($path && !$template) {
+                $allowedTypes = ['request_type_form', 'supporting_document', 'general_form'];
+                $templateType = in_array($request->input('template_type'), $allowedTypes, true)
+                    ? $request->input('template_type')
+                    : ($request->input('request_type_id') ? 'request_type_form' : 'general_form');
+
                 $template = FormTemplate::create([
                     'title' => $request->input('title'),
-                    'template_type' => $request->input('request_type_id') ? 'request_type_form' : 'general_form',
+                    'template_type' => $templateType,
                     'file_path' => $path,
                     'uploaded_by' => $request->user()->id,
                     'is_active' => true,

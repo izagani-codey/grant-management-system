@@ -7,11 +7,17 @@
         <div class="flex justify-between h-16 md:h-20">
             <div class="flex items-center">
                 <!-- Logo -->
-                <div class="shrink-0 flex items-center">
-                    <a href="{{ route('dashboard') }}" class="touch-target flex items-center">
-                        <x-application-logo class="block h-8 md:h-10 w-auto fill-current text-gray-800" />
-                    </a>
-                </div>
+                {{-- Replace the logo section --}}
+<div class="shrink-0 flex items-center gap-3">
+    <a href="{{ route('dashboard') }}" class="flex items-center gap-3">
+        {{-- Placeholder for logo image: replace src with actual logo path --}}
+         <img src="{{ asset('images/miit-logo.png') }}" alt="UniKL MIIT" class="h-10 w-auto">
+        <div class="flex flex-col leading-tight">
+            <span class="font-extrabold text-sm tracking-wide" style="color: var(--miit-blue);">UniKL MIIT</span>
+            <span class="text-xs text-gray-500 font-medium">Request Management System</span>
+        </div>
+    </a>
+</div>
 
                 <!-- Navigation Links -->
                 <div class="hidden md:flex md:space-x-1 lg:space-x-8 md:ms-8 lg:ms-10">

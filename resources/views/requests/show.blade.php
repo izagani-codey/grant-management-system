@@ -3,11 +3,11 @@
         $isFinalStatus = $grantRequest->isFinal();
         $staff1Active = in_array($grantRequest->status_id, [\App\Enums\RequestStatus::SUBMITTED->value, \App\Enums\RequestStatus::RETURNED->value], true);
         $staff1Completed = in_array($grantRequest->status_id, [
-            \App\Enums\RequestStatus::STAFF1_APPROVED->value,
+            \App\Enums\RequestStatus::SUBMITTED->value => 'bg-amber-100 text-amber-800 ring-1 ring-amber-400',
             \App\Enums\RequestStatus::STAFF2_APPROVED->value,
             \App\Enums\RequestStatus::RETURNED->value,
-            \App\Enums\RequestStatus::DEAN_APPROVED->value,
-            \App\Enums\RequestStatus::REJECTED->value,
+            \App\Enums\RequestStatus::DEAN_APPROVED->value => 'bg-green-100 text-green-800 ring-1 ring-green-500',
+            \App\Enums\RequestStatus::REJECTED->value => 'bg-red-100 text-red-800 ring-1 ring-red-400',
         ], true);
         $staff2Active = in_array($grantRequest->status_id, [\App\Enums\RequestStatus::STAFF1_APPROVED->value, \App\Enums\RequestStatus::RETURNED->value], true);
         $staff2Completed = in_array($grantRequest->status_id, [
@@ -56,7 +56,9 @@
 
             {{-- Request Details --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <h3 class="font-bold text-lg mb-4 border-b pb-2">Request Details</h3>
+                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
+    Request Details
+</div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div class="min-w-0">
                         <p class="text-gray-500">Submitted By</p>
@@ -244,79 +246,56 @@
                 </div>
             </div>
 
-            {{-- General Form (Generated PDF) --}}
-           {{-- General Form (Generated PDF) --}}
-@php
-    $latestTemplateUsage = $grantRequest->templateUsages->first();
-@endphp
-<div class="bg-white shadow-sm rounded-lg p-6">
-    <h3 class="font-bold text-lg mb-4 border-b pb-2">General Form</h3>
-    <p class="text-sm text-gray-600 mb-3">
-        System-generated form based on the selected template and latest request data.
-    </p>
-
-    {{-- Inline PDF viewer --}}
-    <div class="border border-gray-200 rounded-lg overflow-hidden mb-3" style="height: 500px;">
-        <iframe 
-            src="{{ route('requests.pdf.inline', $grantRequest->id) }}"
-            class="w-full h-full"
-            title="Generated form preview">
-        </iframe>
-    </div>
-
-    <a href="{{ route('requests.downloadPdf', $grantRequest->id) }}"
-       class="inline-flex items-center text-blue-600 hover:underline text-sm font-semibold">
-        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-        </svg>
-        Download PDF
-    </a>
-</div>
-
-            {{-- Main Uploaded Document --}}
+            {{-- Section 1: System-Generated Template --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <h3 class="font-bold text-lg mb-4 border-b pb-2">Uploaded Document</h3>
-                @if($grantRequest->file_path)
-                    @php
-                        $ext = pathinfo($grantRequest->file_path, PATHINFO_EXTENSION);
-                        $mainDocumentUrl = route('requests.document.main', $grantRequest->id);
-                    @endphp
-
-                    @if(in_array(strtolower($ext), ['jpg', 'jpeg', 'png']))
-                        <img src="{{ $mainDocumentUrl }}"
-                             class="max-w-full rounded border" alt="Uploaded document">
-                    @elseif(strtolower($ext) === 'pdf')
-                        <iframe src="{{ $mainDocumentUrl }}"
-                                class="w-full h-96 border rounded" title="PDF Viewer"></iframe>
-                    @else
-                        <p class="text-sm text-gray-600">Preview is not available for this file type.</p>
+               <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
+ Generate forms
+</div>
+                <p class="text-xs text-gray-500 mb-4">
+                    Auto-generated using the
+                    <span class="font-medium">{{ $grantRequest->snapshot_requires_dean_signature ? '3-signature' : '2-signature' }}</span>
+                    template
+                    @if($systemTemplate)
+                        &mdash; <span class="italic">{{ $systemTemplate->title }}</span>
                     @endif
+                </p>
 
-                    <a href="{{ $mainDocumentUrl }}"
-                       target="_blank"
-                       class="mt-3 inline-block text-blue-600 hover:underline text-sm font-semibold break-all">
-                        Open in new tab
-                    </a>
-                @else
-                    <p class="text-sm text-gray-500">No supporting document was uploaded for this request.</p>
-                @endif
+                <div class="border border-gray-200 rounded-lg overflow-hidden mb-3" style="height: 500px;">
+                    <iframe
+                        src="{{ route('requests.pdf.inline', $grantRequest->id) }}"
+                        class="w-full h-full"
+                        title="Generated form preview">
+                    </iframe>
+                </div>
+
+                <a href="{{ route('requests.downloadPdf', $grantRequest->id) }}"
+                   class="inline-flex items-center text-blue-600 hover:underline text-sm font-semibold">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Download PDF
+                </a>
             </div>
 
-            @php
-                $additionalDocuments = collect($grantRequest->payload['additional_documents'] ?? [])
-                    ->filter(fn ($path) => is_string($path) && $path !== '')
-                    ->values();
-            @endphp
-            @if($additionalDocuments->isNotEmpty())
+            {{-- Section 2: Supporting Documents (admin-uploaded, linked to request type) --}}
+            @if($supportingDocuments->isNotEmpty())
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <h3 class="font-bold text-lg mb-4 border-b pb-2">Additional Supporting Documents</h3>
+                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
+  Supporting Documents
+</div>
+                <p class="text-xs text-gray-500 mb-4">
+                    Reference documents provided for <span class="font-medium">{{ $grantRequest->requestType?->name }}</span>.
+                </p>
                 <ul class="space-y-2 text-sm">
-                    @foreach($additionalDocuments as $documentPath)
-                        <li>
-                            <a href="{{ route('requests.document.additional', ['id' => $grantRequest->id, 'index' => $loop->index]) }}"
+                    @foreach($supportingDocuments as $doc)
+                        <li class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                            </svg>
+                            <a href="{{ asset('storage/' . $doc->file_path) }}"
                                target="_blank"
-                               class="text-blue-600 hover:underline font-semibold break-all">
-                                ↗ {{ basename($documentPath) }}
+                               class="text-blue-600 hover:underline font-medium">
+                                {{ $doc->title }}
                             </a>
                         </li>
                     @endforeach
@@ -324,10 +303,57 @@
             </div>
             @endif
 
+            {{-- Applicant-Uploaded Documents --}}
+            @php
+                $mainDocumentUrl = $grantRequest->file_path ? route('requests.document.main', $grantRequest->id) : null;
+                $additionalDocuments = collect($grantRequest->payload['additional_documents'] ?? [])
+                    ->filter(fn ($path) => is_string($path) && $path !== '')
+                    ->values();
+            @endphp
+            @if($mainDocumentUrl || $additionalDocuments->isNotEmpty())
+            <div class="bg-white shadow-sm rounded-lg p-6">
+               <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
+  Apllicant Uploaded Documents
+</div>
+                <p class="text-xs text-gray-500 mb-4">Files submitted by the applicant with this request.</p>
+
+                @if($mainDocumentUrl)
+                    @php $ext = pathinfo($grantRequest->file_path, PATHINFO_EXTENSION); @endphp
+                    <div class="mb-3">
+                        @if(in_array(strtolower($ext), ['jpg', 'jpeg', 'png']))
+                            <img src="{{ $mainDocumentUrl }}" class="max-w-full rounded border" alt="Uploaded document">
+                        @elseif(strtolower($ext) === 'pdf')
+                            <iframe src="{{ $mainDocumentUrl }}" class="w-full h-96 border rounded" title="PDF Viewer"></iframe>
+                        @endif
+                        <a href="{{ $mainDocumentUrl }}" target="_blank"
+                           class="mt-2 inline-block text-blue-600 hover:underline text-sm font-semibold">
+                            ↗ Open main document
+                        </a>
+                    </div>
+                @endif
+
+                @if($additionalDocuments->isNotEmpty())
+                    <ul class="space-y-2 text-sm mt-2">
+                        @foreach($additionalDocuments as $documentPath)
+                            <li>
+                                <a href="{{ route('requests.document.additional', ['id' => $grantRequest->id, 'index' => $loop->index]) }}"
+                                   target="_blank"
+                                   class="text-blue-600 hover:underline font-semibold break-all">
+                                    ↗ {{ basename($documentPath) }}
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+            @endif
+
             {{-- Rejection Reason (visible to admission) --}}
             @if($grantRequest->rejection_reason)
             <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-                <h3 class="font-bold text-red-700 mb-1">⚠ Returned / Rejected — Reason:</h3>
+               <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
+  ⚠ Returned / Rejected — Reason:
+</div>
                 <p class="text-red-600 text-sm break-words">{{ $grantRequest->rejection_reason }}</p>
             </div>
             @endif
@@ -335,7 +361,9 @@
             {{-- Staff Notes (staff only) --}}
            @if($grantRequest->staff_notes && in_array(auth()->user()->role, ['staff1', 'staff2']))
             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h3 class="font-bold text-yellow-700 mb-1">Internal Staff Notes</h3>
+                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
+    Internal Staff Notes
+</div>
                 <p class="text-yellow-800 text-sm break-words">{{ $grantRequest->staff_notes }}</p>
             </div>
             @endif
@@ -350,7 +378,9 @@
 
                 @if($staffNoteLogs->count() > 0)
                     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <h3 class="font-bold text-yellow-700 mb-3">Staff Notes History</h3>
+                       <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
+    staff notes history
+</div>
                         <div class="space-y-3">
                             @foreach($staffNoteLogs as $log)
                                 <div class="text-sm">
@@ -374,7 +404,9 @@
             {{-- Verified / Recommended By (staff only) --}}
             @if(auth()->user()->role !== 'admission')
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <h3 class="font-bold text-lg mb-4 border-b pb-2">Verification Trail</h3>
+                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
+    verification trail
+</div>
                 <div class="grid grid-cols-2 gap-4 text-sm">
                     <div>
                         <p class="text-gray-500">Verified By (Staff 1)</p>
@@ -390,7 +422,9 @@
 
             {{-- Workflow Timeline (Audit events + internal comments) --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <h3 class="font-bold text-lg mb-4 border-b pb-2">Workflow Timeline</h3>
+                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
+    Workflow Timeline
+</div>
 
                 @php
                     $isStaff = auth()->user()->role !== 'admission';
@@ -468,7 +502,9 @@
 
             {{-- WORKFLOW ACTION BUTTONS --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <h3 class="font-bold text-lg mb-4 border-b pb-2">Actions</h3>
+               <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
+    Actions
+</div>
 
                 {{-- ADMISSION: Edit if returned --}}
                 @can('revise', $grantRequest)
@@ -513,10 +549,6 @@
                         <form action="{{ route('requests.updateStatus', $grantRequest->id) }}" method="POST" class="space-y-3" onsubmit="return handleFormSubmit(this, 'Submitting...', event)" data-signature-input="staff2-signature-data" data-role-action="staff2">
                             @csrf
                             @method('PATCH')
-                            <input type="file" name="staff2_supporting_documents[]" multiple
-                                class="w-full border rounded p-2 text-sm"
-                                accept=".pdf,.jpg,.jpeg,.png">
-                            <p class="text-xs text-gray-500 -mt-1">Optional: add revised supporting documents (old files remain available).</p>
                             <textarea name="notes" rows="2" placeholder="Recommendation notes (optional)"
                                 class="w-full border rounded p-2 text-sm"></textarea>
                             <textarea name="rejection_reason" rows="2"
@@ -699,7 +731,9 @@
             {{-- Comments (Staff only) --}}
             @if(auth()->user()->role !== 'admission')
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <h3 class="font-bold text-lg mb-4 border-b pb-2">Staff Comments</h3>
+               <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
+    Staff Comments
+</div>
 
                 {{-- Staff Comments by Role --}}
                 @php
@@ -828,7 +862,9 @@
             {{-- Audit Log (staff only) --}}
             @if(auth()->user()->role !== 'admission')
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <h3 class="font-bold text-lg mb-4 border-b pb-2">Audit Trail</h3>
+                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
+    Audit Trail
+</div>
                 @forelse($grantRequest->auditLogs as $log)
                     <div class="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 mb-3 text-sm min-w-0">
                         <span class="text-gray-400 sm:w-32 sm:shrink-0">

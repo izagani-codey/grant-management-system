@@ -1,4 +1,20 @@
 <x-app-layout>
+    {{-- MIIT Welcome Banner --}}
+<div class="rounded-xl p-5 mb-6 flex items-center gap-4"
+     style="background: linear-gradient(135deg, #003087 0%, #1a4fa0 100%); color: white;">
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-widest opacity-70 mb-1">
+            {{ now()->format('l, d F Y') }}
+        </p>
+        <h2 class="text-xl font-bold">Welcome, {{ Auth::user()->name }}</h2>
+        <p class="text-sm opacity-80 mt-0.5">
+            {{ ucfirst(Auth::user()->role) }} &mdash; UniKL MIIT Request Management System
+        </p>
+    </div>
+    <div class="ml-auto text-right hidden sm:block">
+        <p class="text-4xl font-black opacity-20">MIIT</p>
+    </div>
+</div>
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -68,14 +84,14 @@
 
             <!-- Statistics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                <div class="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-medium text-purple-600">Pending Dean</p>
+                            <p class="text-sm font-medium text-blue-900">Pending Dean</p>
                             <p class="text-3xl font-bold text-gray-900 mt-1">{{ $stats['pending_dean'] ?? 0 }}</p>
                         </div>
                         <div class="bg-purple-100 rounded-full p-3">
-                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-6 h-6 text-blue-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                         </div>
@@ -180,7 +196,7 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <a href="{{ route('dean.requests.show', $request->id) }}" 
-                                       class="text-purple-600 hover:text-purple-900 mr-3">
+                                       class="text-blue-900 hover:text-purple-900 mr-3">
                                         Review
                                     </a>
                                 </td>

@@ -2,11 +2,11 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <div>
-                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">All Requests</h1>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">All Requests</h1>
                 <p class="text-gray-600 mt-1">View and manage grant requests</p>
             </div>
             @if(auth()->user()->role === 'admission')
-                <a href="{{ route('requests.create') }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg">
+                <a href="{{ route('requests.create') }}" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
@@ -166,7 +166,7 @@
                                         </a>
                                         @if($request->canBeEditedByAdmission() && auth()->user()->role === 'admission')
                                             <a href="{{ route('requests.edit', $request->id) }}" 
-                                               class="text-indigo-600 hover:text-indigo-900 mr-3">
+                                               class="text-blue-900 hover:text-blue-950 mr-3">
                                                 Edit
                                             </a>
                                         @endif

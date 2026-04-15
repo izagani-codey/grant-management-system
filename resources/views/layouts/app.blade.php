@@ -14,6 +14,78 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         
+        <!-- UNIKL MIIT Brand Theme -->
+<style>
+    :root {
+        --miit-blue:   #003087;
+        --miit-gold:   #C8971E;
+        --miit-light:  #E8F0FB;
+    }
+
+    /* Top accent bar */
+    body::before {
+        content: '';
+        display: block;
+        height: 4px;
+        background: linear-gradient(90deg, var(--miit-blue) 70%, var(--miit-gold) 100%);
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 9999;
+    }
+
+    /* Offset content for the accent bar */
+    body > div.min-h-screen {
+        padding-top: 4px;
+    }
+
+    /* Nav brand override */
+    nav {
+        border-bottom: 2px solid var(--miit-blue) !important;
+    }
+
+    /* Card header accent */
+    .card-header-miit {
+        background: linear-gradient(135deg, var(--miit-blue), #1a4fa0);
+        color: white;
+        border-radius: 0.5rem 0.5rem 0 0;
+        padding: 0.75rem 1.25rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+        letter-spacing: 0.01em;
+    }
+
+    /* Status badge gold accent */
+    .badge-gold {
+        background: var(--miit-gold);
+        color: #1a1a1a;
+        font-weight: 700;
+        padding: 2px 10px;
+        border-radius: 9999px;
+        font-size: 0.72rem;
+    }
+
+    /* Primary button override */
+    .btn-miit {
+        background: var(--miit-blue);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 18px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .btn-miit:hover { background: #002070; }
+
+    /* Page section cards — subtle left border */
+    .miit-card {
+        border-left: 4px solid var(--miit-blue);
+        border-radius: 0 0.5rem 0.5rem 0;
+    }
+</style>
         <!-- iPad Optimization -->
         <style>
             /* iPad-specific optimizations */

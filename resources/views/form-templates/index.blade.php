@@ -2,12 +2,12 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <div>
-                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Blank Forms</h1>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">Blank Forms</h1>
                 <p class="text-gray-600 mt-1">Upload, preview, and manage reusable blank form templates</p>
             </div>
             @if(auth()->user()->role === 'admin')
                 <button onclick="document.getElementById('upload-form').classList.toggle('hidden')" 
-                        class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg">
+                        class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
@@ -65,9 +65,26 @@
                                 <p class="mt-1 text-sm text-gray-500">Select a specific request type to make this template available only for that type</p>
                             </div>
                             
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Document Purpose</label>
+                                <select name="template_type"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+                                        id="template-type-select">
+                                    <option value="request_type_form" {{ old('template_type') === 'request_type_form' ? 'selected' : '' }}>
+                                        System Template (used to generate the form)
+                                    </option>
+                                    <option value="supporting_document" {{ old('template_type') === 'supporting_document' ? 'selected' : '' }}>
+                                        Supporting Document (reference file for the request type)
+                                    </option>
+                                </select>
+                                <p class="mt-1 text-sm text-gray-500">
+                                    System templates are auto-filled and signed. Supporting documents are static reference files shown alongside the request.
+                                </p>
+                            </div>
+
                             <div id="default-template-section" class="hidden">
                                 <label class="flex items-center">
-                                    <input type="checkbox" name="is_default" value="1" 
+                                    <input type="checkbox" name="is_default" value="1"
                                            {{ old('is_default') ? 'checked' : '' }}
                                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                                     <span class="ml-2 text-sm text-gray-700">Set as default template for this request type</span>
@@ -96,7 +113,7 @@
                                     Cancel
                                 </button>
                                 <button type="submit" 
-                                        class="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all">
+                                        class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all">
                                     Upload Form
                                 </button>
                             </div>

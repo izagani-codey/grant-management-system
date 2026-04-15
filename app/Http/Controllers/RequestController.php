@@ -179,7 +179,21 @@ public function __construct(
 
         $this->authorize('view', $grantRequest);
 
-        return view('requests.show', compact('grantRequest'));
+        // Resolve the system-generated template based on signature requirement
+        $signatureLayout = $grantRequest->snapshot_requires_dean_signature
+            ? 'three_signatures'
+            : 'two_signatures';
+        $systemTemplate = $grantRequest->requestType?->getDefaultTemplate($signatureLayout);
+
+        // Fetch admin-uploaded supporting documents for this request type
+        $supportingDocuments = $grantRequest->requestType
+            ? $grantRequest->requestType->templates()
+                ->where('form_templates.template_type', 'supporting_document')
+                ->where('form_templates.is_active', true)
+                ->get()
+            : collect();
+
+        return view('requests.show', compact('grantRequest', 'systemTemplate', 'supportingDocuments'));
     }
 
     public function edit($id)
@@ -303,7 +317,10 @@ public function __construct(
 
         $this->authorize('print', $grantRequest);
 
-        $template = $grantRequest->requestType?->getDefaultTemplate();
+        $signatureLayout = $grantRequest->snapshot_requires_dean_signature
+            ? 'three_signatures'
+            : 'two_signatures';
+        $template = $grantRequest->requestType?->getDefaultTemplate($signatureLayout);
         $generatedPath = RequestPdfService::generate($grantRequest, $template);
 
         return Storage::disk('public')->download($generatedPath, basename($generatedPath));

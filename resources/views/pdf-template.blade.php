@@ -393,90 +393,86 @@
         </p>
 
         @php
-            $applicantSig   = $request->signature_data;
-            $staff2Sig      = $request->getSignatureImageForRole('staff2');
-            $deanSig        = $request->getSignatureImageForRole('dean');
+            /**
+             * Per-role lookup table.
+             * Add any new role here if it needs a custom name/date/designation source.
+             * The PDF will render whatever roles are in $signatureSlots — no further
+             * changes needed in this view when adding request types.
+             */
+            $slotData = [
+                'applicant' => [
+                    'image'       => $request->getSignatureImageForRole('applicant'),
+                    'name'        => $request->user->name,
+                    'designation' => $request->submitter_designation ?? $request->user->designation ?? '',
+                    'date'        => $request->signed_at?->format('d/m/Y'),
+                    'pending'     => 'No signature on file',
+                ],
+                'staff1' => [
+                    'image'       => $request->getSignatureImageForRole('staff1'),
+                    'name'        => $request->verifiedBy?->name ?? '',
+                    'designation' => $request->verifiedBy?->designation ?? '',
+                    'date'        => $request->verified_at?->format('d/m/Y'),
+                    'pending'     => 'Pending',
+                ],
+                'staff2' => [
+                    'image'       => $request->getSignatureImageForRole('staff2'),
+                    'name'        => $request->recommendedBy?->name ?? '',
+                    'designation' => $request->recommendedBy?->designation ?? '',
+                    'date'        => $request->getSignedAtForRole('staff2')?->format('d/m/Y'),
+                    'pending'     => 'Pending',
+                ],
+                'dean' => [
+                    'image'       => $request->getSignatureImageForRole('dean'),
+                    'name'        => $request->deanApprovedBy?->name ?? '',
+                    'designation' => $request->deanApprovedBy?->designation ?? 'Dean',
+                    'date'        => $request->getSignedAtForRole('dean')?->format('d/m/Y'),
+                    'pending'     => 'Pending',
+                ],
+            ];
 
-            $applicantName  = $request->user->name;
-            $applicantDesig = $request->submitter_designation ?? $request->user->designation ?? '';
-            $applicantDate  = $request->signed_at?->format('d/m/Y');
-
-            $staff2Name     = $request->recommendedBy?->name;
-            $staff2Desig    = $request->recommendedBy?->designation ?? '';
-            $staff2Date     = $request->getSignedAtForRole('staff2')?->format('d/m/Y');
-
-            $deanName       = $request->deanApprovedBy?->name;
-            $deanDesig      = $request->deanApprovedBy?->designation ?? 'Dean';
-            $deanDate       = $request->getSignedAtForRole('dean')?->format('d/m/Y');
+            // Render slots in rows of 2 (left + right columns)
+            $rows = array_chunk($signatureSlots, 2);
         @endphp
 
-        {{-- Row 1: Applicant (left) | Staff 2 / Authorised Officer (right) --}}
+        @foreach($rows as $row)
         <div class="sig-row">
-            {{-- Applicant --}}
-            <div class="sig-cell">
-                <div class="sig-role-label">Applicant</div>
-                <div class="sig-box">
-                    @if($applicantSig)
-                        <img src="{{ $applicantSig }}" class="sig-img" alt="Applicant Signature"/>
-                    @else
-                        <span class="sig-placeholder">No signature on file</span>
-                    @endif
+            @foreach($row as $slot)
+                @php
+                    $data  = $slotData[$slot['role']] ?? [
+                        // Unknown role — pull from signatures table generically
+                        'image'       => $request->getSignatureImageForRole($slot['role']),
+                        'name'        => '',
+                        'designation' => '',
+                        'date'        => $request->getSignedAtForRole($slot['role'])?->format('d/m/Y'),
+                        'pending'     => 'Pending',
+                    ];
+                @endphp
+                <div class="sig-cell">
+                    <div class="sig-role-label">{{ $slot['label'] }}</div>
+                    <div class="sig-box">
+                        @if(!empty($data['image']))
+                            <img src="{{ $data['image'] }}" class="sig-img" alt="{{ $slot['label'] }} Signature"/>
+                        @else
+                            <span class="sig-placeholder">{{ $data['pending'] }}</span>
+                        @endif
+                    </div>
+                    <div class="sig-info">
+                        <div class="sig-line">{{ $data['name'] }}</div>
+                        <div class="sig-field-label">Name</div>
+                        <div class="sig-line" style="margin-top:6px;">{{ $data['designation'] }}</div>
+                        <div class="sig-field-label">Designation</div>
+                        <div class="sig-line" style="margin-top:6px;">{{ $data['date'] ?? '' }}</div>
+                        <div class="sig-field-label">Date</div>
+                    </div>
                 </div>
-                <div class="sig-info">
-                    <div class="sig-line">{{ $applicantName }}</div>
-                    <div class="sig-field-label">Name</div>
-                    <div class="sig-line" style="margin-top:6px;">{{ $applicantDesig }}</div>
-                    <div class="sig-field-label">Designation</div>
-                    <div class="sig-line" style="margin-top:6px;">{{ $applicantDate ?? '' }}</div>
-                    <div class="sig-field-label">Date</div>
-                </div>
-            </div>
+            @endforeach
 
-            {{-- Staff 2 / Authorised Officer --}}
-            <div class="sig-cell">
-                <div class="sig-role-label">Authorised Officer (Staff 2)</div>
-                <div class="sig-box">
-                    @if($staff2Sig)
-                        <img src="{{ $staff2Sig }}" class="sig-img" alt="Staff 2 Signature"/>
-                    @else
-                        <span class="sig-placeholder">Pending</span>
-                    @endif
-                </div>
-                <div class="sig-info">
-                    <div class="sig-line">{{ $staff2Name ?? '' }}</div>
-                    <div class="sig-field-label">Name</div>
-                    <div class="sig-line" style="margin-top:6px;">{{ $staff2Desig }}</div>
-                    <div class="sig-field-label">Designation</div>
-                    <div class="sig-line" style="margin-top:6px;">{{ $staff2Date ?? '' }}</div>
-                    <div class="sig-field-label">Date</div>
-                </div>
-            </div>
+            {{-- If this row has only 1 slot, add an empty spacer cell to keep layout --}}
+            @if(count($row) === 1)
+                <div class="sig-cell"></div>
+            @endif
         </div>
-
-        @if($layout === 'three_signatures')
-        {{-- Row 2: Dean (left-aligned, half-width) --}}
-        <div class="sig-row">
-            <div class="sig-cell">
-                <div class="sig-role-label">Dean / Faculty Approver</div>
-                <div class="sig-box">
-                    @if($deanSig)
-                        <img src="{{ $deanSig }}" class="sig-img" alt="Dean Signature"/>
-                    @else
-                        <span class="sig-placeholder">Pending</span>
-                    @endif
-                </div>
-                <div class="sig-info">
-                    <div class="sig-line">{{ $deanName ?? '' }}</div>
-                    <div class="sig-field-label">Name</div>
-                    <div class="sig-line" style="margin-top:6px;">{{ $deanDesig }}</div>
-                    <div class="sig-field-label">Designation</div>
-                    <div class="sig-line" style="margin-top:6px;">{{ $deanDate ?? '' }}</div>
-                    <div class="sig-field-label">Date</div>
-                </div>
-            </div>
-            <div class="sig-cell"></div>{{-- spacer --}}
-        </div>
-        @endif
+        @endforeach
     </div>
 
     <!-- Footer -->

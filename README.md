@@ -1,6 +1,5 @@
 # ~UniKL MIIT — STRG Request Management System~
-
-> **Short Term Research Grant (STRG) Request Management System** — A Laravel-based workflow platform for managing grant requests at Universiti Kuala Lumpur MIIT, covering multi-stage approvals, digital signatures, automated PDF generation, and a full audit trail.
+~> **Short Term Research Grant (STRG) Request Management System** — A Laravel-based workflow platform for managing grant requests at Universiti Kuala Lumpur MIIT, covering multi-stage approvals, digital signatures, automated PDF generation, and a full audit trail.
 
 > **AI-Assisted Development** — This system was developed with the assistance of AI coding tools:
 > [Claude](https://claude.ai) · [ChatGPT](https://chat.openai.com) · [Windsurf](https://codeium.com/windsurf)
@@ -401,3 +400,4 @@ This project was built with AI coding assistance:
 ---
 
 *Last Updated: April 2026 · Version: 1.0.0*
+~

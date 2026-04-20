@@ -326,5 +326,21 @@
         if (previewRequestType && selectedOption) {
             previewRequestType.textContent = selectedOption.text;
         }
+
+        // Show/hide VOT section based on requires_vot field from API response
+        try {
+            const resp = await fetch(`/api/request-types/${requestTypeId}/fields`);
+            if (resp.ok) {
+                const data = await resp.json();
+                const votSection = document.getElementById('vot-section');
+                if (votSection) {
+                    if (data.requires_vot) {
+                        votSection.classList.remove('hidden');
+                    } else {
+                        votSection.classList.add('hidden');
+                    }
+                }
+            }
+        } catch {}
     }
 </script>

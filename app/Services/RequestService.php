@@ -57,8 +57,6 @@ class RequestService
                 'signature_data' => $data['signature_data'],
                 'signed_at' => now(),
                 'submitted_at' => now(),
-                'deadline' => $data['deadline'],
-                'is_priority' => $data['priority'] ?? false,
             ];
 
             $request = $this->requestRepository->create($requestData);
@@ -128,8 +126,6 @@ class RequestService
             'request_type_id' => $data['request_type_id'],
             'payload' => $payload,
             'file_path' => $filePath,
-            'deadline' => $data['deadline'] ?? null,
-            'is_priority' => $data['priority'] ?? false,
             'revision_count' => $request->revision_count + 1,
         ];
 
@@ -303,12 +299,12 @@ class RequestService
 
         return [
             'total' => $query->count(),
-            'approved' => (clone $query)->trulyApproved()->count(),
-            'declined' => $query->where('status_id', RequestStatus::REJECTED->value)->count(),
-            'pending' => $query->whereIn('status_id', [
+            'approved' => (clone $query)->where('status_id', RequestStatus::COMPLETED->value)->count(),
+            'declined' => (clone $query)->where('status_id', RequestStatus::DECLINED->value)->count(),
+            'pending' => (clone $query)->whereIn('status_id', [
                 RequestStatus::SUBMITTED->value,
-                RequestStatus::STAFF1_APPROVED->value,
-                RequestStatus::STAFF2_APPROVED->value
+                RequestStatus::STAFF1_REVIEWED->value,
+                RequestStatus::STAFF2_APPROVED->value,
             ])->count(),
             'average_amount' => $query->avg('payload->amount') ?? 0,
         ];

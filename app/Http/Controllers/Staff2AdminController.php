@@ -6,7 +6,6 @@ use App\Enums\RequestStatus;
 use App\Models\Request as GrantRequest;
 use App\Models\RequestType;
 use App\Models\RequestTypeTemplate;
-use App\Models\RequestTypeWorkflowPolicy;
 use App\Models\User;
 use App\Models\FormTemplate;
 use App\Models\AuditLog;
@@ -16,18 +15,19 @@ use Illuminate\Validation\Rule;
 
 class Staff2AdminController extends BaseController
 {
-    private const MANAGEABLE_ROLES = ['admission', 'staff1', 'staff2', 'dean', 'admin'];
+    private const MANAGEABLE_ROLES = ['admission', 'staff1', 'staff2', 'admin'];
 
     public function index()
     {
         $this->ensureAdminAccess();
 
         // System Stats
-        $totalRequests = GrantRequest::count();
-        $submitted = GrantRequest::where('status_id', RequestStatus::SUBMITTED->value)->count();
-        $staff1Approved = GrantRequest::where('status_id', RequestStatus::STAFF1_APPROVED->value)->count();
-        $deanApproved = GrantRequest::trulyApproved()->count();
-        $rejected = GrantRequest::where('status_id', RequestStatus::REJECTED->value)->count();
+        $totalRequests  = GrantRequest::count();
+        $submitted      = GrantRequest::where('status_id', RequestStatus::SUBMITTED->value)->count();
+        $staff1Approved = GrantRequest::where('status_id', RequestStatus::STAFF1_REVIEWED->value)->count();
+        $staff2Approved = GrantRequest::where('status_id', RequestStatus::STAFF2_APPROVED->value)->count();
+        $completed      = GrantRequest::where('status_id', RequestStatus::COMPLETED->value)->count();
+        $declined       = GrantRequest::where('status_id', RequestStatus::DECLINED->value)->count();
 
         // Request Types Stats
         $byType = RequestType::query()
@@ -36,20 +36,18 @@ class Staff2AdminController extends BaseController
             ->take(6)
             ->get();
 
-        // Recent High Priority Requests
+        // Recent Requests
         $recentHighPriority = GrantRequest::query()
             ->with('user', 'requestType')
-            ->where('is_priority', true)
             ->latest()
             ->take(8)
             ->get();
 
         // User Stats
-        $totalUsers = User::count();
+        $totalUsers     = User::count();
         $admissionUsers = User::where('role', 'admission')->count();
-        $staff1Users = User::where('role', 'staff1')->count();
-        $staff2Users = User::where('role', 'staff2')->count();
-        $deanUsers = User::where('role', 'dean')->count();
+        $staff1Users    = User::where('role', 'staff1')->count();
+        $staff2Users    = User::where('role', 'staff2')->count();
 
         // Form Templates
         $totalTemplates = FormTemplate::count();
@@ -62,15 +60,15 @@ class Staff2AdminController extends BaseController
             'totalRequests',
             'submitted',
             'staff1Approved',
-            'deanApproved',
-            'rejected',
+            'staff2Approved',
+            'completed',
+            'declined',
             'byType',
             'recentHighPriority',
             'totalUsers',
             'admissionUsers',
             'staff1Users',
             'staff2Users',
-            'deanUsers',
             'totalTemplates',
             'recentTemplates'
         ));
@@ -95,11 +93,10 @@ class Staff2AdminController extends BaseController
             })
             ->orderByRaw("case role
                 when 'admin' then 1
-                when 'dean' then 2
-                when 'staff2' then 3
-                when 'staff1' then 4
-                when 'admission' then 5
-                else 6
+                when 'staff2' then 2
+                when 'staff1' then 3
+                when 'admission' then 4
+                else 5
             end")
             ->orderBy('name')
             ->paginate(20)

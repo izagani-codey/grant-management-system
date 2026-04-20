@@ -46,12 +46,12 @@
                                 <div class="text-sm text-blue-100">Submitted</div>
                             </div>
                             <div class="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                                <div class="text-2xl font-bold">{{ $dashboardStats['staff1_approved'] ?? 0 }}</div>
-                                <div class="text-sm text-yellow-100">Staff 1 Approved</div>
+                                <div class="text-2xl font-bold">{{ $dashboardStats['returned'] ?? 0 }}</div>
+                                <div class="text-sm text-yellow-100">Needs Revision</div>
                             </div>
                             <div class="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                                <div class="text-2xl font-bold">{{ $dashboardStats['dean_approved'] ?? 0 }}</div>
-                                <div class="text-sm text-green-100">Dean Approved</div>
+                                <div class="text-2xl font-bold">{{ $dashboardStats['completed'] ?? 0 }}</div>
+                                <div class="text-sm text-green-100">Completed</div>
                             </div>
                         </div>
                     </div>
@@ -85,22 +85,6 @@
                     </div>
                 </div>
 
-                <div class="bg-gradient-to-br from-blue-50 to-blue-50 border border-blue-200 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-3 shadow-lg">
-                            <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-yellow-600 truncate">Staff 1 Approved</dt>
-                                <dd class="mt-1 text-3xl font-bold text-yellow-900">{{ $dashboardStats['staff1_approved'] ?? 0 }}</dd>
-                            </dl>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
                     <div class="flex items-center">
                         <div class="flex-shrink-0 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-xl p-3 shadow-lg">
@@ -110,29 +94,46 @@
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-purple-600 truncate">Returned</dt>
-                                <dd class="mt-1 text-3xl font-bold text-purple-900">{{ $dashboardStats['returned'] ?? 0 }}</dd>
+                                <dt class="text-sm font-medium text-yellow-700 truncate">Needs Revision</dt>
+                                <dd class="mt-1 text-3xl font-bold text-yellow-900">{{ $dashboardStats['returned'] ?? 0 }}</dd>
                             </dl>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
+                <div class="bg-gradient-to-br from-teal-50 to-emerald-50 border border-teal-200 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
                     <div class="flex items-center">
-                        <div class="flex-shrink-0 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-3 shadow-lg">
+                        <div class="flex-shrink-0 bg-gradient-to-r from-teal-500 to-emerald-600 rounded-xl p-3 shadow-lg">
                             <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-green-600 truncate">Dean Approved</dt>
-                                <dd class="mt-1 text-3xl font-bold text-green-900">{{ $dashboardStats['dean_approved'] ?? 0 }}</dd>
+                                <dt class="text-sm font-medium text-teal-600 truncate">Completed</dt>
+                                <dd class="mt-1 text-3xl font-bold text-teal-900">{{ $dashboardStats['completed'] ?? 0 }}</dd>
                             </dl>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {{-- Returned Requests Banner --}}
+            @if(($dashboardStats['returned'] ?? 0) > 0)
+                <div class="bg-yellow-50 border border-yellow-300 rounded-2xl p-6 shadow-md">
+                    <div class="flex items-center">
+                        <div class="bg-yellow-100 rounded-full p-3 mr-4">
+                            <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-yellow-900">Action Required: {{ $dashboardStats['returned'] }} request(s) returned for revision</h3>
+                            <p class="text-yellow-700 text-sm mt-1">Please review the return reason and resubmit. Find them in the table below or filter by "Returned" status.</p>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <x-dashboard-filters 
                 role="admission" 
@@ -256,8 +257,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deadline</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -275,13 +275,8 @@
                                             {{ $request->statusLabel() }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $request->priorityBadgeClass() }}">
-                                            {{ $request->priorityLabel() }}
-                                        </span>
-                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                        {{ $request->deadline?->format('M j, Y') ?? 'No deadline' }}
+                                        {{ $request->created_at->format('M j, Y') }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <a href="{{ route('requests.show', $request->id) }}" 
@@ -292,7 +287,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-6 py-12 text-center">
+                                    <td colspan="4" class="px-6 py-12 text-center">
                                         <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                                         </svg>

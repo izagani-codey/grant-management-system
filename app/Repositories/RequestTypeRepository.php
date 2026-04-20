@@ -128,7 +128,7 @@ class RequestTypeRepository extends BaseRepository
                 COUNT(requests.id) as request_count,
                 SUM(CASE WHEN requests.status_id = ? THEN 1 ELSE 0 END) as approved_count,
                 SUM(CASE WHEN requests.status_id = ? THEN 1 ELSE 0 END) as pending_count
-            ', [\App\Enums\RequestStatus::DEAN_APPROVED->value, \App\Enums\RequestStatus::SUBMITTED->value])
+            ', [\App\Enums\RequestStatus::COMPLETED->value, \App\Enums\RequestStatus::SUBMITTED->value])
             ->groupBy('request_types.id', 'request_types.name', 'request_types.description', 'request_types.is_active')
             ->orderBy('request_count', 'desc')
             ->get();

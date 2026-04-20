@@ -104,10 +104,7 @@ abstract class BaseController extends LaravelController
             $query->where(function ($q) {
                 $q->where('deadline', '>=', now())
                   ->where('deadline', '<=', now()->addDays(3))
-                  ->whereNotIn('status_id', [
-                      \App\Enums\RequestStatus::DEAN_APPROVED->value,
-                      \App\Enums\RequestStatus::REJECTED->value
-                  ]);
+                  ->where('status_id', '!=', \App\Enums\RequestStatus::STAFF2_APPROVED->value);
             });
         }
     }

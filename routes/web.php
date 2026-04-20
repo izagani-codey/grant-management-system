@@ -11,8 +11,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Staff2AdminController;
 use App\Http\Controllers\FormTemplateController;
 use App\Http\Controllers\RequestTypeController;
-use App\Http\Controllers\DeanController;
-use App\Http\Controllers\OverrideController;
+use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Staff2WorkflowController;
 
 // ─── Welcome ─────────────────────────────────────────────────────────────────
@@ -64,14 +63,20 @@ Route::middleware('auth')->group(function () {
     Route::get('/requests/{id}/pdf/inline', [RequestController::class, 'viewGeneratedPdf'])
     ->name('requests.pdf.inline');
 
-    // ── Staff 1 + 2 + Dean ──────────────────────────────────────────────────────────
-    Route::middleware('role:staff1,staff2,dean')->group(function () {
+    // ── Staff 1 + 2 ──────────────────────────────────────────────────────────────
+    Route::middleware('role:staff1,staff2')->group(function () {
         Route::patch('/requests/{id}/status', [RequestController::class, 'updateStatus'])->name('requests.updateStatus');
-        Route::patch('/requests/{id}/priority', [RequestController::class, 'updatePriority'])->name('requests.updatePriority');
         Route::post('/requests/{id}/comments', [RequestController::class, 'addComment'])->name('requests.comment');
     });
 
-    Route::middleware('role:staff1,staff2,dean,admin')->group(function () {
+    // ── Staff 2 document uploads (per-request) ───────────────────────────────
+    Route::middleware('role:staff2,admin')->group(function () {
+        Route::post('/requests/{requestId}/documents', [DocumentController::class, 'store'])->name('documents.store');
+        Route::delete('/documents/{id}', [DocumentController::class, 'destroy'])->name('documents.destroy');
+    });
+    Route::get('/documents/{id}/download', [DocumentController::class, 'download'])->name('documents.download');
+
+    Route::middleware('role:staff1,staff2,admin')->group(function () {
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
         Route::get('/form-templates', [FormTemplateController::class, 'index'])->name('form-templates.index');
     });
@@ -98,21 +103,6 @@ Route::middleware('auth')->group(function () {
     Route::patch('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.readAll');
     Route::delete('/notifications/cleanup', [NotificationController::class, 'cleanup'])->name('notifications.cleanup');
     Route::get('/notifications/{id}/open', [NotificationController::class, 'open'])->name('notifications.open');
-
-    // ── Dean Routes ──────────────────────────────────────────────────────────────────
-    Route::middleware('role:dean')->group(function () {
-        Route::get('/dean/requests/{id}', [DeanController::class, 'show'])->name('dean.requests.show');
-        Route::post('/dean/requests/{id}/approve', [DeanController::class, 'approve'])->name('dean.requests.approve');
-        Route::post('/dean/requests/{id}/reject', [DeanController::class, 'reject'])->name('dean.requests.reject');
-        Route::post('/dean/requests/{id}/return', [DeanController::class, 'returnRequest'])->name('dean.requests.return');
-    });
-
-    // ── Dean Routes (feature-flagged) ─────────────────────────────────────────
-    if (config('system.features.dean_interface', false)) {
-        Route::middleware('role:dean')->group(function () {
-            Route::get('/dean/dashboard', [DeanController::class, 'dashboard'])->name('dean.dashboard');
-        });
-    }
 
     // ── Admin Panel (Admin role only)
     Route::middleware('role:admin')->group(function () {

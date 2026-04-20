@@ -48,35 +48,37 @@ class DashboardFilters extends Component
     {
         if ($this->role === 'admission') {
             return [
-                RequestStatus::SUBMITTED->value => 'Pending Verification',
-                RequestStatus::STAFF1_APPROVED->value => 'With Staff 2',
-                RequestStatus::STAFF2_APPROVED->value => 'With Dean',
-                RequestStatus::RETURNED->value => 'Returned to Me',
-                RequestStatus::DEAN_APPROVED->value => 'Approved',
-                RequestStatus::REJECTED->value => 'Rejected',
+                RequestStatus::SUBMITTED->value      => 'Submitted',
+                RequestStatus::STAFF1_REVIEWED->value => 'With Staff 2',
+                RequestStatus::STAFF2_APPROVED->value => 'Staff 2 Approved',
+                RequestStatus::COMPLETED->value       => 'Completed',
+                RequestStatus::RETURNED->value        => 'Returned for Revision',
+                RequestStatus::DECLINED->value        => 'Declined',
             ];
         }
-        
+
         if ($this->role === 'staff1') {
             return [
-                RequestStatus::SUBMITTED->value => 'Pending Verification',
-                RequestStatus::STAFF1_APPROVED->value => 'With Staff 2',
-                RequestStatus::RETURNED->value => 'Returned to Me',
-                RequestStatus::DEAN_APPROVED->value => 'Approved',
-                RequestStatus::REJECTED->value => 'Rejected',
+                RequestStatus::SUBMITTED->value       => 'Pending Verification',
+                RequestStatus::STAFF1_REVIEWED->value => 'Sent to Staff 2',
+                RequestStatus::STAFF2_APPROVED->value => 'Ready for Processing',
+                RequestStatus::COMPLETED->value       => 'Completed',
+                RequestStatus::RETURNED->value        => 'Returned',
+                RequestStatus::DECLINED->value        => 'Declined',
             ];
         }
-        
+
         if ($this->role === 'staff2') {
             return [
-                RequestStatus::STAFF1_APPROVED->value => 'Awaiting Review',
-                RequestStatus::DEAN_APPROVED->value => 'Approved',
-                RequestStatus::REJECTED->value => 'Rejected',
-                RequestStatus::SUBMITTED->value => 'Pending Verification',
-                RequestStatus::RETURNED->value => 'Returned to Staff 1',
+                RequestStatus::SUBMITTED->value       => 'Pending (Override)',
+                RequestStatus::STAFF1_REVIEWED->value => 'Awaiting Review',
+                RequestStatus::STAFF2_APPROVED->value => 'Approved',
+                RequestStatus::COMPLETED->value       => 'Completed',
+                RequestStatus::RETURNED->value        => 'Returned',
+                RequestStatus::DECLINED->value        => 'Declined',
             ];
         }
-        
+
         return [];
     }
 

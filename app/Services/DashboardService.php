@@ -141,7 +141,7 @@ class DashboardService
      */
     private function getApprovedToday(User $user): int
     {
-        $query = \App\Models\Request::trulyApproved()
+        $query = \App\Models\Request::where('status_id', \App\Enums\RequestStatus::COMPLETED->value)
             ->whereDate('updated_at', today());
 
         if ($user->role === 'admission') {
@@ -203,61 +203,6 @@ class DashboardService
     }
 
     /**
-     * Get deadline alerts for dashboard.
-     */
-    public function getDeadlineAlerts(User $user): array
-    {
-        $urgentRequests = $this->requestRepository->getUrgentRequests($user, 5);
-        
-        $alerts = [];
-        
-        foreach ($urgentRequests as $request) {
-            $daysUntilDeadline = $request->deadline->diffInDays(now());
-            
-            $alerts[] = [
-                'request' => $request,
-                'days_left' => $daysUntilDeadline,
-                'urgency_level' => $this->getUrgencyLevel($daysUntilDeadline),
-                'message' => $this->getDeadlineMessage($request, $daysUntilDeadline),
-            ];
-        }
-
-        return $alerts;
-    }
-
-    /**
-     * Get urgency level for deadline.
-     */
-    private function getUrgencyLevel(int $daysUntilDeadline): string
-    {
-        if ($daysUntilDeadline < 0) return 'overdue';
-        if ($daysUntilDeadline === 0) return 'due_today';
-        if ($daysUntilDeadline === 1) return 'due_tomorrow';
-        return 'approaching';
-    }
-
-    /**
-     * Get deadline message.
-     */
-    private function getDeadlineMessage($request, int $daysUntilDeadline): string
-    {
-        if ($daysUntilDeadline < 0) {
-            $days = abs($daysUntilDeadline);
-            return "Request {$request->ref_number} is {$days} day" . ($days === 1 ? '' : 's') . " overdue";
-        }
-        
-        if ($daysUntilDeadline === 0) {
-            return "Request {$request->ref_number} is due today";
-        }
-        
-        if ($daysUntilDeadline === 1) {
-            return "Request {$request->ref_number} is due tomorrow";
-        }
-        
-        return "Request {$request->ref_number} is due in {$daysUntilDeadline} days";
-    }
-
-    /**
      * Get performance comparison data.
      */
     public function getPerformanceComparison(User $user): array
@@ -293,8 +238,8 @@ class DashboardService
         }
 
         $total = $query->count();
-        $approved = (clone $query)->trulyApproved()->count();
-        $declined = $query->where('status_id', \App\Enums\RequestStatus::REJECTED->value)->count();
+        $approved = (clone $query)->where('status_id', \App\Enums\RequestStatus::COMPLETED->value)->count();
+        $declined = (clone $query)->where('status_id', \App\Enums\RequestStatus::DECLINED->value)->count();
 
         return [
             'total' => $total,

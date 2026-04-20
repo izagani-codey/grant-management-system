@@ -28,52 +28,63 @@ class RequestTimeline extends Component
     {
         return [
             [
-                'id' => 'submitted',
-                'status' => RequestStatus::SUBMITTED,
-                'label' => 'Submitted',
+                'id'          => 'submitted',
+                'status'      => RequestStatus::SUBMITTED,
+                'label'       => 'Submitted',
                 'description' => 'Request submitted by applicant',
-                'icon' => 'M9 12h6m-6 0 01-2.5 2.5 0 01H4a2 2 0 012.5 0 01v6a2 2 0 012.5 0 01z',
+                'icon'        => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
             ],
             [
-                'id' => 'verified',
-                'status' => RequestStatus::STAFF1_APPROVED,
-                'label' => 'Staff 1 Verification',
-                'description' => 'Request verified by Staff 1',
-                'icon' => 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+                'id'          => 'staff1_reviewed',
+                'status'      => RequestStatus::STAFF1_REVIEWED,
+                'label'       => 'Staff 1 Checked',
+                'description' => 'Validated and checked by Staff 1',
+                'icon'        => 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
             ],
             [
-                'id' => 'recommended',
-                'status' => RequestStatus::STAFF2_APPROVED,
-                'label' => 'Staff 2 Recommendation',
-                'description' => 'Request reviewed and recommended by Staff 2',
-                'icon' => 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+                'id'          => 'staff2_approved',
+                'status'      => RequestStatus::STAFF2_APPROVED,
+                'label'       => 'Staff 2 Approved',
+                'description' => 'Final approval by Staff 2 with signature',
+                'icon'        => 'M5 13l4 4L19 7',
             ],
             [
-                'id' => 'completed',
-                'status' => RequestStatus::DEAN_APPROVED,
-                'label' => 'Completed',
-                'description' => 'Request approved and completed',
-                'icon' => 'M5 13l4 4L19 7',
+                'id'          => 'completed',
+                'status'      => RequestStatus::COMPLETED,
+                'label'       => 'Completed',
+                'description' => 'Manually processed and completed by Staff 1',
+                'icon'        => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2',
             ],
         ];
     }
 
+    public function getSpecialStatus(): ?string
+    {
+        $status = $this->request->getStatus();
+        if ($status === RequestStatus::RETURNED) return 'returned';
+        if ($status === RequestStatus::DECLINED) return 'declined';
+        return null;
+    }
+
     private function getCurrentStep(): int
     {
-        if ($this->request->isTrulyComplete()) {
-            return 3;
-        }
-
-        $currentStatus = $this->request->getStatus();
-        
-        return match($currentStatus) {
-            RequestStatus::SUBMITTED => 0,
-            RequestStatus::STAFF1_APPROVED => 1,
-            RequestStatus::RETURNED => 1, // Back to verification
+        return match($this->request->getStatus()) {
+            RequestStatus::SUBMITTED       => 0,
+            RequestStatus::STAFF1_REVIEWED => 1,
             RequestStatus::STAFF2_APPROVED => 2,
-            RequestStatus::REJECTED => 2, // Rejected at any step
-            default => 0,
+            RequestStatus::COMPLETED       => 3,
+            RequestStatus::RETURNED,
+            RequestStatus::DECLINED        => $this->getReturnedStep(),
+            default                        => 0,
         };
+    }
+
+    private function getReturnedStep(): int
+    {
+        $logs = $this->request->auditLogs ?? collect();
+        $lastReviewed = $logs->where('new_status', RequestStatus::STAFF1_REVIEWED->value)->last();
+        if ($lastReviewed) return 1;
+        return 0;
     }
 
     private function getStepStatus(int $stepIndex): string

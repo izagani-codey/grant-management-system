@@ -18,13 +18,6 @@ $selectedTypeId = old('request_type_id', $grantRequest?->request_type_id);
             </select>
         </div>
         
-        <div>
-            <label class="block text-sm font-bold text-gray-700">Priority</label>
-            <div class="flex items-center mt-2">
-                <input type="checkbox" name="priority" value="1" class="rounded border-gray-300" @checked(old('priority', $grantRequest?->is_priority))>
-                <label class="ml-2 text-sm text-gray-700">Mark as High Priority</label>
-            </div>
-        </div>
     </div>
 
     <!-- Template Preview Section -->
@@ -97,14 +90,6 @@ $selectedTypeId = old('request_type_id', $grantRequest?->request_type_id);
         <div id="template-error" class="hidden mt-4 rounded-md border border-yellow-200 bg-yellow-50 p-4">
             <h4 class="text-sm font-semibold text-yellow-800">No Template Available</h4>
             <p class="text-sm text-yellow-700 mt-1">This request type doesn't have a default template assigned. You can still submit your request, but no template preview is available.</p>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-            <label class="block text-sm font-bold text-gray-700">Deadline</label>
-            <input type="date" name="deadline" value="{{ old('deadline', $grantRequest?->deadline?->format('Y-m-d')) }}" class="w-full rounded border-gray-300 mt-1">
-            <p class="text-xs text-gray-500 mt-1">Optional deadline for this request</p>
         </div>
     </div>
 

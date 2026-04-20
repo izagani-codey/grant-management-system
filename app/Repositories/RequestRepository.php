@@ -76,14 +76,13 @@ class RequestRepository extends BaseRepository
             ->pluck('total', 'status_id');
 
         return [
-            'total' => (clone $base)->count(),
-            'submitted' => (int) ($counts[RequestStatus::SUBMITTED->value] ?? 0),
-            'staff1_approved' => (int) ($counts[RequestStatus::STAFF1_APPROVED->value] ?? 0),
-            'staff2_approved' => (clone $base)->pendingDeanReview()->count(),
-            'dean_approved' => (clone $base)->trulyApproved()->count(),
-            'returned' => (int) ($counts[RequestStatus::RETURNED->value] ?? 0),
-            'rejected' => (int) ($counts[RequestStatus::REJECTED->value] ?? 0),
-            'high_priority' => (clone $base)->where('is_priority', true)->count(),
+            'total'          => (clone $base)->count(),
+            'submitted'      => (int) ($counts[RequestStatus::SUBMITTED->value] ?? 0),
+            'staff1_reviewed' => (int) ($counts[RequestStatus::STAFF1_REVIEWED->value] ?? 0),
+            'staff2_approved' => (int) ($counts[RequestStatus::STAFF2_APPROVED->value] ?? 0),
+            'completed'      => (int) ($counts[RequestStatus::COMPLETED->value] ?? 0),
+            'returned'       => (int) ($counts[RequestStatus::RETURNED->value] ?? 0),
+            'declined'       => (int) ($counts[RequestStatus::DECLINED->value] ?? 0),
         ];
     }
 
@@ -92,18 +91,7 @@ class RequestRepository extends BaseRepository
      */
     public function getUrgentRequests(User $user, int $limit = 10): Collection
     {
-        if (!in_array($user->role, ['staff1', 'staff2'])) {
-            return collect();
-        }
-
-        return $this->newQuery()
-            ->where('deadline', '>=', now())
-            ->where('deadline', '<=', now()->addDays(3))
-            ->notTrulyComplete()
-            ->with(['requestType', 'user'])
-            ->orderBy('deadline')
-            ->limit($limit)
-            ->get();
+        return collect();
     }
 
     /**
@@ -143,7 +131,10 @@ class RequestRepository extends BaseRepository
     {
         return $this->newQuery()
             ->with(['requestType', 'user'])
-            ->notTrulyComplete()
+            ->whereNotIn('status_id', [
+                RequestStatus::COMPLETED->value,
+                RequestStatus::DECLINED->value,
+            ])
             ->latest()
             ->paginate(15);
     }
@@ -191,15 +182,6 @@ class RequestRepository extends BaseRepository
      */
     public function getApproachingDeadline(int $days = 3, User $user): Collection
     {
-        $query = $this->newQuery()
-            ->where('deadline', '<=', now()->addDays($days))
-            ->where('deadline', '>=', now())
-            ->notTrulyComplete();
-
-        if ($user->role === 'admission') {
-            $query->where('user_id', $user->id);
-        }
-
-        return $query->with(['requestType', 'user'])->get();
+        return collect();
     }
 }

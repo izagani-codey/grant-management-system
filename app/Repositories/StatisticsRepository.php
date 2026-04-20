@@ -42,12 +42,11 @@ class StatisticsRepository
         return [
             'total' => (clone $base)->count(),
             'submitted' => (int) ($counts[RequestStatus::SUBMITTED->value] ?? 0),
-            'staff1_approved' => (int) ($counts[RequestStatus::STAFF1_APPROVED->value] ?? 0),
-            'staff2_approved' => (clone $base)->pendingDeanReview()->count(),
-            'dean_approved' => (clone $base)->trulyApproved()->count(),
+            'staff1_reviewed' => (int) ($counts[RequestStatus::STAFF1_REVIEWED->value] ?? 0),
+            'staff2_approved' => (int) ($counts[RequestStatus::STAFF2_APPROVED->value] ?? 0),
+            'completed' => (int) ($counts[RequestStatus::COMPLETED->value] ?? 0),
             'returned' => (int) ($counts[RequestStatus::RETURNED->value] ?? 0),
-            'rejected' => (int) ($counts[RequestStatus::REJECTED->value] ?? 0),
-            'high_priority' => (clone $base)->where('is_priority', true)->count(),
+            'declined' => (int) ($counts[RequestStatus::DECLINED->value] ?? 0),
         ];
     }
 
@@ -61,12 +60,9 @@ class StatisticsRepository
                 'total_requests' => GrantRequest::count(),
                 'total_users' => User::count(),
                 'submitted' => GrantRequest::where('status_id', RequestStatus::SUBMITTED->value)->count(),
-                'staff1_approved' => GrantRequest::where('status_id', RequestStatus::STAFF1_APPROVED->value)->count(),
-                'approved_today' => GrantRequest::trulyApproved()
+                'staff1_reviewed' => GrantRequest::where('status_id', RequestStatus::STAFF1_REVIEWED->value)->count(),
+                'completed_today' => GrantRequest::where('status_id', RequestStatus::COMPLETED->value)
                     ->whereDate('updated_at', today())->count(),
-                'urgent_requests' => GrantRequest::where('deadline', '<=', now()->addDays(3))
-                    ->notTrulyComplete()
-                    ->count(),
             ];
         });
     }
@@ -107,9 +103,9 @@ class StatisticsRepository
             return GrantRequest::selectRaw('
                     DATE_FORMAT(created_at, "%Y-%m") as month,
                     COUNT(*) as total,
-                    SUM(CASE WHEN status_id = ? OR (status_id = ? AND snapshot_requires_dean_signature = 0) THEN 1 ELSE 0 END) as approved,
+                    SUM(CASE WHEN status_id = ? THEN 1 ELSE 0 END) as approved,
                     SUM(CASE WHEN status_id = ? THEN 1 ELSE 0 END) as rejected
-                ', [RequestStatus::DEAN_APPROVED->value, RequestStatus::STAFF2_APPROVED->value, RequestStatus::REJECTED->value])
+                ', [RequestStatus::COMPLETED->value, RequestStatus::DECLINED->value])
                 ->where('created_at', '>=', now()->subMonths($months))
                 ->groupBy('month')
                 ->orderBy('month')
@@ -123,7 +119,7 @@ class StatisticsRepository
     public function getPerformanceMetrics(): array
     {
         return Cache::remember('performance_metrics', 1800, function () {
-            $avgProcessingTime = GrantRequest::trulyApproved()
+            $avgProcessingTime = GrantRequest::where('status_id', RequestStatus::COMPLETED->value)
                 ->selectRaw('AVG(TIMESTAMPDIFF(DAY, created_at, updated_at)) as avg_days')
                 ->value('avg_days') ?? 0;
 
@@ -134,9 +130,6 @@ class StatisticsRepository
                 'avg_processing_days' => round($avgProcessingTime, 1),
                 'requests_per_day' => round($requestsPerDay, 1),
                 'approval_rate' => $this->calculateApprovalRate(),
-                'overdue_requests' => GrantRequest::where('deadline', '<', now())
-                    ->notTrulyComplete()
-                    ->count(),
             ];
         });
     }
@@ -146,14 +139,15 @@ class StatisticsRepository
      */
     private function calculateApprovalRate(): float
     {
-        $total = GrantRequest::where('status_id', RequestStatus::REJECTED->value)->count()
-            + GrantRequest::trulyApproved()->count();
+        $completed = GrantRequest::where('status_id', RequestStatus::COMPLETED->value)->count();
+        $declined = GrantRequest::where('status_id', RequestStatus::DECLINED->value)->count();
+        $total = $completed + $declined;
 
         if ($total === 0) {
             return 0;
         }
 
-        $approved = GrantRequest::trulyApproved()->count();
+        $approved = $completed;
 
         return round(($approved / $total) * 100, 1);
     }
@@ -175,7 +169,7 @@ class StatisticsRepository
             Cache::forget($key);
         }
 
-        $roles = ['admission', 'staff1', 'staff2', 'dean'];
+        $roles = ['admission', 'staff1', 'staff2', 'admin'];
         User::query()->select('id', 'role')->chunkById(200, function ($users) use ($roles) {
             foreach ($users as $user) {
                 $role = in_array($user->role, $roles, true) ? $user->role : null;

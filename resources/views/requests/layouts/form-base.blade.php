@@ -92,11 +92,26 @@ $isEdit = $grantRequest !== null;
                         </div>
                     </div>
 
-                    {{-- SECTION 3: Budget Breakdown (Shared - VOT Items) --}}
-                    @include('requests.partials.form-sections.vot-items', [
-                        'votCodes' => $votCodes,
-                        'grantRequest' => $grantRequest
-                    ])
+                    {{-- SECTION 3: Budget Breakdown (VOT Items — only for types that require it) --}}
+                    @php
+                        $selectedTypeIdForVot = old('request_type_id', $grantRequest?->request_type_id);
+                        $selectedTypeForVot = $requestTypes->firstWhere('id', $selectedTypeIdForVot);
+                    @endphp
+                    @if(!$selectedTypeIdForVot || ($selectedTypeForVot && $selectedTypeForVot->requires_vot))
+                        <div id="vot-section" class="{{ $selectedTypeForVot && !$selectedTypeForVot->requires_vot ? 'hidden' : '' }}">
+                            @include('requests.partials.form-sections.vot-items', [
+                                'votCodes' => $votCodes,
+                                'grantRequest' => $grantRequest
+                            ])
+                        </div>
+                    @else
+                        <div id="vot-section" class="hidden">
+                            @include('requests.partials.form-sections.vot-items', [
+                                'votCodes' => $votCodes,
+                                'grantRequest' => $grantRequest
+                            ])
+                        </div>
+                    @endif
 
                     {{-- SECTION 4: Digital Signature (Shared) --}}
                     @include('requests.partials.form-sections.applicant-signature', [

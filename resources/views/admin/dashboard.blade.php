@@ -124,16 +124,20 @@
                             <span class="font-semibold text-blue-600">{{ $submitted }}</span>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Staff 1 Approved</span>
+                            <span class="text-gray-600">Staff 1 Checked</span>
                             <span class="font-semibold text-purple-600">{{ $staff1Approved }}</span>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Dean Approved</span>
-                            <span class="font-semibold text-green-600">{{ $deanApproved }}</span>
+                            <span class="text-gray-600">Staff 2 Approved</span>
+                            <span class="font-semibold text-green-600">{{ $staff2Approved }}</span>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Rejected</span>
-                            <span class="font-semibold text-red-600">{{ $rejected }}</span>
+                            <span class="text-gray-600">Completed</span>
+                            <span class="font-semibold text-teal-600">{{ $completed ?? 0 }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Declined</span>
+                            <span class="font-semibold text-red-600">{{ $declined ?? 0 }}</span>
                         </div>
                     </div>
                 </div>
@@ -156,7 +160,7 @@
                         </div>
                         <div class="flex justify-between items-center">
                             <span class="text-gray-600">Admin Users</span>
-                            <span class="font-semibold text-gray-600">{{ $totalUsers - $admissionUsers - $staff1Users - $staff2Users - $deanUsers }}</span>
+                            <span class="font-semibold text-gray-600">{{ $totalUsers - $admissionUsers - $staff1Users - $staff2Users }}</span>
                         </div>
                     </div>
                 </div>
@@ -166,7 +170,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <!-- Recent High Priority Requests -->
                 <div class="bg-white rounded-xl shadow-lg p-6">
-                    <h3 class="text-lg font-bold text-gray-900 mb-4">Recent High Priority Requests</h3>
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Recent Requests</h3>
                     @if($recentHighPriority->count() > 0)
                         <div class="space-y-3">
                             @foreach($recentHighPriority as $request)
@@ -180,7 +184,7 @@
                             @endforeach
                         </div>
                     @else
-                        <p class="text-gray-500">No high priority requests</p>
+                        <p class="text-gray-500">No requests yet</p>
                     @endif
                 </div>
 

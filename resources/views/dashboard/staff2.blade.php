@@ -32,38 +32,6 @@
                 </div>
             @endif
 
-            {{-- Urgent Deadlines Alert --}}
-            @if($urgentRequests->count() > 0)
-                <div class="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-2xl p-6 shadow-lg">
-                    <div class="flex items-start">
-                        <div class="bg-red-100 rounded-full p-3 mr-4">
-                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </div>
-                        <div class="flex-1">
-                            <h3 class="text-lg font-bold text-red-900 mb-2">⏰ Urgent: Deadlines within 3 days</h3>
-                            <p class="text-red-700 text-sm mb-4">These requests require immediate attention:</p>
-                            <div class="space-y-2">
-                                @foreach($urgentRequests as $urgent)
-                                    <a href="{{ route('requests.show', $urgent->id) }}"
-                                       class="flex items-center justify-between p-3 bg-white rounded-lg border border-red-200 hover:bg-red-50 transition-colors">
-                                        <div class="flex items-center space-x-3">
-                                            <span class="font-semibold text-gray-900">{{ $urgent->ref_number }}</span>
-                                            <span class="text-sm text-gray-600">{{ $urgent->requestType->name }}</span>
-                                            <span class="text-sm text-gray-500">from {{ $urgent->user->name }}</span>
-                                        </div>
-                                        <span class="text-sm font-bold text-red-600 bg-red-100 px-2 py-1 rounded">
-                                            Due {{ $urgent->deadline?->format('M j') }}
-                                        </span>
-                                    </a>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @endif
-
             {{-- Override Mode Banner --}}
             @if(auth()->user()->override_enabled)
                 <div class="bg-gradient-to-r from-orange-500 to-red-500 border border-orange-200 rounded-2xl p-6 shadow-lg">
@@ -115,24 +83,24 @@
                         <p class="text-green-100 text-lg">{{ auth()->user()->email }}</p>
                         <div class="mt-4 flex flex-wrap gap-4">
                             <div class="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                                <div class="text-2xl font-bold">{{ $dashboardStats['staff1_approved'] }}</div>
+                                <div class="text-2xl font-bold">{{ $dashboardStats['staff1_reviewed'] ?? 0 }}</div>
                                 <div class="text-sm text-green-100">Awaiting Review</div>
                             </div>
                             <div class="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                                <div class="text-2xl font-bold">{{ $dashboardStats['dean_approved'] }}</div>
+                                <div class="text-2xl font-bold">{{ $dashboardStats['staff2_approved'] ?? 0 }}</div>
                                 <div class="text-sm text-green-100">Approved</div>
                             </div>
                             <div class="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                                <div class="text-2xl font-bold">{{ $dashboardStats['rejected'] }}</div>
-                                <div class="text-sm text-green-100">Rejected</div>
+                                <div class="text-2xl font-bold">{{ $dashboardStats['declined'] ?? 0 }}</div>
+                                <div class="text-sm text-green-100">Declined</div>
                             </div>
                         </div>
                     </div>
                     <div>
                         <div class="text-sm text-green-100 mb-2">Queue Status</div>
-                        @if($dashboardStats['staff1_approved'] > 0)
+                        @if(($dashboardStats['staff1_reviewed'] ?? 0) > 0)
                             <div class="bg-yellow-400 text-yellow-900 px-4 py-2 rounded-lg font-bold">
-                                {{ $dashboardStats['staff1_approved'] }} pending
+                                {{ $dashboardStats['staff1_reviewed'] }} pending
                             </div>
                         @else
                             <div class="bg-green-400 text-green-900 px-4 py-2 rounded-lg font-bold">
@@ -149,7 +117,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Awaiting Review</p>
-                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ $dashboardStats['staff1_approved'] }}</p>
+                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ $dashboardStats['staff1_reviewed'] ?? 0 }}</p>
                         </div>
                         <div class="bg-blue-100 rounded-full p-3">
                             <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -163,7 +131,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Approved</p>
-                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ $dashboardStats['dean_approved'] }}</p>
+                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ $dashboardStats['staff2_approved'] ?? 0 }}</p>
                         </div>
                         <div class="bg-green-100 rounded-full p-3">
                             <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -177,7 +145,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Declined</p>
-                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ $dashboardStats['rejected'] }}</p>
+                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ $dashboardStats['declined'] ?? 0 }}</p>
                         </div>
                         <div class="bg-red-100 rounded-full p-3">
                             <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,7 +159,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Total Processed</p>
-                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ ($dashboardStats['dean_approved'] ?? 0) + ($dashboardStats['rejected'] ?? 0) }}</p>
+                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ ($dashboardStats['staff2_approved'] ?? 0) + ($dashboardStats['declined'] ?? 0) }}</p>
                         </div>
                         <div class="bg-purple-100 rounded-full p-3">
                             <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,62 +169,6 @@
                     </div>
                 </div>
             </div>
-
-            {{-- Deadline Reminder Widget --}}
-            @if($urgentRequests->count() > 0)
-                <div class="bg-gradient-to-r from-red-500 to-orange-500 rounded-2xl shadow-lg p-6 text-white">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center">
-                            <svg class="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            <h3 class="text-xl font-bold">⚠️ Urgent Deadlines</h3>
-                        </div>
-                        <span class="bg-white/20 backdrop-blur-sm rounded-full px-3 py-1 text-sm font-bold">
-                            {{ $urgentRequests->count() }} requests
-                        </span>
-                    </div>
-                    
-                    <div class="space-y-3">
-                        @foreach($urgentRequests->take(3) as $urgent)
-                            @php
-                                $daysLeft = $urgent->daysUntilDeadline();
-                                $urgencyColor = $daysLeft <= 1 ? 'bg-white/30' : 'bg-white/20';
-                            @endphp
-                            <div class="{{ $urgencyColor }} backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="font-semibold">{{ $urgent->ref_number }}</p>
-                                        <p class="text-sm text-red-100">{{ $urgent->user->name }}</p>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="text-sm font-bold">
-                                            @if($daysLeft < 0)
-                                                OVERDUE
-                                            @elseif($daysLeft === 0)
-                                                DUE TODAY
-                                            @elseif($daysLeft === 1)
-                                                TOMORROW
-                                            @else
-                                                {{ $daysLeft }} days
-                                            @endif
-                                        </p>
-                                        <p class="text-xs text-red-100">{{ $urgent->deadline->format('M j') }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                    
-                    @if($urgentRequests->count() > 3)
-                        <div class="mt-3 text-center">
-                            <a href="{{ route('dashboard') }}?urgent=1" class="text-white/90 hover:text-white text-sm font-medium underline">
-                                View all {{ $urgentRequests->count() }} urgent requests →
-                            </a>
-                        </div>
-                    @endif
-                </div>
-            @endif
 
             <x-dashboard-filters 
                 role="staff2" 
@@ -304,9 +216,10 @@
                                 <select name="status" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-green-500 focus:border-green-500">
                                     <option value="">All Statuses</option>
                                     <option value="2" {{ request('status') == '2' ? 'selected' : '' }}>Submitted</option>
-                                    <option value="3" {{ request('status') == '3' ? 'selected' : '' }}>Staff 1 Approved</option>
-                                    <option value="5" {{ request('status') == '5' ? 'selected' : '' }}>Dean Approved</option>
-                                    <option value="7" {{ request('status') == '7' ? 'selected' : '' }}>Rejected</option>
+                                    <option value="3" {{ request('status') == '3' ? 'selected' : '' }}>Checked by Staff 1</option>
+                                    <option value="4" {{ request('status') == '4' ? 'selected' : '' }}>Approved by Staff 2</option>
+                                    <option value="5" {{ request('status') == '5' ? 'selected' : '' }}>Completed</option>
+                                    <option value="7" {{ request('status') == '7' ? 'selected' : '' }}>Declined</option>
                                 </select>
                                 <select name="type" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-green-500 focus:border-green-500">
                                     <option value="">All Types</option>
@@ -365,7 +278,7 @@
                     <h3 class="text-xl font-bold text-gray-900">Recommendation Queue</h3>
                     <div class="flex items-center space-x-2 text-sm text-gray-600">
                         <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
-                        <span>{{ $dashboardStats['staff1_approved'] }} pending</span>
+                        <span>{{ $dashboardStats['staff1_reviewed'] ?? 0 }} pending</span>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -376,9 +289,8 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applicant</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verified By</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deadline</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -398,41 +310,29 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                         RM {{ number_format($request->total_amount ?? 0, 2) }}
                                     </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $request->statusClass() }}">
+                                            {{ $request->statusLabel() }}
+                                        </span>
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                         @if($request->verifiedBy)
                                             <div class="text-sm font-medium text-gray-900">{{ $request->verifiedBy->name }}</div>
                                             <div class="text-xs text-gray-500">Staff 1</div>
                                         @else
-                                            <span class="text-gray-400">Not verified</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $request->priorityBadgeClass() }}">
-                                            {{ $request->priorityLabel() }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                        @if($request->deadline)
-                                            <div class="flex items-center">
-                                                {{ $request->deadline->format('M j, Y') }}
-                                                @if($request->isUrgent())
-                                                    <span class="ml-2 text-xs text-red-600 font-bold">⚠️</span>
-                                                @endif
-                                            </div>
-                                        @else
-                                            <span class="text-gray-400">No deadline</span>
+                                            <span class="text-gray-400">—</span>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <a href="{{ route('requests.show', $request->id) }}" 
+                                        <a href="{{ route('requests.show', $request->id) }}"
                                            class="text-green-600 hover:text-green-900 transition-colors">
-                                            {{ $request->status_id === \App\Enums\RequestStatus::STAFF1_APPROVED->value ? 'Review Request' : 'View Details' }}
+                                            {{ $request->status_id === \App\Enums\RequestStatus::STAFF1_REVIEWED->value ? 'Review Request' : 'View Details' }}
                                         </a>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="px-6 py-12 text-center">
+                                    <td colspan="6" class="px-6 py-12 text-center">
                                         <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                                         </svg>

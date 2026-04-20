@@ -4,28 +4,24 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * Represents a versioned document attachment on a request.
- *
- * NOTE: This model currently has no migration. If you need file versioning,
- * create the migration first:
- *   php artisan make:migration create_documents_table
- *
- * Until then, the single `file_path` column on the requests table is used
- * and the Request::documents() relationship will throw if called.
- * The relationship is commented out below until the table exists.
- */
 class Document extends Model
 {
     protected $fillable = [
         'request_id',
+        'uploaded_by',
+        'uploader_role',
         'file_path',
         'original_name',
-        'uploaded_by',
+        'is_template',
     ];
 
-    // public function request()
-    // {
-    //     return $this->belongsTo(Request::class);
-    // }
+    protected $casts = [
+        'is_template' => 'boolean',
+    ];
+
+    public function request()    { return $this->belongsTo(Request::class); }
+    public function uploader()   { return $this->belongsTo(User::class, 'uploaded_by'); }
+
+    public function isUploadedByStaff2(): bool { return $this->uploader_role === 'staff2'; }
+    public function isUploadedByUser(): bool   { return $this->uploader_role === 'user'; }
 }

@@ -92,8 +92,8 @@
                 <div class="bg-gradient-to-br from-green-600 to-green-700 rounded-2xl shadow-lg p-6 text-white">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-green-100 text-sm font-medium">Approved</p>
-                            <p class="text-3xl font-bold mt-2">{{ $deanApproved }}</p>
+                            <p class="text-green-100 text-sm font-medium">Staff 2 Approved</p>
+                            <p class="text-3xl font-bold mt-2">{{ $staff2Approved }}</p>
                         </div>
                         <div class="bg-white/20 backdrop-blur-sm rounded-full p-3">
                             <svg class="w-8 h-8 text-green-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,7 +107,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-red-100 text-sm font-medium">Declined</p>
-                            <p class="text-3xl font-bold mt-2">{{ $rejected }}</p>
+                            <p class="text-3xl font-bold mt-2">{{ $declined }}</p>
                         </div>
                         <div class="bg-white/20 backdrop-blur-sm rounded-full p-3">
                             <svg class="w-8 h-8 text-red-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -319,7 +319,7 @@ class AdminController extends BaseController
     {
         return [
             'requests_today' => \App\Models\Request::whereDate('created_at', today())->count(),
-            'approved_today' => \App\Models\Request::trulyApproved()
+            'approved_today' => \App\Models\Request::where('status_id', \App\Enums\RequestStatus::COMPLETED->value)
                 ->whereDate('updated_at', today())->count(),
             'active_users_today' => \App\Models\User::whereDate('last_login_at', today())->count(),
             'notifications_sent_today' => \App\Models\Notification::whereDate('created_at', today())->count(),
@@ -336,7 +336,7 @@ class AdminController extends BaseController
                 now()->startOfWeek(),
                 now()->endOfWeek()
             ])->count(),
-            'approved_this_week' => \App\Models\Request::trulyApproved()
+            'approved_this_week' => \App\Models\Request::where('status_id', \App\Enums\RequestStatus::COMPLETED->value)
                 ->whereBetween('updated_at', [now()->startOfWeek(), now()->endOfWeek()])
                 ->count(),
             'active_users_this_week' => \App\Models\User::whereBetween('last_login_at', [
@@ -353,7 +353,7 @@ class AdminController extends BaseController
     {
         return [
             'requests_this_year' => \App\Models\Request::whereYear('created_at', now()->year)->count(),
-            'approved_this_year' => \App\Models\Request::trulyApproved()
+            'approved_this_year' => \App\Models\Request::where('status_id', \App\Enums\RequestStatus::COMPLETED->value)
                 ->whereYear('updated_at', now()->year)->count(),
             'total_users' => \App\Models\User::count(),
             'active_users' => \App\Models\User::where('is_active', true)->count(),

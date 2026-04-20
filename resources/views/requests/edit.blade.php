@@ -13,11 +13,11 @@
     <div class="py-8">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
-            {{-- Rejection Reason --}}
-            @if($grantRequest->rejection_reason)
-            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-                <h3 class="font-bold text-red-700 mb-1">⚠ Reason for Return:</h3>
-                <p class="text-red-600 text-sm">{{ $grantRequest->rejection_reason }}</p>
+            {{-- Return Reason --}}
+            @if($grantRequest->return_reason)
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h3 class="font-bold text-yellow-700 mb-1">Reason for Return:</h3>
+                <p class="text-yellow-700 text-sm">{{ $grantRequest->return_reason }}</p>
             </div>
             @endif
 
@@ -143,7 +143,7 @@
 
                         @if($lockVotItems)
                             <p class="text-xs text-orange-600 mt-2">
-                                <strong>Note:</strong> VOT items are locked because this request has already been verified. You can only modify other fields like description, deadline, and additional documents.
+                                <strong>Note:</strong> VOT items are locked because this request has already been verified. You can only modify other fields like description and additional documents.
                             </p>
                         @endif
                     </div>
@@ -245,17 +245,6 @@
                                   rows="4"
                                   class="w-full rounded border-gray-300 text-sm"
                                   required>{{ $grantRequest->payload['description'] ?? '' }}</textarea>
-                    </div>
-
-                    {{-- Deadline --}}
-                    <div class="mb-4">
-                        <label class="block text-sm font-bold text-gray-700 mb-1">
-                            Deadline (optional)
-                        </label>
-                        <input type="date"
-                               name="deadline"
-                               value="{{ $grantRequest->deadline?->format('Y-m-d') }}"
-                               class="w-full rounded border-gray-300 text-sm">
                     </div>
 
                     {{-- Current Document --}}

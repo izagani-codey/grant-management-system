@@ -1,30 +1,21 @@
 <x-app-layout>
     @php
-        $isFinalStatus = $grantRequest->isFinal();
-        $staff1Active = in_array($grantRequest->status_id, [\App\Enums\RequestStatus::SUBMITTED->value, \App\Enums\RequestStatus::RETURNED->value], true);
-        $staff1Completed = in_array($grantRequest->status_id, [
-            \App\Enums\RequestStatus::SUBMITTED->value => 'bg-amber-100 text-amber-800 ring-1 ring-amber-400',
-            \App\Enums\RequestStatus::STAFF2_APPROVED->value,
-            \App\Enums\RequestStatus::RETURNED->value,
-            \App\Enums\RequestStatus::DEAN_APPROVED->value => 'bg-green-100 text-green-800 ring-1 ring-green-500',
-            \App\Enums\RequestStatus::REJECTED->value => 'bg-red-100 text-red-800 ring-1 ring-red-400',
-        ], true);
-        $staff2Active = in_array($grantRequest->status_id, [\App\Enums\RequestStatus::STAFF1_APPROVED->value, \App\Enums\RequestStatus::RETURNED->value], true);
-        $staff2Completed = in_array($grantRequest->status_id, [
-            \App\Enums\RequestStatus::STAFF2_APPROVED->value,
-            \App\Enums\RequestStatus::DEAN_APPROVED->value,
-            \App\Enums\RequestStatus::REJECTED->value,
-        ], true);
-        $completedStepDone = $grantRequest->isTrulyComplete() || $grantRequest->status_id === \App\Enums\RequestStatus::REJECTED->value;
+        $isFinalStatus  = $grantRequest->isFinal();
+        $status         = $grantRequest->status_id;
+        $RS             = \App\Enums\RequestStatus::class;
+        $staff1Active   = $status === $RS::SUBMITTED->value;
+        $staff1Complete = in_array($status, [$RS::STAFF1_REVIEWED->value, $RS::STAFF2_APPROVED->value, $RS::COMPLETED->value]);
+        $staff2Active   = $status === $RS::STAFF1_REVIEWED->value;
+        $staff2Complete = in_array($status, [$RS::STAFF2_APPROVED->value, $RS::COMPLETED->value]);
+        $finalDone      = $status === $RS::COMPLETED->value;
+        $isReturned     = $status === $RS::RETURNED->value;
+        $isDeclined     = $status === $RS::DECLINED->value;
     @endphp
 
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight min-w-0 break-words">
                 Request: {{ $grantRequest->ref_number }}
-                @if($grantRequest->is_priority)
-                    <span class="ml-2 px-2 py-1 bg-red-500 text-white text-xs rounded-full">⚠ PRIORITY</span>
-                @endif
             </h2>
             <div class="flex items-center gap-2 flex-wrap">
                 <a href="{{ route('requests.print', $grantRequest->id) }}" target="_blank"
@@ -91,12 +82,6 @@
                     <div class="min-w-0">
                         <p class="text-gray-500">Date Submitted</p>
                         <p class="font-semibold">{{ $grantRequest->created_at->format('d M Y, h:i A') }}</p>
-                    </div>
-                    <div class="min-w-0">
-                        <p class="text-gray-500">Deadline</p>
-                        <p class="font-semibold {{ $grantRequest->is_priority ? 'text-red-600 font-bold' : '' }}">
-                            {{ $grantRequest->deadline ? $grantRequest->deadline->format('d M Y') : 'None' }}
-                        </p>
                     </div>
                     @if($grantRequest->revision_count > 0)
                         <div class="min-w-0">
@@ -214,32 +199,35 @@
                                     </div>
                                 @endif
                                 
-                                <!-- Show rejection info if rejected -->
-                                @if($grantRequest->status_id === \App\Enums\RequestStatus::REJECTED->value)
+                                @if($isDeclined)
                                     <div class="mt-2 p-2 bg-red-50 rounded border border-red-200">
                                         <p class="text-sm text-red-800">
-                                            <span class="font-medium">Rejected:</span> 
-                                            @if($grantRequest->rejection_reason)
-                                                {{ $grantRequest->rejection_reason }}
-                                            @else
-                                                No reason provided
-                                            @endif
+                                            <span class="font-medium">Declined:</span>
+                                            {{ $grantRequest->decline_reason ?? 'No reason provided.' }}
+                                        </p>
+                                    </div>
+                                @endif
+                                @if($isReturned)
+                                    <div class="mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
+                                        <p class="text-sm text-yellow-800">
+                                            <span class="font-medium">Returned for revision:</span>
+                                            {{ $grantRequest->return_reason ?? 'No reason provided.' }}
                                         </p>
                                     </div>
                                 @endif
                             </div>
                         </div>
                         
-                        <!-- Step 4: Completed -->
+                        <!-- Step 4: Completed (Staff1 manual processing) -->
                         <div class="flex items-center">
-                            <div class="w-16 h-16 {{ $completedStepDone ? 'bg-green-500' : 'bg-gray-300' }} rounded-full flex items-center justify-center text-white">
+                            <div class="w-16 h-16 {{ $finalDone ? 'bg-teal-500' : 'bg-gray-300' }} rounded-full flex items-center justify-center text-white">
                                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                 </svg>
                             </div>
                             <div class="ml-6 flex-1 min-w-0">
                                 <h4 class="font-semibold text-gray-900">Completed</h4>
-                                <p class="text-sm text-gray-600">Request approved and completed</p>
+                                <p class="text-sm text-gray-600">Processed and completed by Staff 1</p>
                             </div>
                         </div>
                     </div>
@@ -251,14 +239,9 @@
                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
  Generate forms
 </div>
-                <p class="text-xs text-gray-500 mb-4">
-                    Auto-generated using the
-                    <span class="font-medium">{{ $grantRequest->snapshot_requires_dean_signature ? '3-signature' : '2-signature' }}</span>
-                    template
-                    @if($systemTemplate)
-                        &mdash; <span class="italic">{{ $systemTemplate->title }}</span>
-                    @endif
-                </p>
+                @if($systemTemplate)
+                <p class="text-xs text-gray-500 mb-4">Template: <span class="italic">{{ $systemTemplate->title }}</span></p>
+                @endif
 
                 <div class="border border-gray-200 rounded-lg overflow-hidden mb-3" style="height: 500px;">
                     <iframe
@@ -514,215 +497,159 @@
                     </a>
                 @endcan
 
-                {{-- STAFF 1: Verify or Return to Admission --}}
+                {{-- STAFF 1: SUBMITTED → review/return/decline --}}
                 @can('changeStatus', $grantRequest)
-                    @if(auth()->user()->role === 'staff1')
+                    @if(auth()->user()->role === 'staff1' && $staff1Active)
                         <form action="{{ route('requests.updateStatus', $grantRequest->id) }}" method="POST" class="space-y-3" onsubmit="return handleFormSubmit(this, 'Submitting...')">
                             @csrf
                             @method('PATCH')
-                            <textarea name="notes" rows="2"
-                                placeholder="Internal notes (optional)"
-                                class="w-full border rounded p-2 text-sm"></textarea>
-                            <textarea name="rejection_reason" rows="2"
-                                placeholder="Reason for returning or rejecting (visible to admission)"
-                                class="w-full border rounded p-2 text-sm"></textarea>
-                            
-                            <input type="hidden" name="status_id" value="{{ \App\Enums\RequestStatus::STAFF1_APPROVED->value }}" id="s1-status">
+                            <textarea name="notes" rows="2" placeholder="Internal notes (optional)" class="w-full border rounded p-2 text-sm"></textarea>
+                            <div id="s1-reason-field" class="hidden">
+                                <textarea name="return_reason" id="s1-return-reason" rows="2" placeholder="Reason for returning (required)" class="w-full border rounded p-2 text-sm"></textarea>
+                                <textarea name="decline_reason" id="s1-decline-reason" rows="2" placeholder="Reason for declining (required)" class="w-full border rounded p-2 text-sm hidden"></textarea>
+                            </div>
+                            <input type="hidden" name="status_id" id="s1-status" value="{{ \App\Enums\RequestStatus::STAFF1_REVIEWED->value }}">
                             <div class="flex gap-3 flex-wrap">
-                                <x-loading-button type="primary" onclick="document.getElementById('s1-status').value='{{ \App\Enums\RequestStatus::STAFF1_APPROVED->value }}'">
+                                <button type="submit" onclick="setS1Status('{{ \App\Enums\RequestStatus::STAFF1_REVIEWED->value }}', 'approve')"
+                                    class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700">
                                     ✓ Verify & Send to Staff 2
-                                </x-loading-button>
-                                <x-loading-button type="secondary" onclick="document.getElementById('s1-status').value='{{ \App\Enums\RequestStatus::RETURNED->value }}'">
-                                    ↩ Return to Admission
-                                </x-loading-button>
-                                <x-loading-button type="danger" onclick="document.getElementById('s1-status').value='{{ \App\Enums\RequestStatus::REJECTED->value }}'">
-                                    ✕ Reject
-                                </x-loading-button>
+                                </button>
+                                <button type="submit" onclick="setS1Status('{{ \App\Enums\RequestStatus::RETURNED->value }}', 'return')"
+                                    class="bg-yellow-500 text-white px-6 py-2 rounded font-bold hover:bg-yellow-600">
+                                    ↩ Return for Revision
+                                </button>
+                                <button type="submit" onclick="setS1Status('{{ \App\Enums\RequestStatus::DECLINED->value }}', 'decline')"
+                                    class="bg-red-600 text-white px-6 py-2 rounded font-bold hover:bg-red-700">
+                                    ✕ Decline
+                                </button>
                             </div>
                         </form>
                     @endif
                 @endcan
 
-                {{-- STAFF 2: Approve, Return to Staff 1, or Decline --}}
+                {{-- STAFF 1: STAFF2_APPROVED → mark complete --}}
                 @can('changeStatus', $grantRequest)
-                    @if(auth()->user()->role === 'staff2')
+                    @if(auth()->user()->role === 'staff1' && $grantRequest->status_id === \App\Enums\RequestStatus::STAFF2_APPROVED->value)
+                        <form action="{{ route('requests.updateStatus', $grantRequest->id) }}" method="POST" class="space-y-3" onsubmit="return handleFormSubmit(this, 'Marking complete...')">
+                            @csrf
+                            @method('PATCH')
+                            <input type="hidden" name="status_id" value="{{ \App\Enums\RequestStatus::COMPLETED->value }}">
+                            <textarea name="notes" rows="2" placeholder="Completion notes (optional)" class="w-full border rounded p-2 text-sm"></textarea>
+                            <button type="submit" class="bg-teal-600 text-white px-6 py-2 rounded font-bold hover:bg-teal-700">
+                                ✓ Mark as Completed
+                            </button>
+                        </form>
+                    @endif
+                @endcan
+
+                {{-- STAFF 2: STAFF1_REVIEWED or SUBMITTED (override) → approve/return/decline --}}
+                @can('changeStatus', $grantRequest)
+                    @if(auth()->user()->role === 'staff2' && $staff2Active)
                         <form action="{{ route('requests.updateStatus', $grantRequest->id) }}" method="POST" class="space-y-3" onsubmit="return handleFormSubmit(this, 'Submitting...', event)" data-signature-input="staff2-signature-data" data-role-action="staff2">
                             @csrf
                             @method('PATCH')
-                            <textarea name="notes" rows="2" placeholder="Recommendation notes (optional)"
-                                class="w-full border rounded p-2 text-sm"></textarea>
-                            <textarea name="rejection_reason" rows="2"
-                                placeholder="Reason (required for Decline or Return)"
-                                class="w-full border rounded p-2 text-sm"></textarea>
-                            
-                            <!-- Staff 2 Signature -->
+                            <textarea name="notes" rows="2" placeholder="Recommendation notes (optional)" class="w-full border rounded p-2 text-sm"></textarea>
+                            <div id="s2-reason-field" class="hidden">
+                                <textarea name="return_reason" id="s2-return-reason" rows="2" placeholder="Reason for returning (required)" class="w-full border rounded p-2 text-sm"></textarea>
+                                <textarea name="decline_reason" id="s2-decline-reason" rows="2" placeholder="Reason for declining (required)" class="w-full border rounded p-2 text-sm hidden"></textarea>
+                            </div>
                             <div class="space-y-2">
-                                <label class="block text-sm font-medium text-green-700">Staff 2 Signature:</label>
+                                <label class="block text-sm font-medium text-green-700">Staff 2 Signature (required to approve):</label>
                                 <div class="border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50">
                                     <canvas id="staff2-signature-canvas" width="400" height="150" class="w-full border border-gray-300 rounded bg-white cursor-crosshair"></canvas>
                                 </div>
-                                <div class="flex gap-2">
-                                    <button type="button" onclick="clearStaff2Signature()" class="text-xs bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">Clear Signature</button>
-                                    <span class="text-xs text-gray-500">Sign above before submitting</span>
-                                </div>
+                                <button type="button" onclick="clearStaff2Signature()" class="text-xs bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">Clear</button>
                                 <input type="hidden" name="staff2_signature_data" id="staff2-signature-data">
                             </div>
-                            
-                            <input type="hidden" name="status_id" value="{{ \App\Enums\RequestStatus::STAFF2_APPROVED->value }}" id="status2-input">
+                            <input type="hidden" name="status_id" id="s2-status" value="{{ \App\Enums\RequestStatus::STAFF2_APPROVED->value }}">
                             <div class="flex gap-3 flex-wrap">
-                                <button type="submit"
-                                    data-status="{{ \App\Enums\RequestStatus::STAFF2_APPROVED->value }}"
-                                    class="bg-purple-600 text-white px-6 py-2 rounded font-bold hover:bg-purple-700">
-                                    ✓ Send to Dean
+                                <button type="submit" onclick="setS2Status('{{ \App\Enums\RequestStatus::STAFF2_APPROVED->value }}', 'approve')"
+                                    class="bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700">
+                                    ✓ Approve
                                 </button>
-                                
-                                @if($grantRequest->status_id === \App\Enums\RequestStatus::STAFF1_APPROVED->value)
-                                    <button type="submit"
-                                        data-status="{{ \App\Enums\RequestStatus::RETURNED->value }}"
-                                        class="bg-yellow-500 text-white px-6 py-2 rounded font-bold hover:bg-yellow-600">
-                                        ↩ Return to Staff 1
-                                    </button>
-                                @endif
-                                
-                                <button type="submit"
-                                    data-status="{{ \App\Enums\RequestStatus::REJECTED->value }}"
+                                <button type="submit" onclick="setS2Status('{{ \App\Enums\RequestStatus::RETURNED->value }}', 'return')"
+                                    class="bg-yellow-500 text-white px-6 py-2 rounded font-bold hover:bg-yellow-600">
+                                    ↩ Return for Revision
+                                </button>
+                                <button type="submit" onclick="setS2Status('{{ \App\Enums\RequestStatus::DECLINED->value }}', 'decline')"
                                     class="bg-red-600 text-white px-6 py-2 rounded font-bold hover:bg-red-700">
-                                    ✕ Reject
+                                    ✕ Decline
                                 </button>
                             </div>
                         </form>
-                        <p class="text-xs text-gray-400 mt-3 italic">Primary flow: Admission → Staff 1 → Staff 2 → Dean.</p>
                     @endif
                 @endcan
 
-                {{-- DEAN ACTIONS --}}
-                @if(auth()->user()->role === 'dean' && $grantRequest->canBeActionedByDean())
-                    <div class="mt-6 p-4 bg-purple-50 border-l-4 border-purple-500 rounded">
-                        <h4 class="font-bold text-purple-800 mb-3 flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                            </svg>
-                            Dean Approval Actions
-                        </h4>
-                        
-                        <form action="{{ route('requests.updateStatus', $grantRequest->id) }}" method="POST" class="space-y-3" onsubmit="return handleFormSubmit(this, 'Submitting...', event)" data-signature-input="dean-signature-data" data-role-action="dean">
+                {{-- STAFF 2: Document upload for this request --}}
+                @if(auth()->user()->role === 'staff2')
+                    <div class="mt-6 p-4 bg-green-50 border-l-4 border-green-500 rounded">
+                        <h4 class="font-bold text-green-800 mb-3">Upload Document for User</h4>
+                        <form action="{{ route('documents.store', $grantRequest->id) }}" method="POST" enctype="multipart/form-data" class="space-y-3">
                             @csrf
-                            @method('PATCH')
-                            
-                            <!-- Dean Signature -->
-                            <div class="space-y-2">
-                                <label class="block text-sm font-medium text-purple-700">Dean Signature:</label>
-                                <div class="border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50">
-                                    <canvas id="dean-signature-canvas" width="400" height="150" class="w-full border border-gray-300 rounded bg-white cursor-crosshair"></canvas>
-                                </div>
-                                <div class="flex gap-2">
-                                    <button type="button" onclick="clearDeanSignature()" class="text-xs bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">Clear Signature</button>
-                                    <span class="text-xs text-gray-500">Sign above before submitting</span>
-                                </div>
-                                <input type="hidden" name="dean_signature_data" id="dean-signature-data">
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <label class="block text-sm font-medium text-purple-700">Dean Decision:</label>
-                                <div class="flex gap-3 flex-wrap">
-                                    <button type="submit"
-                                        data-status="{{ \App\Enums\RequestStatus::DEAN_APPROVED->value }}"
-                                        data-dean-action="approve"
-                                        class="bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700">
-                                        ✓ Approve Request
-                                    </button>
-                                    
-                                    <button type="submit"
-                                        data-status="{{ \App\Enums\RequestStatus::REJECTED->value }}"
-                                        data-dean-action="reject"
-                                        class="bg-red-600 text-white px-6 py-2 rounded font-bold hover:bg-red-700">
-                                        ✗ Reject Request
-                                    </button>
-                                    
-                                    <button type="submit"
-                                        data-status="{{ \App\Enums\RequestStatus::RETURNED->value }}"
-                                        data-dean-action="return_staff1"
-                                        class="bg-orange-600 text-white px-6 py-2 rounded font-bold hover:bg-orange-700">
-                                        ↩ Return to Staff 1
-                                    </button>
-                                    
-                                    <button type="submit"
-                                        data-status="{{ \App\Enums\RequestStatus::RETURNED->value }}"
-                                        data-dean-action="return_staff2"
-                                        class="bg-yellow-600 text-white px-6 py-2 rounded font-bold hover:bg-yellow-700">
-                                        ↩ Return to Staff 2
-                                    </button>
-                                </div>
-                                <input type="hidden" name="status_id" value="{{ \App\Enums\RequestStatus::DEAN_APPROVED->value }}" id="dean-status-input">
-                                <input type="hidden" name="dean_action" value="approve" id="dean-action-input">
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <label class="block text-sm font-medium text-purple-700">Comments/Reason:</label>
-                                <textarea name="rejection_reason" rows="2"
-                                    placeholder="Reason (required for Reject or Return)"
-                                    class="w-full border rounded p-2 text-sm"></textarea>
-                            </div>
+                            <input type="file" name="document" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="block text-sm text-gray-600" required>
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" name="is_template" value="1">
+                                Mark as fillable template for user
+                            </label>
+                            <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-700">Upload</button>
                         </form>
-                        
-                        <p class="text-xs text-gray-400 mt-3 italic">Final approval stage. Dean decision is final.</p>
+                        @if($grantRequest->documents->where('uploader_role', 'staff2')->count() > 0)
+                            <div class="mt-4 space-y-2">
+                                @foreach($grantRequest->documents->where('uploader_role', 'staff2') as $doc)
+                                    <div class="flex items-center justify-between bg-white rounded p-2 border">
+                                        <span class="text-sm text-gray-700 truncate max-w-xs" title="{{ $doc->original_name }}">
+                                            {{ $doc->original_name }}
+                                            @if($doc->is_template) <span class="text-xs bg-blue-100 text-blue-700 px-1 rounded ml-1">Template</span> @endif
+                                        </span>
+                                        <div class="flex gap-2">
+                                            <a href="{{ route('documents.download', $doc->id) }}" class="text-xs text-blue-600 hover:underline">Download</a>
+                                            <form action="{{ route('documents.destroy', $doc->id) }}" method="POST" onsubmit="return confirm('Delete this document?')">
+                                                @csrf @method('DELETE')
+                                                <button class="text-xs text-red-600 hover:underline">Remove</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
                 @endif
 
-                {{-- MANUAL PRIORITY CONTROLS --}}
-                @if(in_array(auth()->user()->role, ['staff1', 'staff2']) && !$isFinalStatus)
-                    <div class="mt-6 p-4 bg-orange-50 border-l-4 border-orange-500 rounded">
-                        <h4 class="font-bold text-orange-800 mb-3 flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            Priority Management
-                        </h4>
-                        
-                        <div class="space-y-3">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-sm font-medium text-orange-700">Current Priority:</p>
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $grantRequest->priorityBadgeClass() }}">
-                                        {{ $grantRequest->priorityLabel() }}
-                                    </span>
-                                </div>
-                                
-                                @if($grantRequest->deadline)
-                                    <div class="text-sm text-gray-600">
-                                        <span class="font-medium">Days until deadline:</span> 
-                                        <span class="{{ $grantRequest->daysUntilDeadline() <= 3 ? 'text-red-600 font-bold' : ($grantRequest->daysUntilDeadline() <= 5 ? 'text-orange-600 font-semibold' : '') }}">
-                                            {{ $grantRequest->daysUntilDeadline() }} days
-                                        </span>
-                                    </div>
-                                @endif
-                            </div>
-                            
-                            <form method="POST" action="{{ route('requests.updatePriority', $grantRequest->id) }}" class="flex items-center gap-3">
-                                @csrf
-                                @method('PATCH')
-                                
-                                <input type="hidden" name="is_priority" value="{{ $grantRequest->is_priority ? '0' : '1' }}">
-                                
-                                <button type="submit" 
-                                    class="{{ $grantRequest->is_priority ? 'bg-gray-600 hover:bg-gray-700' : 'bg-orange-600 hover:bg-orange-700' }} text-white px-4 py-2 rounded text-sm font-medium transition-colors"
-                                    onclick="return confirm('Are you sure you want to {{ $grantRequest->is_priority ? 'remove' : 'set' }} high priority for this request?')">
-                                    {{ $grantRequest->is_priority ? '🔻 Remove Priority' : '🔺 Set High Priority' }}
-                                </button>
-                                
-                                <span class="text-xs text-gray-500">
-                                    {{ $grantRequest->deadline ? 'Auto: ≤5 days = HIGH' : 'Manual control only' }}
-                                </span>
-                            </form>
-                        </div>
+                {{-- Admission: show Staff2 uploaded documents for download --}}
+                @if(auth()->user()->role === 'admission' && $grantRequest->documents->where('uploader_role', 'staff2')->count() > 0)
+                    <div class="mt-4 p-4 bg-blue-50 border-l-4 border-blue-400 rounded">
+                        <h4 class="font-bold text-blue-800 mb-2">Documents from Staff 2</h4>
+                        <ul class="space-y-2">
+                            @foreach($grantRequest->documents->where('uploader_role', 'staff2') as $doc)
+                                <li class="flex items-center justify-between text-sm">
+                                    <span>{{ $doc->original_name }} @if($doc->is_template)<span class="text-xs bg-blue-200 text-blue-800 px-1 rounded ml-1">Fillable</span>@endif</span>
+                                    <a href="{{ route('documents.download', $doc->id) }}" class="text-blue-600 hover:underline font-medium">Download</a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                {{-- Admission: returned request action --}}
+                @if(auth()->user()->role === 'admission' && $isReturned)
+                    <div class="mt-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                        <p class="font-semibold text-yellow-800 mb-2">This request has been returned for revision.</p>
+                        @if($grantRequest->return_reason)
+                            <p class="text-sm text-yellow-700 mb-3">Reason: {{ $grantRequest->return_reason }}</p>
+                        @endif
+                        <a href="{{ route('requests.edit', $grantRequest->id) }}"
+                           class="inline-block bg-yellow-600 text-white px-5 py-2 rounded font-bold hover:bg-yellow-700">
+                            Edit & Resubmit
+                        </a>
                     </div>
                 @endif
 
                 {{-- No actions available --}}
                 @if(
-                    (auth()->user()->role === 'admission' && $grantRequest->status_id != \App\Enums\RequestStatus::RETURNED->value) ||
-                    (auth()->user()->role === 'staff1' && !in_array($grantRequest->status_id, [\App\Enums\RequestStatus::SUBMITTED->value, \App\Enums\RequestStatus::RETURNED->value], true)) ||
-                    (auth()->user()->role === 'staff2' && $isFinalStatus)
+                    (auth()->user()->role === 'admission' && !$isReturned) ||
+                    (auth()->user()->role === 'staff1' && !$staff1Active && $grantRequest->status_id !== \App\Enums\RequestStatus::STAFF2_APPROVED->value) ||
+                    (auth()->user()->role === 'staff2' && !$staff2Active) ||
+                    $isFinalStatus
                 )
                     <p class="text-gray-400 italic text-sm">No actions available at this stage.</p>
                 @endif
@@ -737,9 +664,8 @@
 
                 {{-- Staff Comments by Role --}}
                 @php
-                    $staff1Comments = $grantRequest->comments->filter(fn($c) => $c->isStaff1Comment());
-                    $staff2Comments = $grantRequest->comments->filter(fn($c) => $c->isStaff2Comment());
-                    $deanComments = $grantRequest->comments->filter(fn($c) => $c->isDeanComment());
+                    $staff1Comments   = $grantRequest->comments->filter(fn($c) => $c->isStaff1Comment());
+                    $staff2Comments   = $grantRequest->comments->filter(fn($c) => $c->isStaff2Comment());
                     $internalComments = $grantRequest->comments->filter(fn($c) => $c->isInternalComment());
                 @endphp
 
@@ -894,135 +820,85 @@
     </div>
 
     <script>
-        const overrideActionSelect = document.getElementById('override-action-type');
-        const reinstateDoubleConfirmation = document.getElementById('reinstate-double-confirmation');
-
-        if (overrideActionSelect && reinstateDoubleConfirmation) {
-            const toggleDoubleConfirmation = () => {
-                if (overrideActionSelect.value === 'reject_reverse') {
-                    reinstateDoubleConfirmation.classList.remove('hidden');
-                } else {
-                    reinstateDoubleConfirmation.classList.add('hidden');
-                }
-            };
-
-            overrideActionSelect.addEventListener('change', toggleDoubleConfirmation);
-            toggleDoubleConfirmation();
+        // Staff1 action helpers
+        function setS1Status(statusVal, action) {
+            document.getElementById('s1-status').value = statusVal;
+            const reasonField = document.getElementById('s1-reason-field');
+            const returnReason  = document.getElementById('s1-return-reason');
+            const declineReason = document.getElementById('s1-decline-reason');
+            if (action === 'return') {
+                reasonField.classList.remove('hidden');
+                returnReason.classList.remove('hidden');
+                declineReason.classList.add('hidden');
+                returnReason.required = true;
+                declineReason.required = false;
+            } else if (action === 'decline') {
+                reasonField.classList.remove('hidden');
+                returnReason.classList.add('hidden');
+                declineReason.classList.remove('hidden');
+                returnReason.required = false;
+                declineReason.required = true;
+            } else {
+                reasonField.classList.add('hidden');
+                returnReason.required = false;
+                declineReason.required = false;
+            }
         }
 
-        function isCanvasBlank(canvas) {
-            const ctx = canvas?.getContext?.('2d');
-            if (!ctx || !canvas) return true;
-
-            const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-            for (let i = 3; i < pixels.length; i += 4) {
-                // Any non-white pixel indicates user ink.
-                if (pixels[i] !== 0 && !(pixels[i - 3] === 255 && pixels[i - 2] === 255 && pixels[i - 1] === 255)) {
-                    return false;
-                }
+        // Staff2 action helpers
+        function setS2Status(statusVal, action) {
+            document.getElementById('s2-status').value = statusVal;
+            const reasonField   = document.getElementById('s2-reason-field');
+            const returnReason  = document.getElementById('s2-return-reason');
+            const declineReason = document.getElementById('s2-decline-reason');
+            if (action === 'return') {
+                reasonField.classList.remove('hidden');
+                returnReason.classList.remove('hidden');
+                declineReason.classList.add('hidden');
+                returnReason.required = true;
+                declineReason.required = false;
+            } else if (action === 'decline') {
+                reasonField.classList.remove('hidden');
+                returnReason.classList.add('hidden');
+                declineReason.classList.remove('hidden');
+                returnReason.required = false;
+                declineReason.required = true;
+            } else {
+                reasonField.classList.add('hidden');
+                returnReason.required = false;
+                declineReason.required = false;
             }
-            return true;
         }
 
         function captureSignatureIfNeeded(canvasId, inputId) {
             const canvas = document.getElementById(canvasId);
-            const input = document.getElementById(inputId);
-            if (!canvas || !input || input.value) {
-                return;
-            }
-
-            if (!isCanvasBlank(canvas)) {
-                input.value = canvas.toDataURL('image/png');
-            }
+            const input  = document.getElementById(inputId);
+            if (!canvas || !input || input.value) return;
+            const ctx    = canvas.getContext('2d');
+            const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            const blank  = !Array.from(pixels).some((v, i) => i % 4 === 3 && v > 0);
+            if (!blank) input.value = canvas.toDataURL('image/png');
         }
 
         function handleFormSubmit(form, message, event) {
-            const submitter = event?.submitter;
-            const statusFromButton = submitter?.dataset?.status;
-            if (statusFromButton) {
-                if (form.dataset.roleAction === 'dean') {
-                    const deanStatusInput = document.getElementById('dean-status-input');
-                    if (deanStatusInput) deanStatusInput.value = statusFromButton;
-                }
-                if (form.dataset.roleAction === 'staff2') {
-                    const staff2StatusInput = document.getElementById('status2-input');
-                    if (staff2StatusInput) staff2StatusInput.value = statusFromButton;
-                }
-            }
-
-            const isDeanActionForm = form.dataset.roleAction === 'dean';
-            if (isDeanActionForm) {
-                const deanAction = submitter?.dataset?.deanAction;
-                if (deanAction) {
-                    const deanActionInput = document.getElementById('dean-action-input');
-                    if (deanActionInput) deanActionInput.value = deanAction;
-                }
-            }
-
-            if (form.dataset.roleAction === 'dean') {
-                captureSignatureIfNeeded('dean-signature-canvas', 'dean-signature-data');
-            } else if (form.dataset.roleAction === 'staff2') {
+            if (form.dataset.roleAction === 'staff2') {
                 captureSignatureIfNeeded('staff2-signature-canvas', 'staff2-signature-data');
-            }
-
-            if (isDeanActionForm) {
-                const deanAction = document.getElementById('dean-action-input')?.value || 'approve';
-                const reasonField = form.querySelector('textarea[name="rejection_reason"]');
-                const reasonValue = reasonField?.value?.trim() || '';
-
-                // For reject/return, enforce reason. For return, do not enforce signature.
-                if (['reject', 'return_staff1', 'return_staff2'].includes(deanAction) && reasonValue === '') {
-                    alert('Please provide a reason for reject/return action.');
-                    reasonField?.focus();
+                const currentStatus = document.getElementById('s2-status')?.value;
+                const approveStatus = '{{ \App\Enums\RequestStatus::STAFF2_APPROVED->value }}';
+                if (currentStatus === approveStatus && !document.getElementById('staff2-signature-data')?.value) {
+                    alert('Please provide your signature before approving.');
                     return false;
-                }
-
-                if (['approve', 'reject'].includes(deanAction)) {
-                    const signatureValue = document.getElementById('dean-signature-data')?.value;
-                    if (!signatureValue) {
-                        alert('Please provide your signature before approving or rejecting.');
-                        return false;
-                    }
-                }
-            }
-
-            const requiredSignatureInput = form.dataset.signatureInput;
-            if (requiredSignatureInput) {
-                // Dean return actions intentionally do not require signature.
-                if (isDeanActionForm) {
-                    const deanAction = document.getElementById('dean-action-input')?.value || 'approve';
-                    if (['return_staff1', 'return_staff2'].includes(deanAction)) {
-                        // Skip generic signature validation for dean return actions.
-                    } else {
-                        const signatureValue = document.getElementById(requiredSignatureInput)?.value;
-                        if (!signatureValue) {
-                            alert('Please provide your signature before submitting.');
-                            return false;
-                        }
-                    }
-                } else {
-                    const signatureValue = document.getElementById(requiredSignatureInput)?.value;
-                    if (!signatureValue) {
-                        alert('Please provide your signature before submitting.');
-                        return false;
-                    }
                 }
             }
 
             const submitButtons = form.querySelectorAll('button[type="submit"]');
-            submitButtons.forEach((btn) => {
-                btn.disabled = true;
-                btn.classList.add('opacity-70', 'cursor-not-allowed');
-            });
+            submitButtons.forEach(btn => { btn.disabled = true; btn.classList.add('opacity-70', 'cursor-not-allowed'); });
 
             const active = document.activeElement;
-            if (active && active.tagName && active.tagName.toLowerCase() === 'button' && active.form === form) {
-                if (!active.dataset.originalText) {
-                    active.dataset.originalText = active.textContent.trim();
-                }
+            if (active?.tagName?.toLowerCase() === 'button' && active.form === form) {
+                active.dataset.originalText = active.textContent.trim();
                 active.textContent = message;
             }
-
             return true;
         }
 

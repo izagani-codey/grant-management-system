@@ -81,7 +81,7 @@ abstract class BaseRepository
      */
     protected function applyPriorityFilter(Builder $query, mixed $priority): void
     {
-        $query->where('is_priority', (bool) $priority);
+        // priority filter removed — is_priority column no longer exists
     }
 
     /**
@@ -105,15 +105,7 @@ abstract class BaseRepository
      */
     protected function applyUrgentFilter(Builder $query, mixed $urgent): void
     {
-        if ($urgent) {
-            $query->where(function ($q) {
-                $q->where('deadline', '<=', now()->addDays(3))
-                  ->whereNotIn('status_id', [
-                      \App\Enums\RequestStatus::DEAN_APPROVED->value,
-                      \App\Enums\RequestStatus::REJECTED->value
-                  ]);
-            });
-        }
+        // urgent/deadline filter removed
     }
 
     /**

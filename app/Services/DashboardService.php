@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\FormTemplate;
+use App\Models\Document;
 use App\Models\RequestType;
 use App\Models\User;
 use App\Repositories\RequestRepository;
@@ -33,9 +33,10 @@ class DashboardService
     public function getDashboardData(User $user, array $filters = []): array
     {
         // Get general templates (not tied to specific request types)
-        $generalTemplates = FormTemplate::with('uploader')
+        $generalTemplates = Document::with('uploader')
+            ->where('document_type', 'template')
             ->where('is_active', true)
-            ->whereDoesntHave('requestTypes')
+            ->whereNull('request_type_id')
             ->latest('created_at')
             ->get();
 
@@ -97,10 +98,11 @@ class DashboardService
      */
     private function getFormTemplates(): Collection
     {
-        return FormTemplate::with('uploader')
+        return Document::with('uploader')
+            ->where('document_type', 'template')
             ->where('is_active', true)
             ->latest('created_at')
-            ->get(['id', 'title', 'file_path', 'uploaded_by', 'created_at']);
+            ->get(['id', 'name', 'file_path', 'uploaded_by', 'created_at']);
     }
 
    

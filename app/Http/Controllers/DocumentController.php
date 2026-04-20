@@ -22,22 +22,73 @@ class DocumentController extends BaseController
         $request->validate([
             'document'    => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:10240'],
             'is_template' => 'nullable|boolean',
+            'document_type' => 'nullable|in:template,staff_attachment',
         ]);
 
         $file     = $request->file('document');
         $path     = $file->store("documents/request-{$requestId}", 'public');
 
+        // Determine document type
+        $documentType = 'staff_attachment'; // Default for Staff2 uploads
+        if ($request->boolean('is_template', false)) {
+            $documentType = 'template';
+        } elseif ($request->filled('document_type')) {
+            $documentType = $request->document_type;
+        }
+
         Document::create([
-            'request_id'    => $grantRequest->id,
-            'uploaded_by'   => Auth::id(),
-            'uploader_role' => Auth::user()->role,
-            'file_path'     => $path,
-            'original_name' => $file->getClientOriginalName(),
-            'is_template'   => $request->boolean('is_template', false),
+            'request_id'      => $grantRequest->id,
+            'request_type_id' => $grantRequest->request_type_id,
+            'uploaded_by'     => Auth::id(),
+            'uploader_role'   => Auth::user()->role,
+            'file_path'       => $path,
+            'original_name'   => $file->getClientOriginalName(),
+            'document_type'   => $documentType,
+            'is_template'     => $request->boolean('is_template', false),
         ]);
 
         return redirect()->route('requests.show', $grantRequest->id)
             ->with('success', 'Document uploaded successfully.');
+    }
+
+    /** Upload user submission documents during request creation/editing */
+    public function storeUserSubmission(Request $request, $requestId = null)
+    {
+        $user = Auth::user();
+        
+        if (!$user->isAdmission()) {
+            abort(403, 'Only admission users can submit documents.');
+        }
+
+        $request->validate([
+            'document' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:10240'],
+            'request_id' => 'nullable|exists:requests,id',
+        ]);
+
+        $file = $request->file('document');
+        
+        // Determine storage path
+        if ($requestId) {
+            $path = $file->store("documents/request-{$requestId}", 'public');
+        } else {
+            $path = $file->store("documents/temporary/{$user->id}", 'public');
+        }
+
+        $document = Document::create([
+            'request_id'      => $requestId,
+            'uploaded_by'     => $user->id,
+            'uploader_role'   => $user->role,
+            'file_path'       => $path,
+            'original_name'   => $file->getClientOriginalName(),
+            'document_type'   => 'user_submission',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'document_id' => $document->id,
+            'file_name' => $file->getClientOriginalName(),
+            'file_size' => $file->getSize(),
+        ]);
     }
 
     /** Staff2 deletes a document they uploaded. */
@@ -67,6 +118,106 @@ class DocumentController extends BaseController
             abort(404, 'File not found.');
         }
 
+        // Increment download count
+        $document->incrementDownloadCount();
+
         return Storage::disk('public')->download($document->file_path, $document->original_name);
+    }
+
+    /** Get documents by category for a request */
+    public function getByCategory($requestId, $category)
+    {
+        $grantRequest = GrantRequest::findOrFail($requestId);
+        $this->authorize('view', $grantRequest);
+
+        if (!in_array($category, ['template', 'user_submission', 'staff_attachment'])) {
+            abort(400, 'Invalid document category.');
+        }
+
+        $documents = $grantRequest->documents()
+            ->where('document_type', $category)
+            ->with('uploader')
+            ->get();
+
+        return response()->json([
+            'documents' => $documents->map(function ($doc) {
+                return [
+                    'id' => $doc->id,
+                    'original_name' => $doc->original_name,
+                    'file_size' => $doc->getFormattedFileSize(),
+                    'file_extension' => $doc->getFileExtension(),
+                    'is_pdf' => $doc->isPdf(),
+                    'is_image' => $doc->isImage(),
+                    'download_url' => $doc->getDownloadUrl(),
+                    'uploaded_by' => $doc->uploader->name,
+                    'uploaded_at' => $doc->created_at->format('M j, Y H:i'),
+                    'download_count' => $doc->download_count,
+                ];
+            }),
+        ]);
+    }
+
+    /** Move temporary documents to request after request creation */
+    public function moveToRequest(Request $request, $requestId)
+    {
+        $grantRequest = GrantRequest::findOrFail($requestId);
+        $user = Auth::user();
+
+        if (!$user->isAdmission() || $grantRequest->user_id !== $user->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'document_ids' => 'required|array',
+            'document_ids.*' => 'exists:documents,id',
+        ]);
+
+        $documents = Document::whereIn('id', $request->document_ids)
+            ->where('uploaded_by', $user->id)
+            ->whereNull('request_id')
+            ->get();
+
+        foreach ($documents as $document) {
+            // Move file from temporary to request folder
+            $oldPath = $document->file_path;
+            $newPath = "documents/request-{$requestId}/" . basename($oldPath);
+            
+            try {
+                $moveSuccess = Storage::disk('public')->move($oldPath, $newPath);
+                
+                if (!$moveSuccess) {
+                    \Log::error("Failed to move document file", [
+                        'old_path' => $oldPath,
+                        'new_path' => $newPath,
+                        'request_id' => $requestId,
+                        'request_type_id' => $grantRequest->request_type_id,
+                        'document_id' => $document->id
+                    ]);
+                    continue;
+                }
+                
+                $document->update([
+                    'request_id' => $requestId,
+                    'request_type_id' => $grantRequest->request_type_id,
+                    'file_path' => $newPath,
+                ]);
+                
+            } catch (\Exception $e) {
+                \Log::error("Exception while moving document file", [
+                    'old_path' => $oldPath,
+                    'new_path' => $newPath,
+                    'request_id' => $requestId,
+                    'request_type_id' => $grantRequest->request_type_id,
+                    'document_id' => $document->id,
+                    'error' => $e->getMessage()
+                ]);
+                continue;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'moved_count' => $documents->count(),
+        ]);
     }
 }

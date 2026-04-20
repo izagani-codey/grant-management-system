@@ -44,7 +44,7 @@
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Form Title</label>
-                                <input type="text" name="title" value="{{ old('title') }}" 
+                                <input type="text" name="name" value="{{ old('name') }}" 
                                        placeholder="e.g., Travel Grant Application Form"
                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
                                        required>
@@ -182,23 +182,21 @@
                                                 <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
                                             </svg>
                                         @endif
-                                        {{ $template->title }}
+                                        {{ $template->name }}
                                     </td>
                                     <td class="px-6 py-4 text-slate-600">{{ $template->uploader?->name ?? 'N/A' }}</td>
                                     <td class="px-6 py-4">
-                                        @if($template->requestTypes->isEmpty())
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">General</span>
+                                        @if($template->requestType)
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">{{ $template->requestType->name }}</span>
                                         @else
-                                            @foreach($template->requestTypes as $rt)
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 mr-1 mb-1">{{ $rt->name }}</span>
-                                            @endforeach
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">General</span>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 text-slate-500">{{ $template->created_at?->format('d M Y') }}</td>
                                     <td class="px-6 py-4">
                                         <div class="flex flex-wrap items-center gap-2">
                                             <button type="button"
-                                                onclick="openPreview('{{ addslashes($template->title) }}', '{{ $fileUrl }}', '{{ $isPdf ? 'pdf' : 'image' }}')"
+                                                onclick="openPreview('{{ addslashes($template->name) }}', '{{ $fileUrl }}', '{{ $isPdf ? 'pdf' : 'image' }}')"
                                                 class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition inline-flex items-center gap-1">
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -215,7 +213,7 @@
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit"
-                                                            onclick="return confirm('Delete &quot;{{ addslashes($template->title) }}&quot;? This cannot be undone.')"
+                                                            onclick="return confirm('Delete &quot;{{ addslashes($template->name) }}&quot;? This cannot be undone.')"
                                                             class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-semibold text-red-700 hover:bg-red-100 transition">
                                                         Delete
                                                     </button>

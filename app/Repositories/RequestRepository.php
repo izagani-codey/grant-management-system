@@ -180,7 +180,7 @@ class RequestRepository extends BaseRepository
     /**
      * Get requests approaching deadline.
      */
-    public function getApproachingDeadline(int $days = 3, User $user): Collection
+    public function getApproachingDeadline(User $user, int $days = 3): Collection
     {
         return collect();
     }

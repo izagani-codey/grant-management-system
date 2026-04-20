@@ -7,7 +7,7 @@ use App\Models\Request as GrantRequest;
 use App\Models\RequestType;
 use App\Models\RequestTypeTemplate;
 use App\Models\User;
-use App\Models\FormTemplate;
+use App\Models\Document;
 use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -50,8 +50,9 @@ class Staff2AdminController extends BaseController
         $staff2Users    = User::where('role', 'staff2')->count();
 
         // Form Templates
-        $totalTemplates = FormTemplate::count();
-        $recentTemplates = FormTemplate::with('uploader')
+        $totalTemplates = Document::where('document_type', 'template')->count();
+        $recentTemplates = Document::with('uploader')
+            ->where('document_type', 'template')
             ->latest('created_at')
             ->take(5)
             ->get();
@@ -207,11 +208,11 @@ class Staff2AdminController extends BaseController
 
         $requestTypes = RequestType::query()
             ->withCount('requests')
-            ->with(['defaultTemplate', 'requestTypeTemplates'])
+            ->with(['defaultTemplate'])
             ->latest('created_at')
             ->paginate(20);
 
-        $formTemplates = FormTemplate::where('is_active', true)->get();
+        $formTemplates = Document::where('document_type', 'template')->get();
 
         return view('staff2.admin-request-types', compact('requestTypes', 'formTemplates'));
     }
@@ -228,10 +229,6 @@ class Staff2AdminController extends BaseController
             $validated['slug'] = \Str::slug($validated['name']);
 
             $requestType = RequestType::create($validated);
-            RequestTypeWorkflowPolicy::create([
-                'request_type_id' => $requestType->id,
-                'requires_dean_signature' => true,
-            ]);
 
             // Log the action
             AuditLog::create([
@@ -257,11 +254,9 @@ class Staff2AdminController extends BaseController
             $validated = request()->validate([
                 'name' => 'required|string|max:255|unique:request_types,name,' . $id,
                 'description' => 'nullable|string',
-                'default_template_id' => 'nullable|exists:form_templates,id',
+                'default_template_id' => 'nullable|exists:documents,id',
                 'required_documents' => 'nullable|array',
                 'required_documents.*' => 'string|max:255',
-                'template_two_sig' => 'nullable|exists:form_templates,id',
-                'template_three_sig' => 'nullable|exists:form_templates,id',
             ]);
 
             // Update slug if name changed
@@ -279,27 +274,6 @@ class Staff2AdminController extends BaseController
                 'default_template_id' => $validated['default_template_id'] ?? null,
                 'required_documents' => $validated['required_documents'],
             ]);
-
-            // Save signature-layout-specific templates
-            foreach ([
-                'two_signatures' => $validated['template_two_sig'] ?? null,
-                'three_signatures' => $validated['template_three_sig'] ?? null,
-            ] as $layout => $templateId) {
-                // Remove existing layout-specific entry
-                RequestTypeTemplate::where('request_type_id', $requestType->id)
-                    ->where('signature_layout', $layout)
-                    ->delete();
-
-                if ($templateId) {
-                    RequestTypeTemplate::create([
-                        'request_type_id' => $requestType->id,
-                        'form_template_id' => $templateId,
-                        'is_default' => false,
-                        'sort_order' => 0,
-                        'signature_layout' => $layout,
-                    ]);
-                }
-            }
 
             return back()->with('success', 'Request type updated successfully.');
         } catch (\Exception $e) {
@@ -395,5 +369,115 @@ class Staff2AdminController extends BaseController
         if ($adminCount <= 1) {
             abort(422, 'At least one admin account must remain in the system.');
         }
+    }
+
+    // ==========================================
+    // Checklist Management Methods
+    // ==========================================
+
+    public function checklists(Request $request)
+    {
+        $this->ensureAdminAccess();
+
+        $requestTypes = RequestType::with(['checklistItems' => function($query) {
+            $query->orderBy('sort_order');
+        }])->get();
+
+        return view('admin.checklists', compact('requestTypes'));
+    }
+
+    public function storeChecklistItem(Request $request)
+    {
+        $this->ensureAdminAccess();
+
+        $request->validate([
+            'request_type_id' => 'required|exists:request_types,id',
+            'label' => 'required|string|max:255',
+            'is_required' => 'boolean',
+            'sort_order' => 'integer|min:0',
+        ]);
+
+        $checklistItem = \App\Models\ChecklistItem::create([
+            'request_type_id' => $request->request_type_id,
+            'label' => $request->label,
+            'is_required' => $request->boolean('is_required', true),
+            'sort_order' => $request->sort_order ?? 0,
+            'is_active' => true,
+        ]);
+
+        return redirect()->route('admin.checklists')
+            ->with('success', 'Checklist item added successfully.');
+    }
+
+    public function updateChecklistItem(Request $request, $id)
+    {
+        $this->ensureAdminAccess();
+
+        $request->validate([
+            'label' => 'required|string|max:255',
+            'is_required' => 'boolean',
+            'sort_order' => 'integer|min:0',
+            'is_active' => 'boolean',
+        ]);
+
+        $checklistItem = \App\Models\ChecklistItem::findOrFail($id);
+        $checklistItem->update([
+            'label' => $request->label,
+            'is_required' => $request->boolean('is_required'),
+            'sort_order' => $request->sort_order,
+            'is_active' => $request->boolean('is_active', true),
+        ]);
+
+        return redirect()->route('admin.checklists')
+            ->with('success', 'Checklist item updated successfully.');
+    }
+
+    public function destroyChecklistItem($id)
+    {
+        $this->ensureAdminAccess();
+
+        $checklistItem = \App\Models\ChecklistItem::findOrFail($id);
+        
+        // Check if related checklist reviews exist
+        $hasReviews = \App\Models\ChecklistReview::where('checklist_item_id', $id)->exists();
+        
+        if ($hasReviews) {
+            return redirect()->route('admin.checklists')
+                ->with('error', 'Cannot delete checklist item that has existing reviews. Please archive it instead.');
+        }
+
+        // Record audit log before deletion
+        $adminUser = auth()->user();
+        \App\Models\AuditLog::create([
+            'actor_id' => $adminUser->id,
+            'actor_role' => $adminUser->role,
+            'action' => 'deleted_checklist_item',
+            'note' => "Deleted checklist item: {$checklistItem->label} (ID: {$checklistItem->id})",
+            'created_at' => now(),
+        ]);
+
+        // Perform soft delete
+        $checklistItem->delete();
+
+        return redirect()->route('admin.checklists')
+            ->with('success', 'Checklist item deleted successfully.');
+    }
+
+    public function reorderChecklistItems(Request $request)
+    {
+        $this->ensureAdminAccess();
+
+        $request->validate([
+            'items' => 'required|array',
+            'items.*.id' => 'required|exists:checklist_items,id',
+            'items.*.sort_order' => 'required|integer|min:0',
+        ]);
+
+        foreach ($request->items as $item) {
+            \App\Models\ChecklistItem::where('id', $item['id'])
+                ->update(['sort_order' => $item['sort_order']]);
+        }
+
+        return response()->json(['success' => true]);
     }
 }

@@ -108,3 +108,4 @@ class Comment extends Model
         return false;
     }
 }
+

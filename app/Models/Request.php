@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use App\Enums\RequestStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Request extends Model
 {
+    use HasFactory;
     protected $fillable = [
         'user_id', 'request_type_id', 'ref_number', 'status_id',
         'file_path', 'payload',
@@ -51,6 +53,7 @@ class Request extends Model
     public function documents()     { return $this->hasMany(Document::class); }
     public function templateUsages(){ return $this->hasMany(TemplateUsage::class, 'request_id'); }
     public function signatures()    { return $this->hasMany(Signature::class); }
+    public function checklistReviews() { return $this->hasMany(ChecklistReview::class); }
 
     // ==========================================
     // VOT helpers
@@ -140,21 +143,80 @@ class Request extends Model
     // Scopes
     // ==========================================
 
-    public function scopeTrulyApproved($query)
-    {
-        return $query->where('status_id', RequestStatus::STAFF2_APPROVED->value);
-    }
-
-    public function scopeNotTrulyComplete($query)
-    {
-        return $query->whereNotIn('status_id', [
-            RequestStatus::COMPLETED->value,
-            RequestStatus::DECLINED->value,
-        ]);
-    }
+    
 
     public function scopeByStatus($query, RequestStatus $status)
     {
         return $query->where('status_id', $status->value);
     }
+
+    // ==========================================
+    // Checklist helpers
+    // ==========================================
+
+    public function getChecklistItems()
+    {
+        return $this->requestType?->checklistItems ?? collect();
+    }
+
+    public function getChecklistReviews()
+    {
+        return $this->checklistReviews()->with('checklistItem')->get();
+    }
+
+    public function getCheckitemReviewStatus(int $checklistItemId): ?string
+    {
+        $review = $this->checklistReviews()
+            ->where('checklist_item_id', $checklistItemId)
+            ->first();
+        
+        return $review?->status;
+    }
+
+    public function hasAllRequiredItemsChecked(): bool
+    {
+        $requiredItems = $this->getChecklistItems()->filter(function ($item) {
+            return $item->is_required;
+        });
+        
+        foreach ($requiredItems as $item) {
+            $status = $this->getCheckitemReviewStatus($item->id);
+            if ($status !== 'checked') {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    public function hasAnyFlaggedItems(): bool
+    {
+        $reviews = $this->getChecklistReviews();
+        return $reviews->filter(fn($r) => $r->status === 'flagged')->isNotEmpty();
+    }
+
+    public function canBeForwardedToStaff2(): bool
+    {
+        return $this->hasAllRequiredItemsChecked() && !$this->hasAnyFlaggedItems();
+    }
+
+    public function getChecklistProgress(): array
+    {
+        $items = $this->getChecklistItems();
+        $reviews = $this->getChecklistReviews();
+        
+        $total = $items->count();
+        $checked = $reviews->filter(fn($r) => $r->status === 'checked')->count();
+        $flagged = $reviews->filter(fn($r) => $r->status === 'flagged')->count();
+        $pending = $total - $checked - $flagged;
+        
+        return [
+            'total' => $total,
+            'checked' => $checked,
+            'flagged' => $flagged,
+            'pending' => $pending,
+            'percentage' => $total > 0 ? round(($checked / $total) * 100) : 0,
+        ];
+    }
 }
+

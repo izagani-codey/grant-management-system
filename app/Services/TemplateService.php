@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\FormTemplate;
+use App\Models\Document;
 use App\Models\Request;
 use App\Models\TemplateUsage;
 use App\Models\User;
@@ -14,7 +14,7 @@ class TemplateService
     /**
      * Generate auto-filled PDF from template
      */
-    public static function generateAutoFilledPdf(FormTemplate $template, Request $request): string
+    public static function generateAutoFilledPdf(Document $template, Request $request): string
     {
         // Get data for template filling
         $data = self::prepareTemplateData($template, $request);
@@ -41,7 +41,7 @@ class TemplateService
     /**
      * Prepare data for template filling
      */
-    private static function prepareTemplateData(FormTemplate $template, Request $request): array
+    private static function prepareTemplateData(Document $template, Request $request): array
     {
         $data = [];
         $mappings = $template->getMappedFields();
@@ -108,10 +108,10 @@ class TemplateService
      */
     public static function getAvailableTemplates(?string $requestType = null): \Illuminate\Database\Eloquent\Collection
     {
-        $query = FormTemplate::where('is_active', true);
+        $query = Document::where('document_type', 'template')->where('is_active', true);
         
         if ($requestType) {
-            $query->where('template_type', $requestType);
+            $query->where('request_type_id', $requestType);
         }
         
         return $query->latest()->get();
@@ -123,7 +123,7 @@ class TemplateService
     public static function validateFieldMappings(array $mappings): array
     {
         $errors = [];
-        $availableFields = (new FormTemplate())->getAvailableFields();
+        $availableFields = (new Document())->getAvailableFields();
         
         foreach ($mappings as $templateField => $dataSource) {
             if (!isset($availableFields[$dataSource])) {
@@ -139,8 +139,8 @@ class TemplateService
      */
     public static function getTemplateStats(): array
     {
-        $totalTemplates = FormTemplate::count();
-        $activeTemplates = FormTemplate::where('is_active', true)->count();
+        $totalTemplates = Document::where('document_type', 'template')->count();
+        $activeTemplates = Document::where('document_type', 'template')->where('is_active', true)->count();
         $totalUsage = TemplateUsage::count();
         $recentUsage = TemplateUsage::where('created_at', '>=', now()->subDays(30))->count();
         

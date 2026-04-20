@@ -84,4 +84,15 @@ class RequestPolicy
                $user->id === $request->user_id &&
                $request->isReturned();
     }
+
+    public function review(User $user, Request $request): bool
+    {
+        // Only Staff1 can review checklists
+        if ($user->role !== 'staff1') {
+            return false;
+        }
+
+        // Staff1 can only review requests in SUBMITTED status
+        return $request->status_id === RequestStatus::SUBMITTED->value;
+    }
 }

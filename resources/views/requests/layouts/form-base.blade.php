@@ -121,6 +121,14 @@ $isEdit = $grantRequest !== null;
                     {{-- SECTION 5: Supporting Documents (Shared) --}}
                     @include('requests.partials.form-sections.document-upload')
 
+                    {{-- SECTION 6: Template Interaction (Shared) --}}
+                    @if($selectedTypeForVot)
+                        <x-template-interaction 
+                            :request="$grantRequest" 
+                            :templates="$selectedTypeForVot->activeTemplates()" 
+                        />
+                    @endif
+
                     {{-- Submit Button --}}
                     <x-loading-button type="primary" class="w-full">
                         {{ $submitButtonText }}

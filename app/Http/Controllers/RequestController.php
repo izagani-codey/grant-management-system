@@ -70,6 +70,10 @@ class RequestController extends BaseController
 
     public function create()
     {
+        if (!Auth::user()->isAdmission()) {
+            abort(403);
+        }
+
         return view('requests.create', [
             'requestTypes' => RequestType::where('is_active', true)->orderBy('name')->get(),
             'votCodes'     => VotCode::active()->ordered()->get(),

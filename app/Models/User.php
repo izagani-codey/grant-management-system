@@ -30,7 +30,6 @@ class User extends Authenticatable
     public function isStaff1(): bool    { return $this->role === 'staff1'; }
     public function isStaff2(): bool    { return $this->role === 'staff2'; }
     public function isAdmin(): bool     { return $this->role === 'admin'; }
-    public function isDean(): bool      { return $this->role === 'dean'; }
     public function isAdmissions(): bool { return $this->isAdmission(); }
 
     // ==========================================
@@ -39,7 +38,7 @@ class User extends Authenticatable
 
     public function canAccessAdminPanel(): bool
     {
-        return $this->isAdmin();
+        return $this->isAdmin() || $this->role === 'staff2';
     }
 
     public function canManageRequestTypes(): bool

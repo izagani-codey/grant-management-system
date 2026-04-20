@@ -82,7 +82,7 @@ class ProfileController extends Controller
         $user = $request->user();
         
         $request->validate([
-            'signature_data' => 'required|string',
+            'signature_data' => 'required|string|regex:/^data:image\/png;base64,/',
         ]);
 
         $user->signature_data = $request->input('signature_data');

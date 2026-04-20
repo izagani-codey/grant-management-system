@@ -36,7 +36,7 @@ class UserManagementTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->put('/profile', [
+        $this->actingAs($user)->patch('/profile', [
             'name' => 'Updated Name',
             'email' => 'updated@unikl.edu.my',
             'staff_id' => 'STAFF002',
@@ -45,7 +45,7 @@ class UserManagementTest extends TestCase
             'phone' => '+60198765432',
             'employee_level' => 'Senior Academic',
         ])
-        ->assertRedirect('/profile')
+        ->assertRedirect('/profile/edit')
         ->assertSessionHas('status');
 
         $this->assertDatabaseHas('users', [
@@ -59,7 +59,7 @@ class UserManagementTest extends TestCase
         $user1 = User::factory()->create(['email' => 'user1@test.com']);
         $user2 = User::factory()->create(['email' => 'user2@test.com']);
 
-        $this->actingAs($user1)->put('/profile', [
+        $this->actingAs($user1)->patch('/profile', [
             'name' => $user1->name,
             'email' => 'user2@test.com',
         ])
@@ -70,7 +70,7 @@ class UserManagementTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->put('/profile', [
+        $this->actingAs($user)->patch('/profile', [
             'name' => 'Test',
             'email' => 'invalid-email',
         ])
@@ -119,8 +119,7 @@ class UserManagementTest extends TestCase
         $this->actingAs($user)->post('/profile/signature', [
             'signature_data' => $signature,
         ])
-        ->assertRedirect('/profile')
-        ->assertSessionHas('status');
+        ->assertJson(['success' => true]);
 
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
@@ -140,10 +139,10 @@ class UserManagementTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->post('/profile/signature', [
+        $this->actingAs($user)->json('POST', '/profile/signature', [
             'signature_data' => 'invalid-data',
         ])
-        ->assertSessionHasErrors('signature_data');
+        ->assertJsonValidationErrors('signature_data');
     }
 
     // ======================================================
@@ -157,7 +156,6 @@ class UserManagementTest extends TestCase
         $this->actingAs($user)->get('/profile')->assertOk();
         $this->actingAs($user)->get('/requests/create')->assertOk();
         $this->actingAs($user)->get('/admin/dashboard')->assertForbidden();
-        $this->actingAs($user)->get('/staff2/admin-panel')->assertForbidden();
     }
 
     public function test_staff1_permissions(): void
@@ -172,8 +170,8 @@ class UserManagementTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'staff2']);
 
-        $this->actingAs($user)->get('/staff2/admin-panel')->assertOk();
-        $this->actingAs($user)->get('/admin/dashboard')->assertForbidden();
+        $this->actingAs($user)->get('/admin/dashboard')->assertOk();
+        $this->actingAs($user)->get('/requests/create')->assertForbidden();
     }
 
     public function test_admin_permissions(): void

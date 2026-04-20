@@ -15,6 +15,7 @@
 - [User Roles & Workflow](#user-roles--workflow)
 - [Template & Document System](#template--document-system)
 - [Development Guide](#development-guide)
+- [AI Assistant Configuration](#ai-assistant-configuration)
 - [Testing](#testing)
 - [Deployment](#deployment)
 - [Troubleshooting](#troubleshooting)
@@ -285,6 +286,39 @@ php artisan migrate:fresh --seed
 ### Adding a New Workflow Step
 
 All status transitions are controlled in `WorkflowTransitionService::getAllowedTransitions()`. Add the new `role → [from_status => [to_statuses]]` entry there. The policy, audit log, notifications, and PDF regeneration are handled automatically by `executeTransition()`.
+
+---
+
+## AI Assistant Configuration
+
+### Claude Settings Setup
+
+This project includes AI assistant configuration files for Claude development assistance:
+
+1. **Copy example configuration:**
+   ```bash
+   cp .claude/settings.local.json.example .claude/settings.local.json
+   ```
+
+2. **Configure your local paths:**
+   Edit `.claude/settings.local.json` and replace the placeholders:
+   - `${PHP_PATH}` - Path to your PHP installation (e.g., `/c/Users/username/.config/herd/bin`)
+   - `${PROJECT_PATH}` - Full path to the project directory (e.g., `C:\Users\username\Herd\STRG_system_new`)
+
+3. **Example configuration:**
+   ```json
+   {
+     "permissions": {
+       "allow": [
+         "Bash(${PHP_PATH}/php84 artisan:*)",
+         "Bash(cmd.exe /c \"cd /d ${PROJECT_PATH} && php artisan --version 2>&1\")",
+         "Bash(powershell.exe -Command \"Set-Location '${PROJECT_PATH}'; php artisan --version 2>&1\")"
+       ]
+     }
+   }
+   ```
+
+**Important:** `.claude/settings.local.json` is excluded from version control via `.gitignore` to prevent committing personal configuration data.
 
 ---
 

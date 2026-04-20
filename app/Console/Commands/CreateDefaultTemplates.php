@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\FormTemplate;
+use App\Models\Document;
 use App\Models\RequestType;
 use App\Models\RequestTypeTemplate;
 use App\Models\User;
@@ -38,14 +38,17 @@ class CreateDefaultTemplates extends Command
             // Store the template file
             Storage::disk('public')->put($filePath, $templateContent);
 
-            // Create FormTemplate record
-            $formTemplate = FormTemplate::create([
-                'title' => $requestType->name . ' Template',
-                'template_type' => 'pdf',
+            // Create Document record
+            $formTemplate = Document::create([
+                'name' => $requestType->name . ' Template',
+                'document_type' => 'template',
+                'request_type_id' => $requestType->id,
                 'file_path' => $filePath,
-                'field_mappings' => [],
+                'original_name' => $requestType->name . ' Template.pdf',
+                'is_template' => true,
                 'is_active' => true,
                 'uploaded_by' => $adminUser->id,
+                'uploader_role' => 'admin',
             ]);
 
             // Create RequestTypeTemplate record

@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Request as GrantRequest;
-use App\Models\FormTemplate;
+use App\Models\Document;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 
@@ -13,7 +13,7 @@ class RequestPdfService
      * Generate a filled PDF for the given request and store it.
      * Returns the stored file path.
      */
-    public static function generate(GrantRequest $request, ?FormTemplate $template = null): string
+    public static function generate(GrantRequest $request, ?Document $template = null): string
     {
         $request->loadMissing([
             'user',

@@ -12,7 +12,7 @@ use App\Http\Controllers\Staff2AdminController;
 use App\Http\Controllers\FormTemplateController;
 use App\Http\Controllers\RequestTypeController;
 use App\Http\Controllers\DocumentController;
-use App\Http\Controllers\Staff2WorkflowController;
+use App\Http\Controllers\ChecklistController;
 
 // ─── Welcome ─────────────────────────────────────────────────────────────────
 Route::get('/', fn() => view('welcome'));
@@ -81,6 +81,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/form-templates', [FormTemplateController::class, 'index'])->name('form-templates.index');
     });
 
+    // Template management routes (admin and staff2 only)
+    Route::middleware('role:admin,staff2')->group(function () {
+        Route::post('/form-templates', [FormTemplateController::class, 'store'])->name('form-templates.store');
+        Route::delete('/form-templates/{id}', [FormTemplateController::class, 'destroy'])->name('form-templates.destroy');
+    });
+
     // ── All roles — view requests ─────────────────────────────────────────────
     Route::get('/requests/{id}/print', [RequestController::class, 'printSummary'])->name('requests.print');
     Route::get('/requests/{id}/pdf', [RequestController::class, 'downloadPdf'])->name('requests.pdf');
@@ -104,8 +110,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/notifications/cleanup', [NotificationController::class, 'cleanup'])->name('notifications.cleanup');
     Route::get('/notifications/{id}/open', [NotificationController::class, 'open'])->name('notifications.open');
 
-    // ── Admin Panel (Admin role only)
-    Route::middleware('role:admin')->group(function () {
+    // ── Admin Panel (Admin and Staff2 roles)
+    Route::middleware('role:admin,staff2')->group(function () {
         // Admin panel
         Route::get('/admin/dashboard', [Staff2AdminController::class, 'index'])->name('admin.dashboard');
         Route::get('/admin/users', [Staff2AdminController::class, 'users'])->name('admin.users');
@@ -119,9 +125,24 @@ Route::middleware('auth')->group(function () {
         Route::put('/admin/request-types/{id}', [Staff2AdminController::class, 'updateRequestType'])->name('admin.request-types.update');
         Route::delete('/admin/request-types/{id}', [Staff2AdminController::class, 'destroyRequestType'])->name('admin.request-types.destroy');
 
-        // Form templates
-        Route::post('/form-templates', [FormTemplateController::class, 'store'])->name('form-templates.store');
-        Route::delete('/form-templates/{id}', [FormTemplateController::class, 'destroy'])->name('form-templates.destroy');
+        // Documents
+        Route::post('/documents', [Staff2AdminController::class, 'storeDocument'])->name('admin.documents.store');
+        
+        // Template filling
+        Route::get('/templates/{id}/fill', [FormTemplateController::class, 'fillTemplate'])->name('templates.fill');
+        Route::post('/templates/{id}/save', [FormTemplateController::class, 'saveFilledTemplate'])->name('templates.save');
+        
+        // Document category management
+        Route::post('/documents/user-submission', [DocumentController::class, 'storeUserSubmission'])->name('documents.user-submission.store');
+        Route::get('/requests/{id}/documents/{category}', [DocumentController::class, 'getByCategory'])->name('documents.by-category');
+        Route::post('/requests/{id}/documents/move', [DocumentController::class, 'moveToRequest'])->name('documents.move-to-request');
+        
+        // Checklist management
+        Route::get('/checklists', [Staff2AdminController::class, 'checklists'])->name('admin.checklists');
+        Route::post('/checklists', [Staff2AdminController::class, 'storeChecklistItem'])->name('admin.checklists.store');
+        Route::put('/checklists/{id}', [Staff2AdminController::class, 'updateChecklistItem'])->name('admin.checklists.update');
+        Route::delete('/checklists/{id}', [Staff2AdminController::class, 'destroyChecklistItem'])->name('admin.checklists.destroy');
+        Route::patch('/checklists/reorder', [Staff2AdminController::class, 'reorderChecklistItems'])->name('admin.checklists.reorder');
     });
 
     // Staff 2 Routes (workflow only)
@@ -129,16 +150,18 @@ Route::middleware('auth')->group(function () {
         // Override functionality
         Route::post('/requests/toggle-override-mode', [RequestController::class, 'toggleOverrideMode'])
             ->name('requests.toggleOverrideMode');
-
-        Route::get('/workflow-settings', [Staff2WorkflowController::class, 'index'])
-            ->name('staff2.workflow.index');
-        Route::patch('/workflow-settings/{requestType}', [Staff2WorkflowController::class, 'update'])
-            ->name('staff2.workflow.update');
     });
 
     // Staff 2-only tools
     Route::middleware('role:staff2')->group(function () {
         Route::get('/staff2/requests/export', [RequestController::class, 'exportExcel'])->name('requests.exportExcel');
+    });
+
+    // Checklist routes (Staff1 only)
+    Route::middleware('role:staff1')->group(function () {
+        Route::get('/requests/{id}/checklist', [ChecklistController::class, 'show'])->name('requests.checklist.show');
+        Route::post('/requests/{id}/checklist', [ChecklistController::class, 'store'])->name('requests.checklist.store');
+        Route::patch('/requests/{id}/checklist/bulk', [ChecklistController::class, 'bulkUpdate'])->name('requests.checklist.bulk');
     });
 });
 

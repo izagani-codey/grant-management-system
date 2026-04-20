@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class RequestType extends Model
 {
+    use HasFactory;
     protected $fillable = ['name', 'slug', 'description', 'default_template_id', 'field_schema', 'requires_vot', 'metadata', 'is_active', 'required_documents'];
 
     protected $casts = [
@@ -30,52 +32,38 @@ class RequestType extends Model
 
     public function defaultTemplate()
     {
-        return $this->belongsTo(FormTemplate::class, 'default_template_id');
-    }
-
-    public function requestTypeTemplates()
-    {
-        return $this->hasMany(RequestTypeTemplate::class);
-    }
-
-    public function workflowPolicy()
-    {
-        return $this->hasOne(RequestTypeWorkflowPolicy::class);
+        return $this->belongsTo(Document::class, 'default_template_id');
     }
 
     public function templates()
     {
-        return $this->belongsToMany(FormTemplate::class, 'request_type_templates')
-            ->withPivot(['is_default', 'sort_order'])
-            ->orderBy('sort_order')
+        return $this->hasMany(Document::class)
+            ->where('document_type', 'template')
             ->orderBy('created_at');
+    }
+
+    public function activeTemplates()
+    {
+        return $this->templates()->where('is_active', true);
+    }
+
+    public function checklistItems()
+    {
+        return $this->hasMany(ChecklistItem::class)->active()->ordered();
+    }
+
+    public function activeChecklistItems()
+    {
+        return $this->checklistItems()->active();
+    }
+
+    public function requiredChecklistItems()
+    {
+        return $this->checklistItems()->required();
     }
 
     public function getDefaultTemplate(?string $signatureLayout = null)
     {
-        // If a layout is specified, look for a layout-specific template first
-        if ($signatureLayout) {
-            $layoutTemplate = $this->requestTypeTemplates()
-                ->with('formTemplate')
-                ->where('signature_layout', $signatureLayout)
-                ->first();
-
-            if ($layoutTemplate?->formTemplate) {
-                return $layoutTemplate->formTemplate;
-            }
-        }
-
-        // Fall back to the legacy default_template_id
-        if ($this->default_template_id) {
-            return $this->defaultTemplate;
-        }
-
-        // Then try the new system (any layout)
-        $defaultTemplate = $this->requestTypeTemplates()
-            ->with('formTemplate')
-            ->where('is_default', true)
-            ->first();
-
-        return $defaultTemplate?->formTemplate;
+        return $this->defaultTemplate;
     }
 }

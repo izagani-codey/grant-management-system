@@ -493,11 +493,16 @@
                 @can('revise', $grantRequest)
                     <a href="{{ route('requests.edit', $grantRequest->id) }}"
                        class="inline-block bg-yellow-500 text-white px-6 py-2 rounded font-bold hover:bg-yellow-600">
-                        ✏ Edit & Resubmit
+                        &#9999 Edit & Resubmit
                     </a>
                 @endcan
 
-                {{-- STAFF 1: SUBMITTED → review/return/decline --}}
+                {{-- Staff1 Checklist Review --}}
+                @if(auth()->user()->isStaff1() && $staff1Active)
+                    <x-checklist-review :request="$grantRequest" />
+                @endif
+
+                {{-- STAFF 1: SUBMITTED &#8594; review/return/decline --}}
                 @can('changeStatus', $grantRequest)
                     @if(auth()->user()->role === 'staff1' && $staff1Active)
                         <form action="{{ route('requests.updateStatus', $grantRequest->id) }}" method="POST" class="space-y-3" onsubmit="return handleFormSubmit(this, 'Submitting...')">

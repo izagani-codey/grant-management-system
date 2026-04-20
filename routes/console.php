@@ -15,7 +15,7 @@ Artisan::command('requests:update-priorities', function () {
     $this->info('Starting priority update process...');
 
     $requests = Request::whereNotNull('deadline')
-        ->notTrulyComplete()
+        ->whereNotIn('status_id', [RequestStatus::COMPLETED->value, RequestStatus::DECLINED->value])
         ->get();
 
     $updatedCount = 0;
@@ -56,3 +56,4 @@ Artisan::command('requests:update-priorities', function () {
         'high_priority_count' => $highPriorityCount,
     ]);
 })->purpose('Update automatic priorities for all requests based on deadlines');
+

@@ -21,7 +21,7 @@ class TemplateUsage extends Model
 
     public function template()
     {
-        return $this->belongsTo(FormTemplate::class, 'template_id');
+        return $this->belongsTo(Document::class, 'template_id');
     }
 
     public function request()

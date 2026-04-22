@@ -103,7 +103,7 @@
                     <span style="color: var(--miit-gold);">Request Management System</span>
                 </h1>
                 <p class="text-lg md:text-xl mb-10 text-blue-100 max-w-2xl mx-auto">
-                    A fully digital workflow for grant request submission, multi-level approval, and document generation — from submission to final sign-off.
+                    A fully digital workflow for grant request submission, multi-level review, and approval — from initial submission to final completion.
                 </p>
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
                     @guest
@@ -169,7 +169,7 @@
                             <svg class="w-5 h-5 text-green-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                             </svg>
-                            Automatic PDF generation
+                            Download blank forms provided by Staff 2
                         </li>
                     </ul>
                 </div>
@@ -193,13 +193,13 @@
                             <svg class="w-5 h-5 text-green-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                             </svg>
-                            Priority request management
+                            Checklist-enforced document verification
                         </li>
                         <li class="flex items-start gap-2">
                             <svg class="w-5 h-5 text-green-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                             </svg>
-                            Override capabilities for urgent cases
+                            Staff 2 direct approval for urgent cases
                         </li>
                         <li class="flex items-start gap-2">
                             <svg class="w-5 h-5 text-green-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -218,31 +218,31 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
                     </div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-4">System Administration</h3>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">System Configuration</h3>
                     <ul class="space-y-3 text-gray-600 text-sm">
                         <li class="flex items-start gap-2">
                             <svg class="w-5 h-5 text-green-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                             </svg>
-                            User &amp; role management
+                            User &amp; role management (Admin)
                         </li>
                         <li class="flex items-start gap-2">
                             <svg class="w-5 h-5 text-green-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                             </svg>
-                            Request type &amp; template management
+                            Request types, templates &amp; checklists (Staff 2)
                         </li>
                         <li class="flex items-start gap-2">
                             <svg class="w-5 h-5 text-green-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                             </svg>
-                            Supporting document upload
+                            VOT &amp; signature requirement configuration (Staff 2)
                         </li>
                         <li class="flex items-start gap-2">
                             <svg class="w-5 h-5 text-green-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                             </svg>
-                            Reporting &amp; audit log access
+                            Full audit log &amp; request history
                         </li>
                     </ul>
                 </div>
@@ -258,7 +258,7 @@
                     How It <span class="gradient-text">Works</span>
                 </h2>
                 <p class="text-lg text-gray-600 max-w-2xl mx-auto">
-                    A simple 4-step process from submission to final approval
+                    A simple 4-step process from submission to completion
                 </p>
             </div>
 
@@ -290,8 +290,8 @@
                             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                         </svg>
                     </div>
-                    <h3 class="text-base font-semibold text-gray-900 mb-2">Dean Approval</h3>
-                    <p class="text-gray-500 text-sm">Dean signs off and the approved PDF is generated automatically</p>
+                    <h3 class="text-base font-semibold text-gray-900 mb-2">Completion</h3>
+                    <p class="text-gray-500 text-sm">Staff 1 processes the approved request and marks it complete</p>
                 </div>
             </div>
         </div>
@@ -310,8 +310,8 @@
                     <p class="text-gray-500 font-medium">Accessible Online Anytime</p>
                 </div>
                 <div>
-                    <div class="text-4xl font-bold mb-2" style="color: var(--miit-gold);">3 Levels</div>
-                    <p class="text-gray-500 font-medium">Multi-Stage Approval Workflow</p>
+                    <div class="text-4xl font-bold mb-2" style="color: var(--miit-gold);">4 Roles</div>
+                    <p class="text-gray-500 font-medium">Admission · Staff 1 · Staff 2 · Admin</p>
                 </div>
             </div>
         </div>

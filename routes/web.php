@@ -74,9 +74,12 @@ Route::middleware('auth')->group(function () {
         Route::delete('/checklists/{id}', [Staff2AdminController::class, 'destroyChecklistItem'])->name('admin.checklists.destroy');
         Route::patch('/checklists/reorder', [Staff2AdminController::class, 'reorderChecklistItems'])->name('admin.checklists.reorder');
         Route::get('/staff2/requests/export', [RequestController::class, 'exportExcel'])->name('requests.exportExcel');
+        Route::patch('/admin/templates/{document}/zones', [Staff2AdminController::class, 'updateTemplateZones'])->name('admin.templates.zones');
+        Route::patch('/admin/templates/{document}/field-zones', [Staff2AdminController::class, 'updateTemplateFieldZones'])->name('admin.templates.field-zones');
     });
 
     Route::get('/documents/{id}/download', [DocumentController::class, 'download'])->name('documents.download');
+    Route::get('/documents/{id}/preview', [DocumentController::class, 'preview'])->name('documents.preview');
 
     Route::middleware('role:staff1,staff2,admin')->group(function () {
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');

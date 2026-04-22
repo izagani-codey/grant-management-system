@@ -34,8 +34,8 @@ class UpdateRequestRequest extends FormRequest
         $rules = [
             'description'  => 'required|string|max:2000',
             'field_values' => 'nullable|array',
-            'documents'    => 'nullable|array',
-            'documents.*'  => ['file', $mimeTypes, $mimeCheck, 'max:5120'],
+            'documents'    => 'nullable|array|max:5',
+            'documents.*'  => ['nullable', 'file', $mimeTypes, $mimeCheck, 'max:5120'],
         ];
 
         if ($requiresSignature) {

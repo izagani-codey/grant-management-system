@@ -87,7 +87,7 @@ class DashboardService
                 ->orderBy('ref_number')
                 ->get();
             $data['configRequestTypes'] = RequestType::with([
-                'activeTemplates',
+                'activeTemplates.requestType',
                 'checklistItems' => fn($q) => $q->orderBy('sort_order'),
             ])->orderBy('name')->get();
             $data['configVotCodes'] = VotCode::active()->ordered()->get();

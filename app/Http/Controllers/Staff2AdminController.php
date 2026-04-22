@@ -21,27 +21,13 @@ class Staff2AdminController extends BaseController
     {
         $this->ensureAdminAccess();
 
-        // System Stats
+        // System Stats (read-only visibility for admin)
         $totalRequests  = GrantRequest::count();
         $submitted      = GrantRequest::where('status_id', RequestStatus::SUBMITTED->value)->count();
-        $staff1Approved = GrantRequest::where('status_id', RequestStatus::STAFF1_REVIEWED->value)->count();
+        $staff1Reviewed = GrantRequest::where('status_id', RequestStatus::STAFF1_REVIEWED->value)->count();
         $staff2Approved = GrantRequest::where('status_id', RequestStatus::STAFF2_APPROVED->value)->count();
         $completed      = GrantRequest::where('status_id', RequestStatus::COMPLETED->value)->count();
         $declined       = GrantRequest::where('status_id', RequestStatus::DECLINED->value)->count();
-
-        // Request Types Stats
-        $byType = RequestType::query()
-            ->withCount('requests')
-            ->orderByDesc('requests_count')
-            ->take(6)
-            ->get();
-
-        // Recent Requests
-        $recentHighPriority = GrantRequest::query()
-            ->with('user', 'requestType')
-            ->latest()
-            ->take(8)
-            ->get();
 
         // User Stats
         $totalUsers     = User::count();
@@ -49,29 +35,25 @@ class Staff2AdminController extends BaseController
         $staff1Users    = User::where('role', 'staff1')->count();
         $staff2Users    = User::where('role', 'staff2')->count();
 
-        // Form Templates
-        $totalTemplates = Document::where('document_type', 'template')->count();
-        $recentTemplates = Document::with('uploader')
-            ->where('document_type', 'template')
-            ->latest('created_at')
-            ->take(5)
+        // Recent Requests (read-only)
+        $recentRequests = GrantRequest::query()
+            ->with('user', 'requestType')
+            ->latest()
+            ->take(8)
             ->get();
 
         return view('admin.dashboard', compact(
             'totalRequests',
             'submitted',
-            'staff1Approved',
+            'staff1Reviewed',
             'staff2Approved',
             'completed',
             'declined',
-            'byType',
-            'recentHighPriority',
             'totalUsers',
             'admissionUsers',
             'staff1Users',
             'staff2Users',
-            'totalTemplates',
-            'recentTemplates'
+            'recentRequests'
         ));
     }
 
@@ -503,5 +485,84 @@ class Staff2AdminController extends BaseController
         }
 
         return response()->json(['success' => true]);
+    }
+
+    // ==========================================
+    // Template Signature Zone Configuration
+    // ==========================================
+
+    public function updateTemplateZones(Request $request, Document $document)
+    {
+        $this->ensureStaff2OrAdminAccess();
+
+        if ($document->document_type !== \App\Enums\DocumentType::Template) {
+            abort(400, 'Only template documents support signature zones.');
+        }
+
+        $validated = $request->validate([
+            'applicant_page'   => 'nullable|integer|min:1',
+            'applicant_x'      => 'nullable|numeric|min:0',
+            'applicant_y'      => 'nullable|numeric|min:0',
+            'applicant_width'  => 'nullable|numeric|min:5',
+            'applicant_height' => 'nullable|numeric|min:5',
+            'staff2_page'      => 'nullable|integer|min:1',
+            'staff2_x'         => 'nullable|numeric|min:0',
+            'staff2_y'         => 'nullable|numeric|min:0',
+            'staff2_width'     => 'nullable|numeric|min:5',
+            'staff2_height'    => 'nullable|numeric|min:5',
+        ]);
+
+        $zones = [];
+
+        if (!empty($validated['applicant_page'])) {
+            $zones['applicant'] = [
+                'page'   => (int)   $validated['applicant_page'],
+                'x'      => (float) $validated['applicant_x']      ?? 10,
+                'y'      => (float) $validated['applicant_y']       ?? 240,
+                'width'  => (float) $validated['applicant_width']   ?? 70,
+                'height' => (float) $validated['applicant_height']  ?? 25,
+            ];
+        }
+
+        if (!empty($validated['staff2_page'])) {
+            $zones['staff2'] = [
+                'page'   => (int)   $validated['staff2_page'],
+                'x'      => (float) $validated['staff2_x']      ?? 110,
+                'y'      => (float) $validated['staff2_y']       ?? 240,
+                'width'  => (float) $validated['staff2_width']   ?? 70,
+                'height' => (float) $validated['staff2_height']  ?? 25,
+            ];
+        }
+
+        $document->update(['signature_zones' => empty($zones) ? null : $zones]);
+
+        return redirect()->back()->with('success', 'Signature zones saved for "' . ($document->name ?: $document->original_name) . '".');
+    }
+
+    public function updateTemplateFieldZones(Request $request, Document $document)
+    {
+        $this->ensureStaff2OrAdminAccess();
+
+        if ($document->document_type !== \App\Enums\DocumentType::Template) {
+            abort(400, 'Only template documents support field zones.');
+        }
+
+        $raw   = $request->input('field_zones', []);
+        $zones = [];
+        foreach ($raw as $fieldName => $z) {
+            if (!isset($z['x']) || !isset($z['y'])) continue;
+            $zones[$fieldName] = [
+                'page'      => max(1,  (int)   ($z['page']      ?? 1)),
+                'x'         => max(0,  (float) ($z['x']         ?? 0)),
+                'y'         => max(0,  (float) ($z['y']         ?? 0)),
+                'width'     => max(5,  (float) ($z['width']     ?? 60)),
+                'height'    => max(4,  (float) ($z['height']    ?? 8)),
+                'font_size' => max(6, min(24, (float) ($z['font_size'] ?? 10))),
+            ];
+        }
+
+        $document->update(['field_zones' => empty($zones) ? null : $zones]);
+
+        return redirect()->back()->with('success', 'Field zones saved for "' . ($document->name ?: $document->original_name) . '".');
     }
 }

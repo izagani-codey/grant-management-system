@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\DocumentType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Document extends Model
 {
@@ -22,13 +23,17 @@ class Document extends Model
         'description',
         'is_active',
         'download_count',
+        'signature_zones',
+        'field_zones',
     ];
 
     protected $casts = [
-        'is_template'   => 'boolean',
-        'is_active'     => 'boolean',
-        'download_count'=> 'integer',
-        'document_type' => DocumentType::class,
+        'is_template'     => 'boolean',
+        'is_active'       => 'boolean',
+        'download_count'  => 'integer',
+        'document_type'   => DocumentType::class,
+        'signature_zones' => 'array',
+        'field_zones'     => 'array',
     ];
 
     protected $attributes = [
@@ -55,6 +60,7 @@ class Document extends Model
             DocumentType::Template        => 'Template',
             DocumentType::UserSubmission  => 'User Submission',
             DocumentType::StaffAttachment => 'Staff Attachment',
+            DocumentType::SignedDocument  => 'Signed Document',
             default                       => 'Document',
         };
     }

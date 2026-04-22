@@ -20,6 +20,7 @@ class Request extends Model
         'revision_count',
         'staff1_signature_data', 'staff1_signed_at',
         'staff2_signature_data', 'staff2_signed_at',
+        'signed_document_id',
     ];
 
     protected $guarded = [
@@ -55,6 +56,7 @@ class Request extends Model
     public function templateUsages(){ return $this->hasMany(TemplateUsage::class, 'request_id'); }
     public function signatures()    { return $this->hasMany(Signature::class); }
     public function checklistReviews() { return $this->hasMany(ChecklistReview::class); }
+    public function signedDocument()   { return $this->belongsTo(Document::class, 'signed_document_id'); }
 
     // ==========================================
     // VOT helpers

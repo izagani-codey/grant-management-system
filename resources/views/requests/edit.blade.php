@@ -193,14 +193,22 @@
 
                     {{-- Upload new documents --}}
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
                             Upload New / Replacement Documents
-                            <span class="text-gray-400 font-normal text-xs">(PDF, Word, Excel, JPG, PNG — max 5MB each)</span>
+                            <span class="text-gray-400 font-normal text-xs">(up to 5 files — PDF, Word, Excel, JPG, PNG — max 5MB each)</span>
                         </label>
-                        <input type="file" name="documents[]" multiple
-                               accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                               class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700">
+                        <div class="space-y-2">
+                            @for($i = 1; $i <= 5; $i++)
+                            <div class="flex items-center gap-3 p-2 bg-gray-50 border border-gray-200 rounded">
+                                <span class="text-xs font-semibold text-gray-500 w-24 shrink-0">Document {{ $i }}</span>
+                                <input type="file" name="documents[]"
+                                       accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                       class="flex-1 text-sm text-gray-500 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700">
+                            </div>
+                            @endfor
+                        </div>
                         @error('documents.*') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+                        @error('documents') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
 
                     {{-- Signature (if required) --}}

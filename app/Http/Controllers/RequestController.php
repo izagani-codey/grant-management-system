@@ -134,10 +134,12 @@ class RequestController extends BaseController
             }
         });
 
-        Signature::updateOrCreate(
-            ['request_id' => $grantRequest->id, 'role' => 'applicant'],
-            ['user_id' => $user->id, 'signature_path' => $request->input('signature_data'), 'signed_at' => now()]
-        );
+        if ($request->filled('signature_data')) {
+            Signature::updateOrCreate(
+                ['request_id' => $grantRequest->id, 'role' => 'applicant'],
+                ['user_id' => $user->id, 'signature_path' => $request->input('signature_data'), 'signed_at' => now()]
+            );
+        }
 
         AuditLog::create([
             'request_id'  => $grantRequest->id,

@@ -275,23 +275,206 @@
                     <div x-show="tab === 'templates'" x-cloak>
                         @foreach($configRequestTypes as $rt)
                             @if($rt->activeTemplates->isNotEmpty())
-                                <div class="mb-4">
+                                <div class="mb-6">
                                     <h4 class="text-sm font-bold text-gray-700 mb-2">{{ $rt->name }}</h4>
-                                    <ul class="space-y-1 mb-3">
+                                    <div class="space-y-3">
                                         @foreach($rt->activeTemplates as $tpl)
-                                            <li class="flex items-center justify-between text-sm bg-gray-50 rounded px-3 py-2">
-                                                <a href="{{ route('documents.download', $tpl->id) }}" target="_blank"
-                                                   class="text-blue-600 hover:underline">
-                                                    {{ $tpl->name ?: $tpl->original_name }}
-                                                </a>
-                                                <form action="{{ route('documents.destroy', $tpl->id) }}" method="POST"
-                                                      onsubmit="return confirm('Remove this template?')">
-                                                    @csrf @method('DELETE')
-                                                    <button class="text-xs text-red-500 hover:underline">Remove</button>
-                                                </form>
-                                            </li>
+                                            <div x-data="zeRow('{{ $tpl->id }}', '{{ route('documents.preview', $tpl->id) }}', {{ $tpl->signature_zones ? json_encode($tpl->signature_zones) : 'null' }}, {{ json_encode($tpl->requestType?->field_schema ?? []) }}, {{ $tpl->field_zones ? json_encode($tpl->field_zones) : 'null' }})"
+                                                 class="border border-gray-200 rounded-lg overflow-hidden">
+                                                {{-- Template row --}}
+                                                <div class="flex items-center justify-between text-sm bg-gray-50 px-3 py-2">
+                                                    <div class="flex items-center gap-3 min-w-0">
+                                                        <a href="{{ route('documents.download', $tpl->id) }}" target="_blank"
+                                                           class="text-blue-600 hover:underline truncate">
+                                                            {{ $tpl->name ?: $tpl->original_name }}
+                                                        </a>
+                                                        @if($tpl->signature_zones)
+                                                            <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium shrink-0">Zones set</span>
+                                                        @else
+                                                            <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">No zones</span>
+                                                        @endif
+                                                    </div>
+                                                    <div class="flex items-center gap-3 shrink-0">
+                                                        <button type="button" @click="toggle()"
+                                                            class="text-xs text-indigo-600 hover:underline font-medium">
+                                                            <span x-text="zonesOpen ? 'Hide zones' : 'Set signature zones'"></span>
+                                                        </button>
+                                                        <form action="{{ route('documents.destroy', $tpl->id) }}" method="POST"
+                                                              onsubmit="return confirm('Remove this template?')">
+                                                            @csrf @method('DELETE')
+                                                            <button class="text-xs text-red-500 hover:underline">Remove</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+
+                                                {{-- Signature zones panel (visual editor) --}}
+                                                <div x-show="zonesOpen" x-cloak
+                                                     class="p-4 bg-indigo-50 border-t border-indigo-100">
+
+                                                    @if($tpl->isPdf())
+                                                        {{-- Visual editor container --}}
+                                                        <div id="ze-{{ $tpl->id }}">
+                                                            {{-- Page navigation --}}
+                                                            <div class="flex items-center gap-3 mb-3">
+                                                                <button type="button" onclick="zeChangePage('{{ $tpl->id }}', -1)"
+                                                                    class="w-6 h-6 flex items-center justify-center rounded bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 text-xs font-bold">‹</button>
+                                                                <span class="text-xs text-gray-700">
+                                                                    Page <span id="ze-page-{{ $tpl->id }}" class="font-bold">1</span>
+                                                                    / <span id="ze-total-{{ $tpl->id }}" class="font-bold">…</span>
+                                                                </span>
+                                                                <button type="button" onclick="zeChangePage('{{ $tpl->id }}', 1)"
+                                                                    class="w-6 h-6 flex items-center justify-center rounded bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 text-xs font-bold">›</button>
+                                                                <span class="ml-auto text-xs text-gray-400">See legend below</span>
+                                                            </div>
+
+                                                            {{-- Canvas wrapper --}}
+                                                            <div class="relative inline-block max-w-full overflow-auto border border-gray-300 rounded bg-white shadow-sm"
+                                                                 id="ze-wrap-{{ $tpl->id }}" style="cursor:default;">
+                                                                <canvas id="ze-canvas-{{ $tpl->id }}" class="block"></canvas>
+                                                                {{-- Overlay for draggable boxes --}}
+                                                                <div id="ze-overlay-{{ $tpl->id }}"
+                                                                     class="absolute inset-0"
+                                                                     style="pointer-events:none;">
+                                                                    {{-- Applicant box --}}
+                                                                    <div id="ze-box-applicant-{{ $tpl->id }}"
+                                                                         class="ze-drag-box absolute hidden select-none"
+                                                                         data-role="applicant"
+                                                                         data-tpl="{{ $tpl->id }}"
+                                                                         style="border:2px solid #3b82f6;background:rgba(59,130,246,0.12);pointer-events:auto;cursor:move;min-width:40px;min-height:20px;">
+                                                                        <span class="absolute top-0.5 left-1 text-blue-700 font-bold pointer-events-none"
+                                                                              style="font-size:9px;white-space:nowrap;line-height:1;">Applicant</span>
+                                                                        <div class="ze-resize-handle"
+                                                                             style="position:absolute;right:0;bottom:0;width:12px;height:12px;background:#3b82f6;cursor:se-resize;opacity:0.8;border-radius:2px 0 0 0;"></div>
+                                                                    </div>
+                                                                    {{-- Staff 2 box --}}
+                                                                    <div id="ze-box-staff2-{{ $tpl->id }}"
+                                                                         class="ze-drag-box absolute hidden select-none"
+                                                                         data-role="staff2"
+                                                                         data-tpl="{{ $tpl->id }}"
+                                                                         style="border:2px solid #22c55e;background:rgba(34,197,94,0.12);pointer-events:auto;cursor:move;min-width:40px;min-height:20px;">
+                                                                        <span class="absolute top-0.5 left-1 text-green-700 font-bold pointer-events-none"
+                                                                              style="font-size:9px;white-space:nowrap;line-height:1;">Staff 2</span>
+                                                                        <div class="ze-resize-handle"
+                                                                             style="position:absolute;right:0;bottom:0;width:12px;height:12px;background:#22c55e;cursor:se-resize;opacity:0.8;border-radius:2px 0 0 0;"></div>
+                                                                    </div>
+                                                                    {{-- Field value boxes --}}
+                                                                    @php $fColours = ['#6366f1','#f59e0b','#f43f5e','#14b8a6','#a855f7','#f97316','#0ea5e9','#84cc16']; @endphp
+                                                                    @foreach(($tpl->requestType?->field_schema ?? []) as $fi => $field)
+                                                                    @php $fc = $fColours[$fi % count($fColours)]; @endphp
+                                                                    <div id="ze-field-{{ $field['name'] }}-{{ $tpl->id }}"
+                                                                         class="ze-drag-box absolute hidden select-none"
+                                                                         data-role="field" data-field="{{ $field['name'] }}" data-tpl="{{ $tpl->id }}"
+                                                                         style="border:2px solid {{ $fc }};background:{{ $fc }}1e;pointer-events:auto;cursor:move;min-width:40px;min-height:16px;">
+                                                                        <span class="absolute top-0.5 left-1 font-bold pointer-events-none"
+                                                                              style="font-size:8px;white-space:nowrap;line-height:1;color:{{ $fc }};">{{ $field['label'] }}</span>
+                                                                        <div class="ze-resize-handle"
+                                                                             style="position:absolute;right:0;bottom:0;width:10px;height:10px;background:{{ $fc }};cursor:se-resize;opacity:0.8;border-radius:2px 0 0 0;"></div>
+                                                                    </div>
+                                                                    @endforeach
+                                                                </div>
+                                                            </div>
+
+                                                            {{-- Legend --}}
+                                                            <div class="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs">
+                                                                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-blue-500 opacity-70"></span><span class="text-gray-600">Applicant sig</span></span>
+                                                                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-green-500 opacity-70"></span><span class="text-gray-600">Staff 2 sig</span></span>
+                                                                <div id="ze-field-legend-{{ $tpl->id }}" class="contents"></div>
+                                                            </div>
+                                                            <p class="text-xs text-gray-400 mt-1">
+                                                                Drag a box to position it · Drag the <strong>corner handle</strong> to resize · Navigate pages to place on a different page
+                                                            </p>
+                                                        </div>
+                                                    @else
+                                                        <p class="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-3">
+                                                            Visual editor is only available for PDF templates. This template is a {{ strtoupper($tpl->getFileExtension()) }} file — enter coordinates manually below.
+                                                        </p>
+                                                    @endif
+
+                                                    {{-- Save form (works for both PDF and non-PDF) --}}
+                                                    <form id="ze-form-{{ $tpl->id }}"
+                                                          action="{{ route('admin.templates.zones', $tpl->id) }}" method="POST"
+                                                          class="mt-4 pt-4 border-t border-indigo-200"
+                                                          onsubmit="zePopulateForm('{{ $tpl->id }}')">
+                                                        @csrf @method('PATCH')
+                                                        <input type="hidden" name="applicant_page"   id="ze-ap-page-{{ $tpl->id }}">
+                                                        <input type="hidden" name="applicant_x"      id="ze-ap-x-{{ $tpl->id }}">
+                                                        <input type="hidden" name="applicant_y"      id="ze-ap-y-{{ $tpl->id }}">
+                                                        <input type="hidden" name="applicant_width"  id="ze-ap-w-{{ $tpl->id }}">
+                                                        <input type="hidden" name="applicant_height" id="ze-ap-h-{{ $tpl->id }}">
+                                                        <input type="hidden" name="staff2_page"      id="ze-s2-page-{{ $tpl->id }}">
+                                                        <input type="hidden" name="staff2_x"         id="ze-s2-x-{{ $tpl->id }}">
+                                                        <input type="hidden" name="staff2_y"         id="ze-s2-y-{{ $tpl->id }}">
+                                                        <input type="hidden" name="staff2_width"     id="ze-s2-w-{{ $tpl->id }}">
+                                                        <input type="hidden" name="staff2_height"    id="ze-s2-h-{{ $tpl->id }}">
+
+                                                        @if(!$tpl->isPdf())
+                                                            {{-- Manual fallback for non-PDF --}}
+                                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                                                @foreach(['applicant' => 'blue', 'staff2' => 'green'] as $role => $colour)
+                                                                <div class="bg-white rounded border border-indigo-200 p-3">
+                                                                    <p class="text-xs font-bold text-{{ $colour }}-700 mb-2">{{ $role === 'applicant' ? 'Applicant' : 'Staff 2' }} Signature</p>
+                                                                    <div class="grid grid-cols-2 gap-2 text-xs">
+                                                                        @foreach(['page' => '1', 'x' => '10', 'y' => '240', 'width' => '70', 'height' => '25'] as $field => $ph)
+                                                                        <div>
+                                                                            <label class="block text-gray-500 mb-1">{{ ucfirst($field) }}{{ in_array($field, ['x','y','width','height']) ? ' (mm)' : '' }}</label>
+                                                                            <input type="number" name="{{ $role }}_{{ $field }}"
+                                                                                   value="{{ $tpl->signature_zones[$role][$field] ?? '' }}"
+                                                                                   placeholder="{{ $ph }}" min="{{ $field === 'page' ? 1 : 0 }}" step="0.5"
+                                                                                   class="w-full rounded border-gray-300 text-xs py-1">
+                                                                        </div>
+                                                                        @endforeach
+                                                                    </div>
+                                                                </div>
+                                                                @endforeach
+                                                            </div>
+                                                        @endif
+
+                                                        <div class="flex gap-2 items-center flex-wrap">
+                                                            <button type="submit"
+                                                                class="px-4 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded hover:bg-indigo-700">
+                                                                Save Zones
+                                                            </button>
+                                                            @if($tpl->isPdf())
+                                                                <button type="button" onclick="zeClearAll('{{ $tpl->id }}')"
+                                                                    class="px-3 py-1.5 bg-white border border-gray-300 text-xs text-gray-600 rounded hover:bg-gray-50">
+                                                                    Clear All
+                                                                </button>
+                                                                <span class="text-xs text-gray-400">Position boxes on the PDF above, then save.</span>
+                                                            @else
+                                                                <span class="text-xs text-gray-400">Leave fields blank to skip that signature.</span>
+                                                            @endif
+                                                        </div>
+                                                    </form>
+
+                                                    {{-- Field Zones save form --}}
+                                                    @if($tpl->requestType?->field_schema)
+                                                    <form id="ze-field-form-{{ $tpl->id }}"
+                                                          action="{{ route('admin.templates.field-zones', $tpl->id) }}" method="POST"
+                                                          class="mt-3 pt-3 border-t border-indigo-200"
+                                                          onsubmit="zePopulateFieldForm('{{ $tpl->id }}')">
+                                                        @csrf @method('PATCH')
+                                                        <div id="ze-field-inputs-{{ $tpl->id }}"></div>
+                                                        <div class="flex items-center gap-3 flex-wrap">
+                                                            <button type="submit"
+                                                                class="px-3 py-1.5 bg-teal-600 text-white text-xs font-bold rounded hover:bg-teal-700">
+                                                                Save Field Zones
+                                                            </button>
+                                                            <button type="button" onclick="zeClearAllFields('{{ $tpl->id }}')"
+                                                                class="px-3 py-1.5 bg-white border border-gray-300 text-xs text-gray-600 rounded hover:bg-gray-50">
+                                                                Clear All Fields
+                                                            </button>
+                                                            @if($tpl->field_zones)
+                                                                <span class="text-xs text-teal-700 font-medium">✓ {{ count($tpl->field_zones) }} field(s) configured</span>
+                                                            @else
+                                                                <span class="text-xs text-gray-400">Drag the coloured boxes to position each field value.</span>
+                                                            @endif
+                                                        </div>
+                                                    </form>
+                                                    @endif
+                                                </div>
+                                            </div>
                                         @endforeach
-                                    </ul>
+                                    </div>
                                 </div>
                             @endif
                         @endforeach
@@ -501,6 +684,360 @@ function closeEditTypeModal() {
     document.getElementById('edit-type-modal').classList.add('hidden');
 }
 
+// ─── Alpine component factory for each template row ─────────────────────────
+window.zeRow = function(tplId, previewUrl, existingZones, fieldSchema, existingFieldZones) {
+    return {
+        zonesOpen: false,
+        toggle() {
+            this.zonesOpen = !this.zonesOpen;
+            if (!this.zonesOpen) return;
+            setTimeout(() => {
+                window.initZoneEditor(tplId, previewUrl, existingZones);
+                if (fieldSchema && fieldSchema.length) {
+                    window.zeInitFieldBoxes(tplId, fieldSchema, existingFieldZones);
+                }
+            }, 50);
+        }
+    };
+};
+
+// ─── Zone Editor ────────────────────────────────────────────────────────────
+// keyed by tplId → { pdfDoc, currentPage, pageWidthMm, pageHeightMm, zones }
+const _zeState = {};
+
+function zeShowStatus(tplId, html) {
+    const canvas = document.getElementById('ze-canvas-' + tplId);
+    if (canvas) { canvas.style.display = 'none'; }
+    let statusEl = document.getElementById('ze-status-' + tplId);
+    if (!statusEl) {
+        statusEl = document.createElement('div');
+        statusEl.id = 'ze-status-' + tplId;
+        const wrap = document.getElementById('ze-wrap-' + tplId);
+        if (wrap) wrap.appendChild(statusEl);
+    }
+    statusEl.innerHTML = html;
+}
+
+async function initZoneEditor(tplId, previewUrl, existingZones) {
+    if (_zeState[tplId]) return; // already initialised
+
+    // Immediately show something so we know the function ran
+    zeShowStatus(tplId, '<p class="text-xs text-blue-600 p-3 text-center">⏳ Initialising PDF viewer…</p>');
+
+    if (typeof pdfjsLib === 'undefined') {
+        zeShowStatus(tplId, '<p class="text-xs text-red-600 p-3">❌ PDF.js not loaded — check internet connection and hard-refresh (Ctrl+Shift+R).</p>');
+        return;
+    }
+
+    zeShowStatus(tplId, '<p class="text-xs text-gray-500 p-4 text-center">⏳ Fetching PDF…</p>');
+
+    const state = {
+        pdfDoc: null, currentPage: 1,
+        pageWidthMm: 210, pageHeightMm: 297,
+        zones: {
+            applicant: existingZones?.applicant
+                ? { page: existingZones.applicant.page, x: existingZones.applicant.x, y: existingZones.applicant.y, w: existingZones.applicant.width, h: existingZones.applicant.height }
+                : null,
+            staff2: existingZones?.staff2
+                ? { page: existingZones.staff2.page, x: existingZones.staff2.x, y: existingZones.staff2.y, w: existingZones.staff2.width, h: existingZones.staff2.height }
+                : null,
+        },
+    };
+    _zeState[tplId] = state;
+
+    zeShowStatus(tplId, '<p class="text-xs text-gray-500 p-3 text-center">⏳ Fetching: ' + previewUrl + '</p>');
+    try {
+        const resp = await fetch(previewUrl, { credentials: 'same-origin' });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status + ' for: ' + previewUrl);
+        const contentType = resp.headers.get('content-type') || '';
+        if (!contentType.includes('pdf')) {
+            throw new Error('Expected PDF but got: ' + contentType);
+        }
+        const data = await resp.arrayBuffer();
+        zeShowStatus(tplId, '<p class="text-xs text-gray-500 p-4 text-center">⏳ Parsing PDF…</p>');
+        state.pdfDoc = await pdfjsLib.getDocument({ data }).promise;
+    } catch (e) {
+        console.error('ZoneEditor fetch error for tpl ' + tplId + ':', e);
+        zeShowStatus(tplId, '<p class="text-xs text-red-600 p-3 font-medium">❌ ' + e.message + '</p>');
+        delete _zeState[tplId];
+        return;
+    }
+
+    // Success — remove status, reveal canvas
+    const statusEl = document.getElementById('ze-status-' + tplId);
+    if (statusEl) statusEl.remove();
+    const canvas = document.getElementById('ze-canvas-' + tplId);
+    if (canvas) canvas.style.display = 'block';
+
+    document.getElementById('ze-total-' + tplId).textContent = state.pdfDoc.numPages;
+    await zeRenderPage(tplId);
+    zeMakeDraggable(tplId);
+}
+
+async function zeRenderPage(tplId) {
+    const state = _zeState[tplId];
+    if (!state?.pdfDoc) return;
+
+    try {
+        const page = await state.pdfDoc.getPage(state.currentPage);
+        const vp1  = page.getViewport({ scale: 1 });
+        // Convert PDF points → mm  (1pt = 25.4/72 mm)
+        state.pageWidthMm  = vp1.width  * 25.4 / 72;
+        state.pageHeightMm = vp1.height * 25.4 / 72;
+
+        // Scale to fit within the panel (max 700px)
+        const wrap    = document.getElementById('ze-wrap-' + tplId);
+        const maxPx   = Math.min(700, (wrap?.parentElement?.offsetWidth || 700) - 32);
+        const scale   = Math.min(maxPx / vp1.width, 2.0);
+        const viewport = page.getViewport({ scale });
+
+        const canvas = document.getElementById('ze-canvas-' + tplId);
+        const ctx    = canvas.getContext('2d');
+        canvas.width  = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        canvas.style.display = 'block';
+
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        document.getElementById('ze-page-' + tplId).textContent  = state.currentPage;
+        document.getElementById('ze-total-' + tplId).textContent = state.pdfDoc.numPages;
+
+        // Reposition existing boxes for this page
+        Object.keys(state.zones).forEach(role => zeUpdateBoxPositionAny(tplId, role));
+    } catch (e) {
+        zeShowStatus(tplId, '<p class="text-xs text-red-600 p-3">Page render error: ' + e.message + '</p>');
+    }
+}
+
+async function zeChangePage(tplId, delta) {
+    const state = _zeState[tplId];
+    if (!state?.pdfDoc) return;
+    const next = state.currentPage + delta;
+    if (next < 1 || next > state.pdfDoc.numPages) return;
+    state.currentPage = next;
+    await zeRenderPage(tplId);
+}
+
+function mmToPx(tplId, mmX, mmY) {
+    const state  = _zeState[tplId];
+    const canvas = document.getElementById('ze-canvas-' + tplId);
+    const px = canvas.width  / state.pageWidthMm;
+    const py = canvas.height / state.pageHeightMm;
+    return { x: mmX * px, y: mmY * py };
+}
+
+function pxToMm(tplId, pxX, pxY) {
+    const state  = _zeState[tplId];
+    const canvas = document.getElementById('ze-canvas-' + tplId);
+    const mx = state.pageWidthMm  / canvas.width;
+    const my = state.pageHeightMm / canvas.height;
+    return { x: pxX * mx, y: pxY * my };
+}
+
+// Generic box position updater — works for signature roles AND field_* keys
+function zeUpdateBoxPositionAny(tplId, roleKey) {
+    const state  = _zeState[tplId];
+    const zone   = state.zones[roleKey];
+    // Determine element ID: signatures use 'ze-box-{role}-{tplId}', fields use 'ze-field-{name}-{tplId}'
+    let box;
+    if (roleKey.startsWith('field_')) {
+        box = document.getElementById('ze-field-' + roleKey.slice(6) + '-' + tplId);
+    } else {
+        box = document.getElementById('ze-box-' + roleKey + '-' + tplId);
+    }
+    if (!box) return;
+
+    if (!zone || zone.page !== state.currentPage) {
+        box.classList.add('hidden');
+        return;
+    }
+    box.classList.remove('hidden');
+
+    const canvas = document.getElementById('ze-canvas-' + tplId);
+    const px = canvas.width  / state.pageWidthMm;
+    const py = canvas.height / state.pageHeightMm;
+
+    box.style.left   = (zone.x * px) + 'px';
+    box.style.top    = (zone.y * py) + 'px';
+    box.style.width  = (zone.w * px) + 'px';
+    box.style.height = (zone.h * py) + 'px';
+}
+
+// Legacy alias for compatibility
+function zeUpdateBoxPosition(tplId, role) { zeUpdateBoxPositionAny(tplId, role); }
+
+// Generic drag+resize for any box element with a given zone key
+function zeMakeDraggableBox(tplId, box, roleKey, defaultZone) {
+    const handle = box.querySelector('.ze-resize-handle');
+    const canvas = document.getElementById('ze-canvas-' + tplId);
+    const state  = _zeState[tplId];
+
+    if (!state.zones[roleKey]) {
+        state.zones[roleKey] = defaultZone ?? { page: state.currentPage, x: 15, y: 30, w: 60, h: 8 };
+        zeUpdateBoxPositionAny(tplId, roleKey);
+    }
+
+    let dragging = false, resizing = false, startX, startY, startL, startT, startW, startH;
+
+    if (handle) {
+        handle.addEventListener('mousedown', e => {
+            e.stopPropagation();
+            resizing = true;
+            startX = e.clientX; startY = e.clientY;
+            startW = box.offsetWidth; startH = box.offsetHeight;
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+    }
+
+    box.addEventListener('mousedown', e => {
+        if (handle && e.target === handle) return;
+        dragging = true;
+        startX = e.clientX; startY = e.clientY;
+        startL = box.offsetLeft; startT = box.offsetTop;
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    });
+
+    function onMouseMove(e) {
+        const dx = e.clientX - startX, dy = e.clientY - startY;
+        if (dragging) {
+            const newL = Math.max(0, Math.min(startL + dx, canvas.width  - box.offsetWidth));
+            const newT = Math.max(0, Math.min(startT + dy, canvas.height - box.offsetHeight));
+            box.style.left = newL + 'px';
+            box.style.top  = newT + 'px';
+        } else if (resizing) {
+            box.style.width  = Math.max(40, startW + dx) + 'px';
+            box.style.height = Math.max(16, startH + dy) + 'px';
+        }
+    }
+
+    function onMouseUp() {
+        if (dragging || resizing) {
+            const mm  = pxToMm(tplId, box.offsetLeft,  box.offsetTop);
+            const mmW = pxToMm(tplId, box.offsetWidth, box.offsetHeight);
+            state.zones[roleKey] = {
+                page: state.currentPage,
+                x: parseFloat(mm.x.toFixed(2)),
+                y: parseFloat(mm.y.toFixed(2)),
+                w: parseFloat(mmW.x.toFixed(2)),
+                h: parseFloat(mmW.y.toFixed(2)),
+                font_size: state.zones[roleKey]?.font_size ?? 10,
+            };
+        }
+        dragging = resizing = false;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+    }
+}
+
+function zeMakeDraggable(tplId) {
+    const state = _zeState[tplId];
+    ['applicant', 'staff2'].forEach((role, idx) => {
+        const box = document.getElementById('ze-box-' + role + '-' + tplId);
+        if (!box) return;
+        const defaultMm = role === 'applicant'
+            ? { page: state.currentPage, x: 15,  y: state.pageHeightMm - 45, w: 75, h: 25 }
+            : { page: state.currentPage, x: 110, y: state.pageHeightMm - 45, w: 75, h: 25 };
+        zeMakeDraggableBox(tplId, box, role, state.zones[role] ?? defaultMm);
+    });
+}
+
+// ─── Field Zone Functions ─────────────────────────────────────────────────────
+const ZE_FIELD_COLOURS = ['#6366f1','#f59e0b','#f43f5e','#14b8a6','#a855f7','#f97316','#0ea5e9','#84cc16'];
+
+window.zeInitFieldBoxes = function(tplId, fieldSchema, existingFieldZones) {
+    const state = _zeState[tplId];
+    if (!state) { setTimeout(() => window.zeInitFieldBoxes(tplId, fieldSchema, existingFieldZones), 100); return; }
+
+    const legend = document.getElementById('ze-field-legend-' + tplId);
+    if (legend) legend.innerHTML = '';
+
+    fieldSchema.forEach((field, idx) => {
+        const colour  = ZE_FIELD_COLOURS[idx % ZE_FIELD_COLOURS.length];
+        const zoneKey = 'field_' + field.name;
+        const box     = document.getElementById('ze-field-' + field.name + '-' + tplId);
+        if (!box) return;
+
+        const existing = existingFieldZones?.[field.name];
+        const defaultZone = existing
+            ? { page: existing.page, x: existing.x, y: existing.y, w: existing.width, h: existing.height, font_size: existing.font_size ?? 10 }
+            : { page: 1, x: 15, y: 20 + (idx * 12), w: 130, h: 8, font_size: 10 };
+        state.zones[zoneKey] = defaultZone;
+
+        zeMakeDraggableBox(tplId, box, zoneKey, defaultZone);
+        zeUpdateBoxPositionAny(tplId, zoneKey);
+
+        if (legend) {
+            legend.insertAdjacentHTML('beforeend',
+                '<span class="flex items-center gap-1 whitespace-nowrap">'
+                + '<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + colour + ';flex-shrink:0;"></span>'
+                + '<span class="text-gray-600">' + field.label + '</span></span>');
+        }
+    });
+};
+
+window.zePopulateFieldForm = function(tplId) {
+    const state     = _zeState[tplId];
+    const container = document.getElementById('ze-field-inputs-' + tplId);
+    if (!container || !state) return;
+    container.innerHTML = '';
+    for (const [key, z] of Object.entries(state.zones)) {
+        if (!key.startsWith('field_')) continue;
+        const fieldName = key.slice(6);
+        [['page', z.page], ['x', z.x], ['y', z.y], ['width', z.w], ['height', z.h], ['font_size', z.font_size ?? 10]].forEach(([attr, val]) => {
+            const inp = document.createElement('input');
+            inp.type  = 'hidden';
+            inp.name  = 'field_zones[' + fieldName + '][' + attr + ']';
+            inp.value = val ?? '';
+            container.appendChild(inp);
+        });
+    }
+};
+
+window.zeClearAllFields = function(tplId) {
+    const state = _zeState[tplId];
+    if (!state) return;
+    for (const key of Object.keys(state.zones)) {
+        if (!key.startsWith('field_')) continue;
+        const box = document.getElementById('ze-field-' + key.slice(6) + '-' + tplId);
+        if (box) box.classList.add('hidden');
+        delete state.zones[key];
+    }
+};
+
+function zePopulateForm(tplId) {
+    const state = _zeState[tplId];
+    if (!state) return;
+
+    ['applicant', 'staff2'].forEach(role => {
+        const z   = state.zones[role];
+        const pfx = role === 'applicant' ? 'ze-ap' : 'ze-s2';
+        const set = (suffix, val) => {
+            const el = document.getElementById(pfx + '-' + suffix + '-' + tplId);
+            if (el) el.value = val ?? '';
+        };
+        if (z) {
+            set('page', z.page);
+            set('x',    z.x);
+            set('y',    z.y);
+            set('w',    z.w);
+            set('h',    z.h);
+        }
+    });
+}
+
+function zeClearAll(tplId) {
+    const state = _zeState[tplId];
+    if (!state) return;
+    state.zones.applicant = null;
+    state.zones.staff2    = null;
+    ['applicant', 'staff2'].forEach(role => {
+        document.getElementById('ze-box-' + role + '-' + tplId)?.classList.add('hidden');
+    });
+}
+// ─── End Zone Editor ─────────────────────────────────────────────────────────
+
 function addFieldForm(existingSchema) {
     return {
         newField: { label: '', name: '', type: 'text', required: false },
@@ -516,5 +1053,12 @@ function addFieldForm(existingSchema) {
         }
     };
 }
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script>
+    if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    }
 </script>
 </x-app-layout>

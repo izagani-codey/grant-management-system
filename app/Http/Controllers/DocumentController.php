@@ -111,10 +111,34 @@ class DocumentController extends BaseController
             abort(404, 'File not found.');
         }
 
-        // Increment download count
         $document->incrementDownloadCount();
 
         return Storage::disk('public')->download($document->file_path, $document->original_name);
+    }
+
+    /** Serve file inline for in-browser preview (PDF/images open in browser tab). */
+    public function preview($id)
+    {
+        $document     = Document::with('request')->findOrFail($id);
+        $grantRequest = $document->request;
+
+        if ($grantRequest) {
+            $this->authorize('view', $grantRequest);
+        } elseif (!$document->isTemplate() || !$document->is_active) {
+            abort(403);
+        }
+
+        if (!Storage::disk('public')->exists($document->file_path)) {
+            abort(404, 'File not found.');
+        }
+
+        $fullPath = Storage::disk('public')->path($document->file_path);
+        $mimeType = mime_content_type($fullPath) ?: 'application/octet-stream';
+
+        return response()->file($fullPath, [
+            'Content-Type'        => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . addslashes($document->original_name) . '"',
+        ]);
     }
 
     /** Get documents by category for a request */

@@ -12,6 +12,10 @@
         $finalDone      = $status === $RS::COMPLETED->value;
         $isReturned     = $status === $RS::RETURNED->value;
         $isDeclined     = $status === $RS::DECLINED->value;
+        $isStaff        = in_array(auth()->user()->role, ['staff1', 'staff2', 'admin']);
+        $userSubmissions = $grantRequest->documents->where('document_type', \App\Enums\DocumentType::UserSubmission);
+        $applicantSignature = $grantRequest->getSignatureImageForRole('applicant');
+        $requiresVot    = $grantRequest->requestType?->requires_vot;
     @endphp
 
     <x-slot name="header">
@@ -31,10 +35,25 @@
         </div>
     </x-slot>
 
+    {{-- Document Preview Modal --}}
+    <div id="doc-preview-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60" onclick="if(event.target===this)closePreview()">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 flex flex-col" style="height:85vh;">
+            <div class="flex items-center justify-between px-5 py-3 border-b">
+                <span id="doc-preview-title" class="font-semibold text-gray-800 truncate max-w-lg"></span>
+                <div class="flex items-center gap-3">
+                    <a id="doc-preview-download" href="#" class="text-xs font-medium text-blue-600 hover:underline">Download</a>
+                    <button onclick="closePreview()" class="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">&times;</button>
+                </div>
+            </div>
+            <div class="flex-1 overflow-hidden">
+                <iframe id="doc-preview-frame" src="" class="w-full h-full border-0"></iframe>
+            </div>
+        </div>
+    </div>
+
     <div class="py-8">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 overflow-x-hidden">
 
-            {{-- Success Message --}}
             @if(session('success'))
                 <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
                     {{ session('success') }}
@@ -49,9 +68,7 @@
 
             {{-- Request Details --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
-    Request Details
-</div>
+                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Request Details</div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div class="min-w-0">
                         <p class="text-gray-500">Submitted By</p>
@@ -100,6 +117,7 @@
                     </div>
                 </div>
 
+                @if($requiresVot)
                 <div class="mt-4">
                     <p class="text-gray-500 text-sm mb-2">VOT Breakdown</p>
                     <div class="overflow-x-auto rounded border">
@@ -127,6 +145,17 @@
                         </table>
                     </div>
                 </div>
+                @endif
+
+                {{-- Applicant Signature --}}
+                @if($applicantSignature)
+                <div class="mt-4">
+                    <p class="text-gray-500 text-sm mb-2">Applicant Signature</p>
+                    <div class="inline-block border rounded p-2 bg-white">
+                        <img src="{{ $applicantSignature }}" alt="Applicant Signature" class="max-h-24 max-w-xs">
+                    </div>
+                </div>
+                @endif
             </div>
 
             {{-- Request Timeline --}}
@@ -137,14 +166,11 @@
                     </svg>
                     Request Timeline
                 </h3>
-                
+
                 <div class="relative">
-                    <!-- Timeline Line -->
                     <div class="absolute left-8 top-8 bottom-8 w-0.5 bg-gray-300"></div>
-                    
-                    <!-- Timeline Steps -->
+
                     <div class="space-y-8">
-                        <!-- Step 1: Submitted -->
                         <div class="flex items-center">
                             <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white">
                                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -153,15 +179,10 @@
                             </div>
                             <div class="ml-6 flex-1 min-w-0">
                                 <h4 class="font-semibold text-gray-900">Submitted</h4>
-                                <p class="text-sm text-gray-600">Request submitted by applicant</p>
-                                <div class="text-xs text-gray-500 mt-2">
-                                    <span class="font-medium">Submitted by:</span> {{ $grantRequest->user->name }}
-                                    <span class="ml-2">on {{ $grantRequest->created_at->format('d M Y, h:i A') }}</span>
-                                </div>
+                                <p class="text-sm text-gray-600">{{ $grantRequest->user->name }} · {{ $grantRequest->created_at->format('d M Y, h:i A') }}</p>
                             </div>
                         </div>
-                        
-                        <!-- Step 2: Staff 1 Verification -->
+
                         <div class="flex items-center">
                             <div class="w-16 h-16 {{ $staff1Completed ? 'bg-green-500' : ($staff1Active ? 'bg-blue-500' : 'bg-gray-300') }} rounded-full flex items-center justify-center text-white">
                                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -169,58 +190,49 @@
                                 </svg>
                             </div>
                             <div class="ml-6 flex-1 min-w-0">
-                                <h4 class="font-semibold text-gray-900">Staff 1 Verification</h4>
-                                <p class="text-sm text-gray-600">Request verified by Staff 1</p>
+                                <h4 class="font-semibold text-gray-900">Staff 1 Verification
+                                    <span class="ml-2 text-xs font-normal {{ $staff1Active ? 'text-blue-600' : ($staff1Completed ? 'text-green-600' : 'text-gray-400') }}">
+                                        {{ $staff1Active ? 'Pending' : ($staff1Completed ? 'Done' : 'Waiting') }}
+                                    </span>
+                                </h4>
                                 @if($grantRequest->verifiedBy)
-                                    <div class="text-xs text-gray-500 mt-2">
-                                        <span class="font-medium">Verified by:</span> {{ $grantRequest->verifiedBy->name }}
-                                        @if($grantRequest->verified_at)
-                                            <span class="ml-2">on {{ $grantRequest->verified_at->format('d M Y, h:i A') }}</span>
-                                        @endif
-                                    </div>
+                                    <p class="text-sm text-gray-600">{{ $grantRequest->verifiedBy->name }}@if($grantRequest->verified_at) · {{ $grantRequest->verified_at->format('d M Y, h:i A') }}@endif</p>
+                                @else
+                                    <p class="text-sm text-gray-400">Not yet reviewed</p>
                                 @endif
                             </div>
                         </div>
-                        
-                        <!-- Step 3: Staff 2 Recommendation -->
-                        <div class="flex items-center">
-                            <div class="w-16 h-16 {{ $staff2Completed ? 'bg-green-500' : ($staff2Active ? 'bg-blue-500' : 'bg-gray-300') }} rounded-full flex items-center justify-center text-white">
+
+                        <div class="flex items-start">
+                            <div class="w-16 h-16 shrink-0 {{ $staff2Completed ? 'bg-green-500' : ($staff2Active ? 'bg-blue-500' : 'bg-gray-300') }} rounded-full flex items-center justify-center text-white">
                                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
                             </div>
                             <div class="ml-6 flex-1 min-w-0">
-                                <h4 class="font-semibold text-gray-900">Staff 2 Recommendation</h4>
-                                <p class="text-sm text-gray-600">Request reviewed and recommended by Staff 2</p>
+                                <h4 class="font-semibold text-gray-900">Staff 2 Approval
+                                    <span class="ml-2 text-xs font-normal {{ $staff2Active ? 'text-blue-600' : ($staff2Completed ? 'text-green-600' : 'text-gray-400') }}">
+                                        {{ $staff2Active ? 'Pending' : ($staff2Completed ? 'Done' : 'Waiting') }}
+                                    </span>
+                                </h4>
                                 @if($grantRequest->recommendedBy)
-                                    <div class="text-xs text-gray-500 mt-2">
-                                        <span class="font-medium">Recommended by:</span> {{ $grantRequest->recommendedBy->name }}
-                                        @if($grantRequest->recommended_at)
-                                            <span class="ml-2">on {{ $grantRequest->recommended_at->format('d M Y, h:i A') }}</span>
-                                        @endif
-                                    </div>
+                                    <p class="text-sm text-gray-600">{{ $grantRequest->recommendedBy->name }}@if($grantRequest->recommended_at) · {{ $grantRequest->recommended_at->format('d M Y, h:i A') }}@endif</p>
+                                @else
+                                    <p class="text-sm text-gray-400">Not yet reviewed</p>
                                 @endif
-                                
                                 @if($isDeclined)
-                                    <div class="mt-2 p-2 bg-red-50 rounded border border-red-200">
-                                        <p class="text-sm text-red-800">
-                                            <span class="font-medium">Declined:</span>
-                                            {{ $grantRequest->decline_reason ?? 'No reason provided.' }}
-                                        </p>
+                                    <div class="mt-2 p-2 bg-red-50 rounded border border-red-200 text-sm text-red-800">
+                                        <span class="font-medium">Declined:</span> {{ $grantRequest->decline_reason ?? 'No reason provided.' }}
                                     </div>
                                 @endif
                                 @if($isReturned)
-                                    <div class="mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
-                                        <p class="text-sm text-yellow-800">
-                                            <span class="font-medium">Returned for revision:</span>
-                                            {{ $grantRequest->return_reason ?? 'No reason provided.' }}
-                                        </p>
+                                    <div class="mt-2 p-2 bg-yellow-50 rounded border border-yellow-200 text-sm text-yellow-800">
+                                        <span class="font-medium">Returned for revision:</span> {{ $grantRequest->return_reason ?? 'No reason provided.' }}
                                     </div>
                                 @endif
                             </div>
                         </div>
-                        
-                        <!-- Step 4: Completed (Staff1 manual processing) -->
+
                         <div class="flex items-center">
                             <div class="w-16 h-16 {{ $finalDone ? 'bg-teal-500' : 'bg-gray-300' }} rounded-full flex items-center justify-center text-white">
                                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -229,19 +241,17 @@
                             </div>
                             <div class="ml-6 flex-1 min-w-0">
                                 <h4 class="font-semibold text-gray-900">Completed</h4>
-                                <p class="text-sm text-gray-600">Processed and completed by Staff 1</p>
+                                <p class="text-sm text-gray-400">{{ $finalDone ? 'Request has been processed and completed.' : 'Awaiting completion by Staff 1.' }}</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {{-- Reference Templates --}}
+            {{-- Supporting Documents (templates from Staff 2) --}}
             @if($supportingDocuments->isNotEmpty())
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
-  Supporting Documents
-</div>
+                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Supporting Documents</div>
                 <p class="text-xs text-gray-500 mb-4">
                     Reference documents provided for <span class="font-medium">{{ $grantRequest->requestType?->name }}</span>.
                 </p>
@@ -251,11 +261,9 @@
                             <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                             </svg>
-                            <a href="{{ route('documents.download', $doc->id) }}"
-                               target="_blank"
-                               class="text-blue-600 hover:underline font-medium">
-                                {{ $doc->name ?: $doc->original_name }}
-                            </a>
+                            <span class="font-medium text-gray-800">{{ $doc->name ?: $doc->original_name }}</span>
+                            <a href="{{ route('documents.preview', $doc->id) }}" target="_blank" class="text-blue-600 hover:underline text-xs">Preview</a>
+                            <a href="{{ route('documents.download', $doc->id) }}" class="text-gray-500 hover:underline text-xs">Download</a>
                         </li>
                     @endforeach
                 </ul>
@@ -263,134 +271,74 @@
             @endif
 
             {{-- Applicant-Uploaded Documents --}}
-            @php
-                $userSubmissions = $grantRequest->documents->where('document_type', \App\Enums\DocumentType::UserSubmission);
-            @endphp
             @if($userSubmissions->isNotEmpty())
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Applicant Uploaded Documents</div>
                 <p class="text-xs text-gray-500 mb-4">Files submitted by the applicant with this request.</p>
-
-                @if($userSubmissions->isNotEmpty())
-                    <ul class="space-y-2 text-sm">
-                        @foreach($userSubmissions as $doc)
-                            <li>
-                                <a href="{{ route('documents.download', $doc->id) }}" target="_blank"
-                                   class="text-blue-600 hover:underline font-semibold">
-                                    ↗ {{ $doc->original_name }}
-                                </a>
-                            </li>
-                        @endforeach
-                    </ul>
-                @endif
-
+                <ul class="space-y-3">
+                    @foreach($userSubmissions as $doc)
+                        <li class="flex items-center justify-between gap-3 text-sm">
+                            <span class="flex items-center gap-2 min-w-0">
+                                <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                </svg>
+                                <span class="truncate font-medium text-gray-800" title="{{ $doc->original_name }}">{{ $doc->original_name }}</span>
+                            </span>
+                            <span class="flex items-center gap-2 shrink-0">
+                                @if($isStaff)
+                                    <button type="button"
+                                        onclick="openPreview('{{ route('documents.preview', $doc->id) }}', '{{ addslashes($doc->original_name) }}', '{{ route('documents.download', $doc->id) }}')"
+                                        class="text-xs text-blue-600 hover:underline font-medium">Preview</button>
+                                @endif
+                                <a href="{{ route('documents.download', $doc->id) }}" class="text-xs text-gray-600 hover:underline">Download</a>
+                            </span>
+                        </li>
+                    @endforeach
+                </ul>
             </div>
             @endif
 
-            {{-- Rejection Reason (visible to admission) --}}
-            @if($grantRequest->rejection_reason)
-            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-               <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
-  ⚠ Returned / Rejected — Reason:
-</div>
-                <p class="text-red-600 text-sm break-words">{{ $grantRequest->rejection_reason }}</p>
+            {{-- Staff 2 uploaded documents (visible to admission) --}}
+            @if(auth()->user()->role === 'admission' && $grantRequest->documents->where('uploader_role', 'staff2')->count() > 0)
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 class="font-bold text-blue-800 mb-3">Documents from Staff 2</h4>
+                <ul class="space-y-2">
+                    @foreach($grantRequest->documents->where('uploader_role', 'staff2') as $doc)
+                        <li class="flex items-center justify-between text-sm">
+                            <span>{{ $doc->original_name }}</span>
+                            <a href="{{ route('documents.download', $doc->id) }}" class="text-blue-600 hover:underline font-medium">Download</a>
+                        </li>
+                    @endforeach
+                </ul>
             </div>
             @endif
 
-            {{-- Staff Notes (staff only) --}}
-           @if($grantRequest->staff_notes && in_array(auth()->user()->role, ['staff1', 'staff2']))
-            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
-    Internal Staff Notes
-</div>
-                <p class="text-yellow-800 text-sm break-words">{{ $grantRequest->staff_notes }}</p>
-            </div>
-            @endif
-
-            {{-- Staff Notes History (from audit logs) --}}
-            @if(in_array(auth()->user()->role, ['staff1', 'staff2']))
-                @php
-                    $staffNoteLogs = ($grantRequest->auditLogs ?? collect())
-                        ->filter(fn ($log) => (int) $log->from_status !== 0 && !empty($log->note))
-                        ->values();
-                @endphp
-
-                @if($staffNoteLogs->count() > 0)
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                       <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
-    staff notes history
-</div>
-                        <div class="space-y-3">
-                            @foreach($staffNoteLogs as $log)
-                                <div class="text-sm">
-                                    <div class="text-xs text-yellow-800">
-                                        {{ \Carbon\Carbon::parse($log->created_at)->format('d M Y, h:i A') }}
-                                        , {{ $log->actor?->name ?? 'Unknown' }}
-                                    </div>
-                                    <div class="mt-1 text-yellow-900">
-                                        <span class="font-semibold">Status:</span> {{ $log->from_status }} -> {{ $log->to_status }}
-                                    </div>
-                                    <div class="mt-1 text-yellow-800">
-                                        {{ $log->note }}
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-            @endif
-
-            {{-- Verified / Recommended By (staff only) --}}
-            @if(auth()->user()->role !== 'admission')
+            {{-- Workflow Timeline (status events + internal comments) --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
-    verification trail
-</div>
-                <div class="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                        <p class="text-gray-500">Verified By (Staff 1)</p>
-                        <p class="font-semibold">{{ $grantRequest->verifiedBy?->name ?? 'Pending' }}</p>
-                    </div>
-                    <div>
-                        <p class="text-gray-500">Recommended By (Staff 2)</p>
-                        <p class="font-semibold">{{ $grantRequest->recommendedBy?->name ?? 'Pending' }}</p>
-                    </div>
-                </div>
-            </div>
-            @endif
-
-            {{-- Workflow Timeline (Audit events + internal comments) --}}
-            <div class="bg-white shadow-sm rounded-lg p-6">
-                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
-    Workflow Timeline
-</div>
+                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Activity Log</div>
 
                 @php
-                    $isStaff = auth()->user()->role !== 'admission';
                     $statusLabels = \App\Enums\RequestStatus::getAllCases();
-
                     $events = collect();
 
                     foreach (($grantRequest->auditLogs ?? collect()) as $log) {
                         $events->push([
-                            'type' => 'status',
-                            'at' => $log->created_at,
+                            'type'  => 'status',
+                            'at'    => $log->created_at,
                             'actor' => $log->actor?->name ?? 'Unknown',
-                            'from' => $log->from_status,
-                            'to' => $log->to_status,
-                            // Keep staff notes internal; admissions should only see status transitions.
-                            'note' => $isStaff ? $log->note : null,
+                            'from'  => $log->from_status,
+                            'to'    => $log->to_status,
+                            'note'  => $isStaff ? $log->note : null,
                         ]);
                     }
 
                     if ($isStaff) {
                         foreach (($grantRequest->comments ?? collect()) as $comment) {
-                            // Comments are internal and staff-facing; show them in the timeline as "comment" events.
                             $events->push([
-                                'type' => 'comment',
-                                'at' => $comment->created_at,
+                                'type'  => 'comment',
+                                'at'    => $comment->created_at,
                                 'actor' => $comment->user?->name ?? 'Unknown',
-                                'note' => $comment->content,
+                                'note'  => $comment->content,
                             ]);
                         }
                     }
@@ -399,38 +347,30 @@
                 @endphp
 
                 @if($events->count() === 0)
-                    <p class="text-gray-400 italic text-sm">No timeline events yet.</p>
+                    <p class="text-gray-400 italic text-sm">No activity yet.</p>
                 @else
                     <div class="space-y-4">
                         @foreach($events as $event)
                             <div class="flex gap-3">
-                                <div class="mt-1">
-                                    <div class="w-3 h-3 rounded-full {{ $event['type'] === 'status' ? 'bg-blue-600' : 'bg-gray-500' }}"></div>
+                                <div class="mt-1.5 shrink-0">
+                                    <div class="w-2.5 h-2.5 rounded-full {{ $event['type'] === 'status' ? 'bg-blue-500' : 'bg-gray-400' }}"></div>
                                 </div>
-                                <div class="flex-1">
-                                    <div class="flex items-center justify-between gap-3 text-xs text-gray-600">
-                                        <span>
-                                            {{ \Carbon\Carbon::parse($event['at'])->format('d M Y, h:i A') }}
-                                        </span>
-                                        <span class="font-semibold">{{ $event['actor'] }}</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-baseline gap-2 text-xs text-gray-500 flex-wrap">
+                                        <span>{{ \Carbon\Carbon::parse($event['at'])->format('d M Y, h:i A') }}</span>
+                                        <span class="font-semibold text-gray-700">{{ $event['actor'] }}</span>
                                     </div>
-
                                     @if($event['type'] === 'status')
-                                        <div class="mt-1 text-sm text-gray-800">
-                                            <span class="font-semibold">Status:</span>
+                                        <p class="mt-0.5 text-sm text-gray-800">
                                             {{ $statusLabels[$event['from']] ?? $event['from'] }}
-                                            ->
-                                            {{ $statusLabels[$event['to']] ?? $event['to'] }}
-                                        </div>
+                                            &rarr;
+                                            <span class="font-semibold">{{ $statusLabels[$event['to']] ?? $event['to'] }}</span>
+                                        </p>
                                         @if(!empty($event['note']))
-                                            <div class="mt-1 text-sm text-gray-700">
-                                                <span class="font-semibold">Note:</span> {{ $event['note'] }}
-                                            </div>
+                                            <p class="mt-0.5 text-sm text-gray-600 italic">{{ $event['note'] }}</p>
                                         @endif
                                     @else
-                                        <div class="mt-1 text-sm text-gray-800">
-                                            <span class="font-semibold">Comment:</span> {{ \Illuminate\Support\Str::limit($event['note'] ?? '', 180) }}
-                                        </div>
+                                        <p class="mt-0.5 text-sm text-gray-800"><span class="font-semibold">Comment:</span> {{ \Illuminate\Support\Str::limit($event['note'] ?? '', 200) }}</p>
                                     @endif
                                 </div>
                             </div>
@@ -439,56 +379,142 @@
                 @endif
             </div>
 
-            {{-- WORKFLOW ACTION BUTTONS --}}
+            {{-- Document Review Panel (Staff only) --}}
+            @if($isStaff && ($userSubmissions->isNotEmpty() || $supportingDocuments->isNotEmpty()))
+            <div class="bg-white shadow-sm rounded-lg overflow-hidden" id="doc-review-panel">
+                <div class="card-header-miit px-6 py-3 flex items-center justify-between">
+                    <span>Document Review</span>
+                    <button type="button" onclick="toggleDocReview()"
+                        class="text-xs text-white/80 hover:text-white font-medium flex items-center gap-1">
+                        <span id="doc-review-toggle-label">Hide</span>
+                        <svg id="doc-review-chevron" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="doc-review-body">
+                    <div class="flex h-[70vh] min-h-[400px]">
+                        {{-- Left: doc list --}}
+                        <div class="w-64 shrink-0 border-r border-gray-200 overflow-y-auto bg-gray-50 p-3 space-y-1">
+                            @if($userSubmissions->isNotEmpty())
+                                <p class="text-xs font-bold text-gray-500 uppercase mb-2">Applicant Documents</p>
+                                @foreach($userSubmissions as $doc)
+                                    @php $isPdf = strtolower(pathinfo($doc->original_name, PATHINFO_EXTENSION)) === 'pdf'; @endphp
+                                    <button type="button"
+                                        onclick="loadDocReview('{{ route('documents.preview', $doc->id) }}', '{{ addslashes($doc->original_name) }}', '{{ route('documents.download', $doc->id) }}', {{ $isPdf ? 'true' : 'false' }})"
+                                        class="doc-review-btn w-full text-left px-3 py-2 rounded text-xs font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-start gap-2 group">
+                                        <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                        </svg>
+                                        <span class="break-words leading-tight">{{ $doc->original_name }}</span>
+                                    </button>
+                                @endforeach
+                            @endif
+
+                            @if($supportingDocuments->isNotEmpty())
+                                <p class="text-xs font-bold text-gray-500 uppercase mt-3 mb-2">Reference Templates</p>
+                                @foreach($supportingDocuments as $doc)
+                                    @php $isPdf = strtolower(pathinfo($doc->original_name, PATHINFO_EXTENSION)) === 'pdf'; @endphp
+                                    <button type="button"
+                                        onclick="loadDocReview('{{ route('documents.preview', $doc->id) }}', '{{ addslashes($doc->name ?: $doc->original_name) }}', '{{ route('documents.download', $doc->id) }}', {{ $isPdf ? 'true' : 'false' }})"
+                                        class="doc-review-btn w-full text-left px-3 py-2 rounded text-xs font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-start gap-2 group">
+                                        <svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-indigo-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                        <span class="break-words leading-tight">{{ $doc->name ?: $doc->original_name }}</span>
+                                    </button>
+                                @endforeach
+                            @endif
+                        </div>
+
+                        {{-- Right: viewer --}}
+                        <div class="flex-1 flex flex-col bg-gray-100">
+                            <div id="doc-review-header" class="hidden px-4 py-2 bg-white border-b border-gray-200 flex items-center justify-between gap-3">
+                                <span id="doc-review-name" class="text-sm font-semibold text-gray-800 truncate"></span>
+                                <a id="doc-review-dl" href="#" class="shrink-0 text-xs text-blue-600 hover:underline font-medium">↓ Download</a>
+                            </div>
+                            <div id="doc-review-placeholder" class="flex-1 flex items-center justify-center text-gray-400 text-sm">
+                                Select a document from the list to preview it here
+                            </div>
+                            <iframe id="doc-review-frame" class="flex-1 w-full border-0 hidden" src=""></iframe>
+                            <div id="doc-review-nopreview" class="hidden flex-1 flex flex-col items-center justify-center gap-4 text-gray-500">
+                                <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                </svg>
+                                <p class="text-sm">Preview not available for this file type.</p>
+                                <a id="doc-review-dl2" href="#" class="px-4 py-2 bg-blue-600 text-white text-sm rounded font-semibold hover:bg-blue-700">↓ Download File</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            {{-- WORKFLOW ACTIONS --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
-               <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
-    Actions
-</div>
+                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Actions</div>
 
-                {{-- ADMISSION: Edit if returned --}}
-                @can('revise', $grantRequest)
-                    <a href="{{ route('requests.edit', $grantRequest->id) }}"
-                       class="inline-block bg-yellow-500 text-white px-6 py-2 rounded font-bold hover:bg-yellow-600">
-                        &#9999 Edit & Resubmit
-                    </a>
-                @endcan
-
-                {{-- Staff1 Checklist Review --}}
-                @if(auth()->user()->isStaff1() && $staff1Active)
-                    <x-checklist-review :request="$grantRequest" />
+                {{-- Signed document download (Staff 1 & Staff 2 only) --}}
+                @if($isStaff && $grantRequest->signed_document_id)
+                    <div class="mb-5 p-4 bg-teal-50 border border-teal-300 rounded-lg flex items-center justify-between gap-4">
+                        <div>
+                            <p class="font-bold text-teal-800 text-sm">Signed document ready</p>
+                            <p class="text-xs text-teal-600 mt-0.5">Both signatures have been embedded. Download to print and process offline.</p>
+                        </div>
+                        <a href="{{ route('documents.download', $grantRequest->signed_document_id) }}"
+                           class="shrink-0 bg-teal-600 text-white px-5 py-2 rounded font-bold text-sm hover:bg-teal-700">
+                            ↓ Download Signed PDF
+                        </a>
+                    </div>
                 @endif
 
-                {{-- STAFF 1: SUBMITTED &#8594; review/return/decline --}}
-                @can('changeStatus', $grantRequest)
-                    @if(auth()->user()->role === 'staff1' && $staff1Active)
-                        <form id="staff1-action-form" action="{{ route('requests.updateStatus', $grantRequest->id) }}" method="POST" class="space-y-3" onsubmit="return handleFormSubmit(this, 'Submitting...')">
-                            @csrf
-                            @method('PATCH')
-                            <textarea name="notes" rows="2" placeholder="Internal notes (optional)" class="w-full border rounded p-2 text-sm"></textarea>
-                            <div id="s1-reason-field" class="hidden">
-                                <textarea name="return_reason" id="s1-return-reason" rows="2" placeholder="Reason for returning (required)" class="w-full border rounded p-2 text-sm"></textarea>
-                                <textarea name="decline_reason" id="s1-decline-reason" rows="2" placeholder="Reason for declining (required)" class="w-full border rounded p-2 text-sm hidden"></textarea>
-                            </div>
-                            <input type="hidden" name="status_id" id="s1-status" value="{{ \App\Enums\RequestStatus::STAFF1_REVIEWED->value }}">
-                            <div class="flex gap-3 flex-wrap">
-                                <button type="submit" onclick="setS1Status('{{ \App\Enums\RequestStatus::STAFF1_REVIEWED->value }}', 'approve')"
-                                    class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700">
-                                    ✓ Verify & Send to Staff 2
-                                </button>
-                                <button type="submit" onclick="setS1Status('{{ \App\Enums\RequestStatus::RETURNED->value }}', 'return')"
-                                    class="bg-yellow-500 text-white px-6 py-2 rounded font-bold hover:bg-yellow-600">
-                                    ↩ Return for Revision
-                                </button>
-                                <button type="submit" onclick="setS1Status('{{ \App\Enums\RequestStatus::DECLINED->value }}', 'decline')"
-                                    class="bg-red-600 text-white px-6 py-2 rounded font-bold hover:bg-red-700">
-                                    ✕ Decline
-                                </button>
-                            </div>
-                        </form>
-                    @endif
-                @endcan
+                {{-- Admission: returned --}}
+                @if(auth()->user()->role === 'admission' && $isReturned)
+                    <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded mb-4">
+                        <p class="font-semibold text-yellow-800 mb-2">This request was returned for revision.</p>
+                        @if($grantRequest->return_reason)
+                            <p class="text-sm text-yellow-700 mb-3">Reason: {{ $grantRequest->return_reason }}</p>
+                        @endif
+                        <a href="{{ route('requests.edit', $grantRequest->id) }}"
+                           class="inline-block bg-yellow-600 text-white px-5 py-2 rounded font-bold hover:bg-yellow-700">
+                            Edit &amp; Resubmit
+                        </a>
+                    </div>
+                @endif
 
-                {{-- STAFF 1: STAFF2_APPROVED → mark complete --}}
+                {{-- Staff1: checklist + review actions --}}
+                @if(auth()->user()->isStaff1() && $staff1Active)
+                    <x-checklist-review :request="$grantRequest" />
+
+                    @can('changeStatus', $grantRequest)
+                    <form id="staff1-action-form" action="{{ route('requests.updateStatus', $grantRequest->id) }}" method="POST" class="space-y-3 mt-4" onsubmit="return handleFormSubmit(this, 'Submitting...')">
+                        @csrf
+                        @method('PATCH')
+                        <textarea name="notes" rows="2" placeholder="Internal notes (optional)" class="w-full border rounded p-2 text-sm"></textarea>
+                        <div id="s1-reason-field" class="hidden space-y-2">
+                            <textarea name="return_reason" id="s1-return-reason" rows="2" placeholder="Reason for returning (required)" class="w-full border rounded p-2 text-sm"></textarea>
+                            <textarea name="decline_reason" id="s1-decline-reason" rows="2" placeholder="Reason for declining (required)" class="w-full border rounded p-2 text-sm hidden"></textarea>
+                        </div>
+                        <input type="hidden" name="status_id" id="s1-status" value="{{ \App\Enums\RequestStatus::STAFF1_REVIEWED->value }}">
+                        <div class="flex gap-3 flex-wrap">
+                            <button type="submit" onclick="setS1Status('{{ \App\Enums\RequestStatus::STAFF1_REVIEWED->value }}', 'approve')"
+                                class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700">
+                                ✓ Verify &amp; Send to Staff 2
+                            </button>
+                            <button type="submit" onclick="setS1Status('{{ \App\Enums\RequestStatus::RETURNED->value }}', 'return')"
+                                class="bg-yellow-500 text-white px-6 py-2 rounded font-bold hover:bg-yellow-600">
+                                ↩ Return for Revision
+                            </button>
+                            <button type="submit" onclick="setS1Status('{{ \App\Enums\RequestStatus::DECLINED->value }}', 'decline')"
+                                class="bg-red-600 text-white px-6 py-2 rounded font-bold hover:bg-red-700">
+                                ✕ Decline
+                            </button>
+                        </div>
+                    </form>
+                    @endcan
+                @endif
+
+                {{-- Staff 1: mark complete after Staff2 approves --}}
                 @can('changeStatus', $grantRequest)
                     @if(auth()->user()->role === 'staff1' && $grantRequest->status_id === \App\Enums\RequestStatus::STAFF2_APPROVED->value)
                         <form action="{{ route('requests.updateStatus', $grantRequest->id) }}" method="POST" class="space-y-3" onsubmit="return handleFormSubmit(this, 'Marking complete...')">
@@ -503,19 +529,19 @@
                     @endif
                 @endcan
 
-                {{-- STAFF 2: STAFF1_REVIEWED or SUBMITTED (override) → approve/return/decline --}}
+                {{-- Staff 2: approve / return / decline --}}
                 @can('changeStatus', $grantRequest)
                     @if(auth()->user()->role === 'staff2' && $staff2Active)
                         <form action="{{ route('requests.updateStatus', $grantRequest->id) }}" method="POST" class="space-y-3" onsubmit="return handleFormSubmit(this, 'Submitting...', event)" data-signature-input="staff2-signature-data" data-role-action="staff2">
                             @csrf
                             @method('PATCH')
                             <textarea name="notes" rows="2" placeholder="Recommendation notes (optional)" class="w-full border rounded p-2 text-sm"></textarea>
-                            <div id="s2-reason-field" class="hidden">
+                            <div id="s2-reason-field" class="hidden space-y-2">
                                 <textarea name="return_reason" id="s2-return-reason" rows="2" placeholder="Reason for returning (required)" class="w-full border rounded p-2 text-sm"></textarea>
                                 <textarea name="decline_reason" id="s2-decline-reason" rows="2" placeholder="Reason for declining (required)" class="w-full border rounded p-2 text-sm hidden"></textarea>
                             </div>
                             <div class="space-y-2">
-                                <label class="block text-sm font-medium text-green-700">Staff 2 Signature (required to approve):</label>
+                                <label class="block text-sm font-medium text-green-700">Signature (required to approve):</label>
                                 <div class="border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50">
                                     <canvas id="staff2-signature-canvas" width="400" height="150" class="w-full border border-gray-300 rounded bg-white cursor-crosshair"></canvas>
                                 </div>
@@ -541,10 +567,10 @@
                     @endif
                 @endcan
 
-                {{-- STAFF 2: Document upload for this request --}}
+                {{-- Staff 2: upload document for applicant --}}
                 @if(auth()->user()->role === 'staff2')
                     <div class="mt-6 p-4 bg-green-50 border-l-4 border-green-500 rounded">
-                        <h4 class="font-bold text-green-800 mb-3">Upload Document for User</h4>
+                        <h4 class="font-bold text-green-800 mb-3">Upload Document for Applicant</h4>
                         <form action="{{ route('documents.store', $grantRequest->id) }}" method="POST" enctype="multipart/form-data" class="space-y-3">
                             @csrf
                             <input type="file" name="document" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="block text-sm text-gray-600" required>
@@ -554,11 +580,10 @@
                             <div class="mt-4 space-y-2">
                                 @foreach($grantRequest->documents->where('uploader_role', 'staff2') as $doc)
                                     <div class="flex items-center justify-between bg-white rounded p-2 border">
-                                        <span class="text-sm text-gray-700 truncate max-w-xs" title="{{ $doc->original_name }}">
-                                            {{ $doc->original_name }}
-                                        </span>
+                                        <span class="text-sm text-gray-700 truncate max-w-xs" title="{{ $doc->original_name }}">{{ $doc->original_name }}</span>
                                         <div class="flex gap-2">
-                                            <a href="{{ route('documents.download', $doc->id) }}" class="text-xs text-blue-600 hover:underline">Download</a>
+                                            <button type="button" onclick="openPreview('{{ route('documents.preview', $doc->id) }}', '{{ addslashes($doc->original_name) }}', '{{ route('documents.download', $doc->id) }}')" class="text-xs text-blue-600 hover:underline">Preview</button>
+                                            <a href="{{ route('documents.download', $doc->id) }}" class="text-xs text-gray-600 hover:underline">Download</a>
                                             <form action="{{ route('documents.destroy', $doc->id) }}" method="POST" onsubmit="return confirm('Delete this document?')">
                                                 @csrf @method('DELETE')
                                                 <button class="text-xs text-red-600 hover:underline">Remove</button>
@@ -571,36 +596,7 @@
                     </div>
                 @endif
 
-                {{-- Admission: show Staff2 uploaded documents for download --}}
-                @if(auth()->user()->role === 'admission' && $grantRequest->documents->where('uploader_role', 'staff2')->count() > 0)
-                    <div class="mt-4 p-4 bg-blue-50 border-l-4 border-blue-400 rounded">
-                        <h4 class="font-bold text-blue-800 mb-2">Documents from Staff 2</h4>
-                        <ul class="space-y-2">
-                            @foreach($grantRequest->documents->where('uploader_role', 'staff2') as $doc)
-                                <li class="flex items-center justify-between text-sm">
-                                    <span>{{ $doc->original_name }}</span>
-                                    <a href="{{ route('documents.download', $doc->id) }}" class="text-blue-600 hover:underline font-medium">Download</a>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
-
-                {{-- Admission: returned request action --}}
-                @if(auth()->user()->role === 'admission' && $isReturned)
-                    <div class="mt-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
-                        <p class="font-semibold text-yellow-800 mb-2">This request has been returned for revision.</p>
-                        @if($grantRequest->return_reason)
-                            <p class="text-sm text-yellow-700 mb-3">Reason: {{ $grantRequest->return_reason }}</p>
-                        @endif
-                        <a href="{{ route('requests.edit', $grantRequest->id) }}"
-                           class="inline-block bg-yellow-600 text-white px-5 py-2 rounded font-bold hover:bg-yellow-700">
-                            Edit & Resubmit
-                        </a>
-                    </div>
-                @endif
-
-                {{-- No actions available --}}
+                {{-- No actions --}}
                 @if(
                     (auth()->user()->role === 'admission' && !$isReturned) ||
                     (auth()->user()->role === 'staff1' && !$staff1Active && $grantRequest->status_id !== \App\Enums\RequestStatus::STAFF2_APPROVED->value) ||
@@ -611,151 +607,156 @@
                 @endif
             </div>
 
-            {{-- Comments (Staff only) --}}
-            @if(auth()->user()->role !== 'admission')
+            {{-- Staff Comments --}}
+            @if($isStaff)
             <div class="bg-white shadow-sm rounded-lg p-6">
-               <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
-    Staff Comments
-</div>
+                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Staff Comments</div>
 
-                {{-- Staff Comments by Role --}}
                 @php
                     $staff1Comments   = $grantRequest->comments->filter(fn($c) => $c->isStaff1Comment());
                     $staff2Comments   = $grantRequest->comments->filter(fn($c) => $c->isStaff2Comment());
                     $internalComments = $grantRequest->comments->filter(fn($c) => $c->isInternalComment());
                 @endphp
 
-                {{-- Staff 1 Comments --}}
                 @if($staff1Comments->count() > 0)
-                    <div class="mb-6">
-                        <h4 class="font-semibold text-blue-700 mb-3 flex items-center">
-                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                            </svg>
-                            Staff 1 Notes
-                        </h4>
+                    <div class="mb-5">
+                        <h4 class="font-semibold text-blue-700 mb-2 text-sm">Staff 1 Notes</h4>
                         @foreach($staff1Comments as $comment)
-                            <div class="mb-3 p-3 bg-blue-50 rounded border border-blue-200">
-                                <p class="text-xs text-blue-600 mb-1">
-                                    <span class="font-bold">{{ $comment->user->name }}</span>
-                                    <span class="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">Staff 1</span>
-                                    · {{ \Carbon\Carbon::parse($comment->created_at)->format('d M Y, h:i A') }}
-                                </p>
+                            <div class="mb-2 p-3 bg-blue-50 rounded border border-blue-200">
+                                <p class="text-xs text-blue-600 mb-1"><span class="font-bold">{{ $comment->user->name }}</span> · {{ \Carbon\Carbon::parse($comment->created_at)->format('d M Y, h:i A') }}</p>
                                 <p class="text-sm text-gray-700">{{ $comment->content }}</p>
                             </div>
                         @endforeach
                     </div>
                 @endif
 
-                {{-- Staff 2 Comments --}}
                 @if($staff2Comments->count() > 0)
-                    <div class="mb-6">
-                        <h4 class="font-semibold text-purple-700 mb-3 flex items-center">
-                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                            </svg>
-                            Staff 2 Notes
-                        </h4>
+                    <div class="mb-5">
+                        <h4 class="font-semibold text-purple-700 mb-2 text-sm">Staff 2 Notes</h4>
                         @foreach($staff2Comments as $comment)
-                            <div class="mb-3 p-3 bg-purple-50 rounded border border-purple-200">
-                                <p class="text-xs text-purple-600 mb-1">
-                                    <span class="font-bold">{{ $comment->user->name }}</span>
-                                    <span class="ml-2 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">Staff 2</span>
-                                    · {{ \Carbon\Carbon::parse($comment->created_at)->format('d M Y, h:i A') }}
-                                </p>
+                            <div class="mb-2 p-3 bg-purple-50 rounded border border-purple-200">
+                                <p class="text-xs text-purple-600 mb-1"><span class="font-bold">{{ $comment->user->name }}</span> · {{ \Carbon\Carbon::parse($comment->created_at)->format('d M Y, h:i A') }}</p>
                                 <p class="text-sm text-gray-700">{{ $comment->content }}</p>
                             </div>
                         @endforeach
                     </div>
                 @endif
 
-                {{-- Internal Comments --}}
-                <div class="mb-6">
-                    <h4 class="font-semibold text-gray-700 mb-3 flex items-center">
-                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                        </svg>
-                        Internal Comments
-                    </h4>
-                    @forelse($internalComments as $comment)
-                        <div class="mb-3 p-3 bg-gray-50 rounded border">
-                            <p class="text-xs text-gray-500 mb-1">
-                                <span class="font-bold">{{ $comment->user->name }}</span>
-                                <span class="ml-2 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">{{ $comment->user->role }}</span>
-                                · {{ \Carbon\Carbon::parse($comment->created_at)->format('d M Y, h:i A') }}
-                            </p>
-                            <p class="text-sm">{{ $comment->content }}</p>
-                        </div>
-                    @empty
-                        @if($staff1Comments->count() === 0 && $staff2Comments->count() === 0)
+                @if($internalComments->count() > 0 || ($staff1Comments->count() === 0 && $staff2Comments->count() === 0))
+                    <div class="mb-5">
+                        @if($internalComments->count() > 0)
+                            <h4 class="font-semibold text-gray-700 mb-2 text-sm">Internal Comments</h4>
+                            @foreach($internalComments as $comment)
+                                <div class="mb-2 p-3 bg-gray-50 rounded border">
+                                    <p class="text-xs text-gray-500 mb-1"><span class="font-bold">{{ $comment->user->name }}</span> · {{ \Carbon\Carbon::parse($comment->created_at)->format('d M Y, h:i A') }}</p>
+                                    <p class="text-sm">{{ $comment->content }}</p>
+                                </div>
+                            @endforeach
+                        @else
                             <p class="text-gray-400 italic text-sm">No comments yet.</p>
                         @endif
-                    @endforelse
-                </div>
+                    </div>
+                @endif
 
                 @can('addComment', $grantRequest)
                     <div class="border-t pt-4">
-                        @if(auth()->user()->role === 'staff1')
-                            <p class="text-sm text-blue-600 mb-2">You're posting a Staff 1 Note (visible to all staff)</p>
-                        @elseif(auth()->user()->role === 'staff2')
-                            <p class="text-sm text-purple-600 mb-2">You're posting a Staff 2 Note (visible to all staff)</p>
-                        @else
-                            <p class="text-sm text-gray-600 mb-2">You're posting an Internal Comment (visible to all staff)</p>
-                        @endif
-                        <form action="{{ route('requests.comment', $grantRequest->id) }}" method="POST" class="mt-4" onsubmit="return handleFormSubmit(this, 'Posting comment...')">
+                        <form action="{{ route('requests.comment', $grantRequest->id) }}" method="POST" onsubmit="return handleFormSubmit(this, 'Posting...')">
                             @csrf
-                            <textarea name="content" rows="2" 
-                                placeholder="{{ auth()->user()->role === 'staff1' ? 'Leave a Staff 1 note for the review team...' : (auth()->user()->role === 'staff2' ? 'Leave a Staff 2 note for the review team...' : 'Leave an internal comment for the review team...') }}"
+                            <textarea name="content" rows="2"
+                                placeholder="{{ auth()->user()->role === 'staff1' ? 'Leave a Staff 1 note...' : (auth()->user()->role === 'staff2' ? 'Leave a Staff 2 note...' : 'Leave an internal comment...') }}"
                                 class="w-full border rounded p-2 text-sm"></textarea>
                             <button type="submit"
-                                class="mt-2 {{ auth()->user()->role === 'staff1' ? 'bg-blue-600 hover:bg-blue-700' : (auth()->user()->role === 'staff2' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-700 hover:bg-gray-800') }} text-white px-4 py-2 rounded text-sm font-bold transition-colors">
-                                {{ auth()->user()->role === 'staff1' ? 'Post Staff 1 Note' : (auth()->user()->role === 'staff2' ? 'Post Staff 2 Note' : 'Post Comment') }}
+                                class="mt-2 {{ auth()->user()->role === 'staff1' ? 'bg-blue-600 hover:bg-blue-700' : (auth()->user()->role === 'staff2' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-700 hover:bg-gray-800') }} text-white px-4 py-2 rounded text-sm font-bold">
+                                Post {{ auth()->user()->role === 'staff1' ? 'Staff 1 Note' : (auth()->user()->role === 'staff2' ? 'Staff 2 Note' : 'Comment') }}
                             </button>
                         </form>
                     </div>
-                @endif
+                @endcan
             </div>
             @endif
 
-            {{-- Audit Log (staff only) --}}
-            @if(auth()->user()->role !== 'admission')
-            <div class="bg-white shadow-sm rounded-lg p-6">
-                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
-    Audit Trail
-</div>
-                @forelse($grantRequest->auditLogs as $log)
-                    <div class="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 mb-3 text-sm min-w-0">
-                        <span class="text-gray-400 sm:w-32 sm:shrink-0">
-                            {{ \Carbon\Carbon::parse($log->created_at)->format('d M Y') }}
-                        </span>
-                        <span class="font-semibold sm:w-32 sm:shrink-0 break-words">{{ $log->actor->name }}</span>
-                        <span class="text-gray-600 break-words min-w-0">
-                            Status
-                            {{ \App\Enums\RequestStatus::tryFrom((int) $log->from_status)?->getLabel() ?? $log->from_status }}
-                            ->
-                            {{ \App\Enums\RequestStatus::tryFrom((int) $log->to_status)?->getLabel() ?? $log->to_status }}
-                            @if($log->note) · {{ $log->note }} @endif
-                        </span>
-                    </div>
-                @empty
-                    <p class="text-gray-400 italic text-sm">No audit trail yet.</p>
-                @endforelse
-            </div>
-            @endif
-
-            {{-- Back button --}}
+            {{-- Back --}}
             <div class="pb-6">
-                <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700 text-sm">&lt;- Back to Dashboard</a>
+                <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700 text-sm">&larr; Back to Dashboard</a>
             </div>
 
         </div>
     </div>
 
     <script>
+        // Document Review Panel (inline, staff only)
+        function loadDocReview(url, name, dlUrl, isPdf) {
+            const frame       = document.getElementById('doc-review-frame');
+            const placeholder = document.getElementById('doc-review-placeholder');
+            const noPreview   = document.getElementById('doc-review-nopreview');
+            const header      = document.getElementById('doc-review-header');
+            const nameEl      = document.getElementById('doc-review-name');
+            const dlEl        = document.getElementById('doc-review-dl');
+            const dlEl2       = document.getElementById('doc-review-dl2');
+
+            nameEl.textContent = name;
+            if (dlEl)  dlEl.href  = dlUrl;
+            if (dlEl2) dlEl2.href = dlUrl;
+            header.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+
+            // highlight active button
+            document.querySelectorAll('.doc-review-btn').forEach(b => b.classList.remove('bg-blue-100','text-blue-800'));
+            event?.currentTarget?.classList.add('bg-blue-100','text-blue-800');
+
+            if (isPdf) {
+                noPreview.classList.add('hidden');
+                frame.classList.remove('hidden');
+                frame.src = url;
+            } else {
+                frame.classList.add('hidden');
+                frame.src = '';
+                noPreview.classList.remove('hidden');
+            }
+        }
+
+        function toggleDocReview() {
+            const body    = document.getElementById('doc-review-body');
+            const label   = document.getElementById('doc-review-toggle-label');
+            const chevron = document.getElementById('doc-review-chevron');
+            if (body.classList.contains('hidden')) {
+                body.classList.remove('hidden');
+                label.textContent = 'Hide';
+                chevron.style.transform = '';
+            } else {
+                body.classList.add('hidden');
+                label.textContent = 'Show';
+                chevron.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        // Auto-load first document if panel is visible
+        document.addEventListener('DOMContentLoaded', function() {
+            const firstBtn = document.querySelector('.doc-review-btn');
+            if (firstBtn) firstBtn.click();
+        });
+
+        // Preview modal
+        function openPreview(url, title, downloadUrl) {
+            document.getElementById('doc-preview-title').textContent = title;
+            document.getElementById('doc-preview-download').href = downloadUrl;
+            document.getElementById('doc-preview-frame').src = url;
+            const modal = document.getElementById('doc-preview-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        function closePreview() {
+            const modal = document.getElementById('doc-preview-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.getElementById('doc-preview-frame').src = '';
+        }
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closePreview(); });
+
         // Staff1 action helpers
         function setS1Status(statusVal, action) {
             document.getElementById('s1-status').value = statusVal;
-            const reasonField = document.getElementById('s1-reason-field');
+            const reasonField   = document.getElementById('s1-reason-field');
             const returnReason  = document.getElementById('s1-return-reason');
             const declineReason = document.getElementById('s1-decline-reason');
             if (action === 'return') {
@@ -822,10 +823,8 @@
                     return false;
                 }
             }
-
             const submitButtons = form.querySelectorAll('button[type="submit"]');
             submitButtons.forEach(btn => { btn.disabled = true; btn.classList.add('opacity-70', 'cursor-not-allowed'); });
-
             const active = document.activeElement;
             if (active?.tagName?.toLowerCase() === 'button' && active.form === form) {
                 active.dataset.originalText = active.textContent.trim();
@@ -834,103 +833,52 @@
             return true;
         }
 
-        // Signature handling
+        // Signature pad
         class SignaturePad {
             constructor(canvasId, hiddenInputId) {
                 this.canvas = document.getElementById(canvasId);
                 this.hiddenInput = document.getElementById(hiddenInputId);
                 this.isDrawing = false;
                 this.ctx = this.canvas.getContext('2d');
-                
                 this.setupCanvas();
                 this.bindEvents();
             }
-
             setupCanvas() {
-                // Set canvas size
                 const rect = this.canvas.getBoundingClientRect();
                 this.canvas.width = rect.width;
                 this.canvas.height = rect.height;
-                
-                // Set drawing styles
                 this.ctx.strokeStyle = '#000';
                 this.ctx.lineWidth = 2;
                 this.ctx.lineCap = 'round';
                 this.ctx.lineJoin = 'round';
-                
-                // Fill with white background
                 this.ctx.fillStyle = '#fff';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             }
-
             bindEvents() {
-                // Mouse events
                 this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
                 this.canvas.addEventListener('mousemove', (e) => this.draw(e));
                 this.canvas.addEventListener('mouseup', () => this.stopDrawing());
                 this.canvas.addEventListener('mouseout', () => this.stopDrawing());
-                
-                // Touch events
-                this.canvas.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    const touch = e.touches[0];
-                    const mouseEvent = new MouseEvent('mousedown', {
-                        clientX: touch.clientX,
-                        clientY: touch.clientY
-                    });
-                    this.canvas.dispatchEvent(mouseEvent);
-                });
-                
-                this.canvas.addEventListener('touchmove', (e) => {
-                    e.preventDefault();
-                    const touch = e.touches[0];
-                    const mouseEvent = new MouseEvent('mousemove', {
-                        clientX: touch.clientX,
-                        clientY: touch.clientY
-                    });
-                    this.canvas.dispatchEvent(mouseEvent);
-                });
-                
-                this.canvas.addEventListener('touchend', (e) => {
-                    e.preventDefault();
-                    const mouseEvent = new MouseEvent('mouseup', {});
-                    this.canvas.dispatchEvent(mouseEvent);
-                });
+                this.canvas.addEventListener('touchstart', (e) => { e.preventDefault(); const t = e.touches[0]; this.canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: t.clientX, clientY: t.clientY })); });
+                this.canvas.addEventListener('touchmove', (e) => { e.preventDefault(); const t = e.touches[0]; this.canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: t.clientX, clientY: t.clientY })); });
+                this.canvas.addEventListener('touchend', (e) => { e.preventDefault(); this.canvas.dispatchEvent(new MouseEvent('mouseup', {})); });
             }
-
             startDrawing(e) {
                 this.isDrawing = true;
                 const rect = this.canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                
                 this.ctx.beginPath();
-                this.ctx.moveTo(x, y);
+                this.ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
             }
-
             draw(e) {
                 if (!this.isDrawing) return;
-                
                 const rect = this.canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                
-                this.ctx.lineTo(x, y);
+                this.ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
                 this.ctx.stroke();
             }
-
             stopDrawing() {
-                if (this.isDrawing) {
-                    this.isDrawing = false;
-                    this.saveSignature();
-                }
+                if (this.isDrawing) { this.isDrawing = false; this.saveSignature(); }
             }
-
-            saveSignature() {
-                const dataURL = this.canvas.toDataURL('image/png');
-                this.hiddenInput.value = dataURL;
-            }
-
+            saveSignature() { this.hiddenInput.value = this.canvas.toDataURL('image/png'); }
             clear() {
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
                 this.ctx.fillStyle = '#fff';
@@ -939,21 +887,12 @@
             }
         }
 
-        // Initialize signature pads
         let staff2SignaturePad;
-
         document.addEventListener('DOMContentLoaded', function() {
-            // Staff 2 signature
             if (document.getElementById('staff2-signature-canvas')) {
                 staff2SignaturePad = new SignaturePad('staff2-signature-canvas', 'staff2-signature-data');
             }
-
         });
-
-        function clearStaff2Signature() {
-            if (staff2SignaturePad) staff2SignaturePad.clear();
-        }
-
+        function clearStaff2Signature() { if (staff2SignaturePad) staff2SignaturePad.clear(); }
     </script>
 </x-app-layout>
-

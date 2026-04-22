@@ -1,13 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Admin Dashboard
-            </h2>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Admin Dashboard</h2>
             <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
-                </svg>
                 Admin
             </span>
         </div>
@@ -21,45 +16,44 @@
             @endif
 
             @if(session('success'))
-                <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-800 px-6 py-4 rounded-xl shadow-sm flex items-center">
-                    <svg class="w-5 h-5 mr-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <div class="bg-green-50 border border-green-200 text-green-800 px-5 py-3 rounded-lg flex items-center gap-2">
+                    <svg class="w-5 h-5 text-green-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>
                     {{ session('success') }}
                 </div>
             @endif
 
-            <!-- Admin Overview -->
-            <div class="bg-gradient-to-br from-gray-600 via-gray-700 to-gray-800 rounded-2xl p-8 text-white shadow-2xl">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-                    <div class="mb-6 md:mb-0">
-                        <h2 class="text-3xl font-bold mb-2">Admin Dashboard</h2>
-                        <p class="text-gray-300 text-lg">System administration and management</p>
-                        <div class="mt-4 flex flex-wrap gap-4">
-                            <div class="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                                <div class="text-2xl font-bold">{{ $totalRequests }}</div>
-                                <div class="text-sm text-gray-300">Total Requests</div>
-                            </div>
-                            <div class="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                                <div class="text-2xl font-bold">{{ $totalUsers }}</div>
-                                <div class="text-sm text-gray-300">Total Users</div>
-                            </div>
-                            <div class="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                                <div class="text-2xl font-bold">{{ $totalTemplates }}</div>
-                                <div class="text-sm text-gray-300">Templates</div>
-                            </div>
-                        </div>
+            @if(session('error'))
+                <div class="bg-red-50 border border-red-200 text-red-800 px-5 py-3 rounded-lg">
+                    {{ session('error') }}
+                </div>
+            @endif
+
+            {{-- Header Banner --}}
+            <div class="bg-gray-800 rounded-xl p-6 text-white">
+                <h2 class="text-2xl font-bold mb-1">System Administration</h2>
+                <p class="text-gray-300 text-sm">Manage users and monitor system activity. Configuration is handled by Staff 2.</p>
+                <div class="mt-4 flex flex-wrap gap-4">
+                    <div class="bg-white/10 rounded-lg px-4 py-2">
+                        <div class="text-2xl font-bold">{{ $totalRequests }}</div>
+                        <div class="text-xs text-gray-300">Total Requests</div>
+                    </div>
+                    <div class="bg-white/10 rounded-lg px-4 py-2">
+                        <div class="text-2xl font-bold">{{ $totalUsers }}</div>
+                        <div class="text-xs text-gray-300">Total Users</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Quick Actions -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <a href="{{ route('admin.users') }}" class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500 hover:shadow-xl transition-shadow">
+            {{-- Quick Actions --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <a href="{{ route('admin.users') }}" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">User Management</p>
                             <p class="text-3xl font-bold text-gray-900 mt-2">{{ $totalUsers }}</p>
+                            <p class="text-xs text-gray-500 mt-1">Create, edit, and assign roles</p>
                         </div>
                         <div class="bg-blue-100 rounded-full p-3">
                             <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,147 +63,126 @@
                     </div>
                 </a>
 
-                <a href="{{ route('admin.request-types') }}" class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500 hover:shadow-xl transition-shadow">
+                <a href="{{ route('requests.index') }}" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 border-l-4 border-l-gray-400 hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-medium text-gray-600">Request Types</p>
-                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ $byType->count() }}</p>
+                            <p class="text-sm font-medium text-gray-600">All Requests</p>
+                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ $totalRequests }}</p>
+                            <p class="text-xs text-gray-500 mt-1">Read-only system view</p>
                         </div>
-                        <div class="bg-purple-100 rounded-full p-3">
-                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                            </svg>
-                        </div>
-                    </div>
-                </a>
-
-                <a href="{{ route('form-templates.index') }}" class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500 hover:shadow-xl transition-shadow">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600">Templates</p>
-                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ $totalTemplates }}</p>
-                        </div>
-                        <div class="bg-green-100 rounded-full p-3">
-                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                            </svg>
-                        </div>
-                    </div>
-                </a>
-
-                <a href="{{ route('admin.deployment-playbook') }}" class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500 hover:shadow-xl transition-shadow">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600">Deployment</p>
-                            <p class="text-3xl font-bold text-gray-900 mt-2">Info</p>
-                        </div>
-                        <div class="bg-orange-100 rounded-full p-3">
-                            <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <div class="bg-gray-100 rounded-full p-3">
+                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                             </svg>
                         </div>
                     </div>
                 </a>
             </div>
 
-            <!-- Statistics Overview -->
+            {{-- Stats Grid --}}
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- Request Statistics -->
-                <div class="bg-white rounded-xl shadow-lg p-6">
-                    <h3 class="text-lg font-bold text-gray-900 mb-4">Request Statistics</h3>
-                    <div class="space-y-4">
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Submitted</span>
-                            <span class="font-semibold text-blue-600">{{ $submitted }}</span>
+                {{-- Request Statistics --}}
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-base font-bold text-gray-900 mb-4">Request Statistics</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm text-gray-600">Submitted</span>
+                            <span class="font-semibold text-orange-600">{{ $submitted }}</span>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Staff 1 Checked</span>
-                            <span class="font-semibold text-purple-600">{{ $staff1Approved }}</span>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm text-gray-600">Staff 1 Reviewed</span>
+                            <span class="font-semibold text-blue-600">{{ $staff1Reviewed }}</span>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Staff 2 Approved</span>
-                            <span class="font-semibold text-green-600">{{ $staff2Approved }}</span>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm text-gray-600">Staff 2 Approved</span>
+                            <span class="font-semibold text-teal-600">{{ $staff2Approved }}</span>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Completed</span>
-                            <span class="font-semibold text-teal-600">{{ $completed ?? 0 }}</span>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm text-gray-600">Completed</span>
+                            <span class="font-semibold text-green-600">{{ $completed }}</span>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Declined</span>
-                            <span class="font-semibold text-red-600">{{ $declined ?? 0 }}</span>
+                        <div class="flex justify-between items-center py-2">
+                            <span class="text-sm text-gray-600">Declined</span>
+                            <span class="font-semibold text-red-600">{{ $declined }}</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- User Statistics -->
-                <div class="bg-white rounded-xl shadow-lg p-6">
-                    <h3 class="text-lg font-bold text-gray-900 mb-4">User Statistics</h3>
-                    <div class="space-y-4">
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Admission Users</span>
+                {{-- User Statistics --}}
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-base font-bold text-gray-900 mb-4">Users by Role</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm text-gray-600">Admission</span>
                             <span class="font-semibold text-blue-600">{{ $admissionUsers }}</span>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Staff 1</span>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm text-gray-600">Staff 1</span>
                             <span class="font-semibold text-purple-600">{{ $staff1Users }}</span>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Staff 2</span>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm text-gray-600">Staff 2</span>
                             <span class="font-semibold text-green-600">{{ $staff2Users }}</span>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Admin Users</span>
+                        <div class="flex justify-between items-center py-2">
+                            <span class="text-sm text-gray-600">Admin</span>
                             <span class="font-semibold text-gray-600">{{ $totalUsers - $admissionUsers - $staff1Users - $staff2Users }}</span>
                         </div>
                     </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <a href="{{ route('admin.users') }}" class="text-sm font-medium text-blue-600 hover:underline">
+                            Manage Users →
+                        </a>
+                    </div>
                 </div>
             </div>
 
-            <!-- Recent Activity -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- Recent High Priority Requests -->
-                <div class="bg-white rounded-xl shadow-lg p-6">
-                    <h3 class="text-lg font-bold text-gray-900 mb-4">Recent Requests</h3>
-                    @if($recentHighPriority->count() > 0)
-                        <div class="space-y-3">
-                            @foreach($recentHighPriority as $request)
-                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                    <div>
-                                        <p class="font-semibold text-gray-900">{{ $request->ref_number }}</p>
-                                        <p class="text-sm text-gray-600">{{ $request->user?->name ?? 'Unknown' }}</p>
-                                    </div>
-                                    <span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">Priority</span>
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="text-gray-500">No requests yet</p>
-                    @endif
+            {{-- Recent Requests (read-only) --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <h3 class="text-base font-bold text-gray-900">Recent Requests</h3>
+                    <a href="{{ route('requests.index') }}" class="text-xs font-medium text-blue-600 hover:underline">View all →</a>
                 </div>
-
-                <!-- Recent Templates -->
-                <div class="bg-white rounded-xl shadow-lg p-6">
-                    <h3 class="text-lg font-bold text-gray-900 mb-4">Recent Templates</h3>
-                    @if($recentTemplates->count() > 0)
-                        <div class="space-y-3">
-                            @foreach($recentTemplates as $template)
-                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                    <div>
-                                        <p class="font-semibold text-gray-900">{{ $template->name }}</p>
-                                        <p class="text-sm text-gray-600">{{ $template->uploader->name ?? 'Unknown' }}</p>
-                                    </div>
-                                    <span class="text-xs text-gray-500">{{ $template->created_at->format('M j') }}</span>
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="text-gray-500">No templates uploaded</p>
-                    @endif
-                </div>
+                @if($recentRequests->count() > 0)
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Reference</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Applicant</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Type</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Submitted</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                @foreach($recentRequests as $req)
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-3 font-medium text-gray-900">
+                                            <a href="{{ route('requests.show', $req->id) }}" class="text-blue-600 hover:underline">
+                                                {{ $req->ref_number }}
+                                            </a>
+                                        </td>
+                                        <td class="px-4 py-3 text-gray-700">{{ $req->user?->name ?? '—' }}</td>
+                                        <td class="px-4 py-3 text-gray-600">{{ $req->requestType?->name ?? '—' }}</td>
+                                        <td class="px-4 py-3">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $req->statusClass() }}">
+                                                {{ $req->statusLabel() }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-gray-500">{{ $req->created_at->format('d M Y') }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="px-6 py-10 text-center text-gray-500">
+                        <p class="text-sm">No requests in the system yet.</p>
+                    </div>
+                @endif
             </div>
 
         </div>
     </div>
 </x-app-layout>
-

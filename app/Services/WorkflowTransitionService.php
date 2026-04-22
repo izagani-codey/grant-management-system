@@ -99,6 +99,14 @@ class WorkflowTransitionService
             self::saveStageSignatures($request, $user, $data);
         });
 
+        if ($newStatus === RequestStatus::STAFF2_APPROVED && $request->requestType?->requires_signature) {
+            try {
+                app(\App\Services\DocumentSigningService::class)->stampAndStore($request);
+            } catch (\Throwable $e) {
+                \Log::error('DocumentSigningService threw unexpectedly', ['error' => $e->getMessage()]);
+            }
+        }
+
         self::dispatchNotifications($request, $oldStatus, $newStatus);
         return $request->fresh();
     }

@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Enums\RequestStatus;
 use App\Models\Document;
+use App\Models\Request as GrantRequest;
 use App\Models\RequestType;
 use App\Models\User;
+use App\Models\VotCode;
 use App\Repositories\RequestRepository;
 use App\Repositories\StatisticsRepository;
 use App\Repositories\UserRepository;
@@ -46,7 +49,6 @@ class DashboardService
             $requestTypeTemplates = RequestType::where('is_active', true)
                 ->with(['templates' => function($query) {
                     $query->where('is_active', true)
-                          ->orderBy('sort_order')
                           ->orderBy('created_at');
                 }, 'templates.uploader'])
                 ->whereHas('templates')
@@ -54,16 +56,44 @@ class DashboardService
                 ->get();
         }
 
-        return [
+        $data = [
             'displayRequests' => $this->requestRepository->getFilteredRequests($filters, $user),
             'dashboardStats' => $this->statisticsRepository->getDashboardStats($user),
             'requestTypes' => RequestType::where('is_active', true)->orderBy('name')->get(),
             'formTemplates' => $generalTemplates,
             'requestTypeTemplates' => $requestTypeTemplates,
-            'urgentRequests' => $this->requestRepository->getUrgentRequests($user),
             'user' => $user,
             'filters' => $filters,
         ];
+
+        if ($user->isStaff1()) {
+            $data['submittedQueue'] = GrantRequest::with(['requestType', 'user'])
+                ->where('status_id', RequestStatus::SUBMITTED->value)
+                ->orderBy('ref_number')
+                ->get();
+            $data['approvedQueue'] = GrantRequest::with(['requestType', 'user'])
+                ->where('status_id', RequestStatus::STAFF2_APPROVED->value)
+                ->orderBy('ref_number')
+                ->get();
+        }
+
+        if ($user->isStaff2()) {
+            $data['myQueue'] = GrantRequest::with(['requestType', 'user'])
+                ->where('status_id', RequestStatus::STAFF1_REVIEWED->value)
+                ->orderBy('ref_number')
+                ->get();
+            $data['overrideQueue'] = GrantRequest::with(['requestType', 'user'])
+                ->where('status_id', RequestStatus::SUBMITTED->value)
+                ->orderBy('ref_number')
+                ->get();
+            $data['configRequestTypes'] = RequestType::with([
+                'activeTemplates',
+                'checklistItems' => fn($q) => $q->orderBy('sort_order'),
+            ])->orderBy('name')->get();
+            $data['configVotCodes'] = VotCode::active()->ordered()->get();
+        }
+
+        return $data;
     }
 
     /**
@@ -84,45 +114,6 @@ class DashboardService
     }
 
     /**
-     * Get request types.
-     */
-    private function getRequestTypes(): Collection
-    {
-        return RequestType::where('is_active', true)
-            ->orderBy('name')
-            ->get();
-    }
-
-    /**
-     * Get form templates.
-     */
-    private function getFormTemplates(): Collection
-    {
-        return Document::with('uploader')
-            ->where('document_type', 'template')
-            ->where('is_active', true)
-            ->latest('created_at')
-            ->get(['id', 'name', 'file_path', 'uploaded_by', 'created_at']);
-    }
-
-   
-    /**
-     * Get request types (legacy - use getRequestTypes).
-     */
-    private function getCachedRequestTypes(): Collection
-    {
-        return $this->getRequestTypes();
-    }
-
-    /**
-     * Get form templates (legacy - use getFormTemplates).
-     */
-    private function getCachedFormTemplates(): Collection
-    {
-        return $this->getFormTemplates();
-    }
-
-    /**
      * Get quick stats for dashboard widgets.
      */
     public function getQuickStats(User $user): array
@@ -131,9 +122,7 @@ class DashboardService
         
         return [
             'totalRequests' => $stats['total'],
-            'pendingActions' => $stats['pending_verification'] + $stats['with_staff_2'],
-            'urgentRequests' => $this->requestRepository->getUrgentRequests($user, 5)->count(),
-            'highPriority' => $stats['high_priority'],
+            'pendingActions' => $stats['submitted'] + $stats['staff1_reviewed'] + $stats['staff2_approved'],
             'approvedToday' => $this->getApprovedToday($user),
         ];
     }
@@ -162,10 +151,8 @@ class DashboardService
             'search' => '',
             'status' => '',
             'type' => '',
-            'priority' => '',
             'date_from' => '',
             'date_to' => '',
-            'urgent' => false,
         ];
 
         $roleSpecific = match ($role) {
@@ -175,11 +162,9 @@ class DashboardService
             ],
             'staff1' => [
                 'search_placeholder' => 'Reference, applicant, email...',
-                'show_urgent' => true,
             ],
             'staff2' => [
                 'search_placeholder' => 'Reference, applicant, email...',
-                'show_urgent' => true,
             ],
             default => []
         };

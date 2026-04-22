@@ -22,7 +22,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
-            'auto.priority' => \App\Http\Middleware\AutoPriorityMiddleware::class,
             'performance.monitor' => \App\Http\Middleware\PerformanceMonitoring::class,
         ]);
     })

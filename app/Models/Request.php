@@ -11,7 +11,7 @@ class Request extends Model
     use HasFactory;
     protected $fillable = [
         'user_id', 'request_type_id', 'ref_number', 'status_id',
-        'file_path', 'payload',
+        'file_path', 'payload', 'field_values', 'description',
         'vot_items', 'total_amount',
         'submitter_staff_id', 'submitter_designation', 'submitter_department',
         'submitter_phone', 'submitter_employee_level',
@@ -30,6 +30,7 @@ class Request extends Model
 
     protected $casts = [
         'payload'        => 'array',
+        'field_values'   => 'array',
         'vot_items'      => 'array',
         'signed_at'      => 'datetime',
         'submitted_at'   => 'datetime',

@@ -14,13 +14,13 @@ use App\Models\RequestType;
 use App\Models\Signature;
 use App\Models\VotCode;
 use App\Services\NotificationService;
-use App\Services\RequestPdfService;
 use App\Services\WorkflowTransitionService;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class RequestController extends BaseController
@@ -75,7 +75,7 @@ class RequestController extends BaseController
         }
 
         return view('requests.create', [
-            'requestTypes' => RequestType::where('is_active', true)->orderBy('name')->get(),
+            'requestTypes' => RequestType::with(['activeTemplates'])->where('is_active', true)->orderBy('name')->get(),
             'votCodes'     => VotCode::active()->ordered()->get(),
             'user'         => Auth::user(),
         ]);
@@ -86,45 +86,53 @@ class RequestController extends BaseController
         $user        = Auth::user();
         $requestType = RequestType::findOrFail((int) $request->input('request_type_id'));
 
-        $documentPath = $request->hasFile('document')
-            ? $request->file('document')->store('documents', 'public')
-            : null;
-
-        $additionalDocumentPaths = [];
-        if ($request->hasFile('additional_documents')) {
-            foreach ($request->file('additional_documents') as $file) {
-                if ($file->isValid()) {
-                    $additionalDocumentPaths[] = $file->store('documents/additional', 'public');
-                }
-            }
-        }
-
         $votItems    = collect($request->input('vot_items', []))->values()->all();
         $totalAmount = collect($votItems)->sum(fn ($item) => (float) ($item['amount'] ?? 0));
 
-        $grantRequest = GrantRequest::create([
-            'user_id'                  => $user->id,
-            'request_type_id'          => $requestType->id,
-            'ref_number'               => $this->generateReferenceNumber(),
-            'status_id'                => RequestStatus::SUBMITTED->value,
-            'file_path'                => $documentPath,
-            'payload'                  => [
-                'description'          => $request->input('description'),
-                'dynamic_fields'       => $request->input('dynamic_fields', []),
-                'email'                => $user->email,
-                'additional_documents' => $additionalDocumentPaths,
-            ],
-            'vot_items'                => $votItems,
-            'total_amount'             => $totalAmount,
-            'submitter_staff_id'       => $user->staff_id,
-            'submitter_designation'    => $user->designation,
-            'submitter_department'     => $user->department,
-            'submitter_phone'          => $user->phone,
-            'submitter_employee_level' => $user->employee_level,
-            'signature_data'           => $request->input('signature_data'),
-            'signed_at'                => now(),
-            'submitted_at'             => now(),
-        ]);
+        $grantRequest = DB::transaction(function () use ($user, $requestType, $request, $votItems, $totalAmount) {
+            $attempts = 0;
+            while (true) {
+                try {
+                    $gr = GrantRequest::create([
+                        'user_id'                  => $user->id,
+                        'request_type_id'          => $requestType->id,
+                        'ref_number'               => $this->generateReferenceNumber(),
+                        'status_id'                => RequestStatus::SUBMITTED->value,
+                        'description'              => $request->input('description'),
+                        'field_values'             => $request->input('field_values', []),
+                        'payload'                  => ['email' => $user->email],
+                        'vot_items'                => $votItems,
+                        'total_amount'             => $totalAmount,
+                        'submitter_staff_id'       => $user->staff_id,
+                        'submitter_designation'    => $user->designation,
+                        'submitter_department'     => $user->department,
+                        'submitter_phone'          => $user->phone,
+                        'submitter_employee_level' => $user->employee_level,
+                        'signature_data'           => $request->input('signature_data'),
+                        'signed_at'                => $request->filled('signature_data') ? now() : null,
+                        'submitted_at'             => now(),
+                    ]);
+
+                    foreach ($request->file('documents', []) as $file) {
+                        if ($file->isValid()) {
+                            \App\Models\Document::create([
+                                'request_id'      => $gr->id,
+                                'request_type_id' => $requestType->id,
+                                'uploaded_by'     => $user->id,
+                                'uploader_role'   => $user->role,
+                                'file_path'       => $file->store("documents/request-{$gr->id}", 'public'),
+                                'original_name'   => $file->getClientOriginalName(),
+                                'document_type'   => 'user_submission',
+                            ]);
+                        }
+                    }
+
+                    return $gr;
+                } catch (UniqueConstraintViolationException) {
+                    if (++$attempts >= 5) throw new \RuntimeException('Could not generate a unique reference number.');
+                }
+            }
+        });
 
         Signature::updateOrCreate(
             ['request_id' => $grantRequest->id, 'role' => 'applicant'],
@@ -149,11 +157,6 @@ class RequestController extends BaseController
             route('requests.show', $grantRequest->id)
         );
 
-        $template = $grantRequest->requestType?->getDefaultTemplate();
-        if ($template) {
-            RequestPdfService::generate($grantRequest, $template);
-        }
-
         return redirect()->route('dashboard')->with('success', 'Request submitted successfully.');
     }
 
@@ -161,7 +164,7 @@ class RequestController extends BaseController
     {
         $grantRequest = GrantRequest::with([
             'user',
-            'requestType',
+            'requestType.checklistItems',
             'verifiedBy',
             'recommendedBy',
             'comments.user',
@@ -169,30 +172,28 @@ class RequestController extends BaseController
             'documents.uploader',
             'templateUsages' => fn ($q) => $q->latest('created_at'),
             'signatures',
+            'checklistReviews.reviewer',
         ])->findOrFail($id);
 
         $this->authorize('view', $grantRequest);
 
-        $systemTemplate = $grantRequest->requestType?->getDefaultTemplate('two_signatures');
-
         $supportingDocuments = $grantRequest->requestType
-            ? $grantRequest->requestType->templates()
-                ->where('form_templates.template_type', 'supporting_document')
-                ->where('form_templates.is_active', true)
-                ->get()
+            ? $grantRequest->requestType->templates()->where('is_active', true)->get()
             : collect();
 
-        return view('requests.show', compact('grantRequest', 'systemTemplate', 'supportingDocuments'));
+        return view('requests.show', compact('grantRequest', 'supportingDocuments'));
     }
 
     public function edit($id)
     {
-        $grantRequest = GrantRequest::with('requestType')->findOrFail($id);
+        $grantRequest = GrantRequest::with(['requestType.activeTemplates', 'documents' => fn ($q) => $q->where('document_type', 'user_submission')])->findOrFail($id);
         $this->authorize('revise', $grantRequest);
 
         return view('requests.edit', [
-            'grantRequest' => $grantRequest,
-            'votCodes'     => VotCode::active()->ordered()->get(),
+            'grantRequest'     => $grantRequest,
+            'votCodes'         => VotCode::active()->ordered()->get(),
+            'userDocuments'    => $grantRequest->documents,
+            'templates'        => $grantRequest->requestType?->activeTemplates ?? collect(),
         ]);
     }
 
@@ -202,44 +203,40 @@ class RequestController extends BaseController
         $this->authorize('revise', $grantRequest);
         $requestType = RequestType::findOrFail($grantRequest->request_type_id);
 
-        $documentPath = $grantRequest->file_path;
-        if ($request->hasFile('document')) {
-            $documentPath = $request->file('document')->store('documents', 'public');
-        }
-
-        $additionalDocumentPaths = collect($grantRequest->payload['additional_documents'] ?? []);
-        if ($request->hasFile('additional_documents')) {
-            foreach ($request->file('additional_documents') as $file) {
-                if ($file->isValid()) {
-                    $additionalDocumentPaths->push($file->store('documents/additional', 'public'));
-                }
-            }
-        }
-
         $votItems    = collect($request->input('vot_items', []))->values()->all();
         $totalAmount = collect($votItems)->sum(fn ($item) => (float) ($item['amount'] ?? 0));
         $oldStatus   = $grantRequest->status_id;
 
-        $grantRequest->update([
-            'status_id'    => RequestStatus::SUBMITTED->value,
-            'file_path'    => $documentPath,
-            'vot_items'    => $votItems,
-            'total_amount' => $totalAmount,
-            'payload'      => [
-                'description'          => $request->input('description'),
-                'dynamic_fields'       => $request->input('dynamic_fields', []),
-                'email'                => Auth::user()->email,
-                'additional_documents' => $additionalDocumentPaths->values()->all(),
-            ],
-            'signature_data' => $request->filled('signature_data')
-                ? $request->input('signature_data')
-                : $grantRequest->signature_data,
-            'signed_at'     => $request->filled('signature_data') ? now() : $grantRequest->signed_at,
-            'submitted_at'  => now(),
-            'return_reason' => null,
-            'staff_notes'   => null,
-            'revision_count' => (int) $grantRequest->revision_count + 1,
-        ]);
+        DB::transaction(function () use ($request, $grantRequest, $requestType, $votItems, $totalAmount) {
+            $grantRequest->update([
+                'status_id'     => RequestStatus::SUBMITTED->value,
+                'description'   => $request->input('description'),
+                'field_values'  => $request->input('field_values', []),
+                'vot_items'     => $votItems,
+                'total_amount'  => $totalAmount,
+                'payload'       => array_merge($grantRequest->payload ?? [], ['email' => Auth::user()->email]),
+                'signature_data'=> $request->filled('signature_data') ? $request->input('signature_data') : $grantRequest->signature_data,
+                'signed_at'     => $request->filled('signature_data') ? now() : $grantRequest->signed_at,
+                'submitted_at'  => now(),
+                'return_reason' => null,
+                'staff_notes'   => null,
+                'revision_count'=> (int) $grantRequest->revision_count + 1,
+            ]);
+
+            foreach ($request->file('documents', []) as $file) {
+                if ($file->isValid()) {
+                    \App\Models\Document::create([
+                        'request_id'      => $grantRequest->id,
+                        'request_type_id' => $requestType->id,
+                        'uploaded_by'     => Auth::id(),
+                        'uploader_role'   => Auth::user()->role,
+                        'file_path'       => $file->store("documents/request-{$grantRequest->id}", 'public'),
+                        'original_name'   => $file->getClientOriginalName(),
+                        'document_type'   => 'user_submission',
+                    ]);
+                }
+            }
+        });
 
         if ($request->filled('signature_data')) {
             Signature::updateOrCreate(
@@ -334,63 +331,6 @@ class RequestController extends BaseController
         return view('requests.print', compact('grantRequest'));
     }
 
-    public function downloadPdf($id)
-    {
-        $grantRequest = GrantRequest::with(['user', 'requestType', 'verifiedBy', 'recommendedBy', 'signatures'])
-            ->findOrFail($id);
-
-        $this->authorize('print', $grantRequest);
-
-        $template      = $grantRequest->requestType?->getDefaultTemplate('two_signatures');
-        $generatedPath = RequestPdfService::generate($grantRequest, $template);
-
-        return Storage::disk('public')->download($generatedPath, basename($generatedPath));
-    }
-
-    public function viewGeneratedPdf($id)
-    {
-        $grantRequest = GrantRequest::with(['user', 'requestType', 'verifiedBy', 'recommendedBy', 'signatures'])
-            ->findOrFail($id);
-
-        $this->authorize('print', $grantRequest);
-
-        $template      = $grantRequest->requestType?->getDefaultTemplate();
-        $generatedPath = RequestPdfService::generate($grantRequest, $template);
-
-        return Storage::disk('public')->response(
-            $generatedPath, basename($generatedPath),
-            ['Content-Type' => 'application/pdf'], 'inline'
-        );
-    }
-
-    public function showMainDocument($id)
-    {
-        $grantRequest = GrantRequest::findOrFail($id);
-        $this->authorize('view', $grantRequest);
-
-        if (empty($grantRequest->file_path) || !Storage::disk('public')->exists($grantRequest->file_path)) {
-            abort(404, 'Main document not found.');
-        }
-
-        return Storage::disk('public')->response($grantRequest->file_path, basename($grantRequest->file_path), [], 'inline');
-    }
-
-    public function showAdditionalDocument($id, int $index)
-    {
-        $grantRequest = GrantRequest::findOrFail($id);
-        $this->authorize('view', $grantRequest);
-
-        $documents    = collect($grantRequest->payload['additional_documents'] ?? [])
-            ->filter(fn ($p) => is_string($p) && $p !== '')->values();
-        $documentPath = $documents->get($index);
-
-        if (!$documentPath || !Storage::disk('public')->exists($documentPath)) {
-            abort(404, 'Additional document not found.');
-        }
-
-        return Storage::disk('public')->response($documentPath, basename($documentPath), [], 'inline');
-    }
-
     public function exportExcel(Request $request)
     {
         $query = GrantRequest::query()
@@ -428,22 +368,6 @@ class RequestController extends BaseController
         }, $filename, ['Content-Type' => 'text/csv; charset=utf-8']);
     }
 
-    public function toggleOverrideMode(Request $request)
-    {
-        if (!auth()->user()->isStaff2()) abort(403);
-
-        $user = auth()->user();
-        if ($user->override_enabled) {
-            $user->disableOverride();
-            $message = 'Override mode disabled.';
-        } else {
-            $user->enableOverride();
-            $message = 'Override mode enabled.';
-        }
-
-        return redirect()->back()->with('success', $message);
-    }
-
     public function getDynamicFields($id): JsonResponse
     {
         $requestType = RequestType::findOrFail($id);
@@ -462,10 +386,6 @@ class RequestController extends BaseController
 
     private function generateReferenceNumber(): string
     {
-        do {
-            $reference = 'REQ-' . now()->format('Ymd') . '-' . Str::upper(Str::random(6));
-        } while (GrantRequest::where('ref_number', $reference)->exists());
-
-        return $reference;
+        return 'REQ-' . now()->format('Ymd') . '-' . Str::upper(Str::random(6));
     }
 }

@@ -63,7 +63,7 @@ class WorkflowTransitionService
             throw new AuthorizationException('You are not authorized to perform this status transition.');
         }
 
-        self::validateTransitionRequirements($user, $newStatus, $data);
+        self::validateTransitionRequirements($request, $user, $newStatus, $data);
 
         $oldStatus = RequestStatus::from($request->status_id);
 
@@ -100,13 +100,21 @@ class WorkflowTransitionService
         });
 
         self::dispatchNotifications($request, $oldStatus, $newStatus);
-        self::regeneratePdfIfNeeded($request, $user, $data);
-
         return $request->fresh();
     }
 
-    private static function validateTransitionRequirements(User $user, RequestStatus $newStatus, array $data): void
+    private static function validateTransitionRequirements(GrantRequest $request, User $user, RequestStatus $newStatus, array $data): void
     {
+        if ($user->role === 'staff1' && $newStatus === RequestStatus::STAFF1_REVIEWED) {
+            if ($request->hasAnyFlaggedItems()) {
+                throw new AuthorizationException('Flagged checklist items block forwarding. Return or decline this request.');
+            }
+
+            if (!$request->hasAllRequiredItemsChecked()) {
+                throw new AuthorizationException('All required checklist items must be checked before forwarding.');
+            }
+        }
+
         if ($user->role === 'staff2' && $newStatus === RequestStatus::STAFF2_APPROVED) {
             if (empty($data['staff2_signature_data'])) {
                 throw new AuthorizationException('Staff 2 signature is required to approve.');
@@ -256,17 +264,4 @@ class WorkflowTransitionService
         );
     }
 
-    private static function regeneratePdfIfNeeded(GrantRequest $request, User $user, array $data): void
-    {
-        if (empty($data['staff2_signature_data'])) return;
-
-        try {
-            $template = $request->requestType?->getDefaultTemplate();
-            if ($template) {
-                RequestPdfService::generate($request, $template);
-            }
-        } catch (\Throwable $e) {
-            \Log::warning('PDF regeneration failed', ['request_id' => $request->id, 'error' => $e->getMessage()]);
-        }
-    }
 }

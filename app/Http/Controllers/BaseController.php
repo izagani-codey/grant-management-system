@@ -20,8 +20,7 @@ abstract class BaseController extends LaravelController
     protected function applyFilters(Builder $query, Request $request): void
     {
         $filters = $request->only([
-            'search', 'status', 'type', 'priority', 
-            'date_from', 'date_to', 'urgent'
+            'search', 'status', 'type', 'date_from', 'date_to'
         ]);
 
         foreach ($filters as $key => $value) {
@@ -33,10 +32,8 @@ abstract class BaseController extends LaravelController
                 'search' => $this->applySearchFilter($query, $value),
                 'status' => $this->applyStatusFilter($query, $value),
                 'type' => $this->applyTypeFilter($query, $value),
-                'priority' => $this->applyPriorityFilter($query, $value),
                 'date_from' => $this->applyDateFromFilter($query, $value),
                 'date_to' => $this->applyDateToFilter($query, $value),
-                'urgent' => $this->applyUrgentFilter($query, $value),
                 default => null
             };
         }
@@ -72,14 +69,6 @@ abstract class BaseController extends LaravelController
     }
 
     /**
-     * Apply priority filter.
-     */
-    protected function applyPriorityFilter(Builder $query, mixed $priority): void
-    {
-        $query->where('is_priority', (bool) $priority);
-    }
-
-    /**
      * Apply date from filter.
      */
     protected function applyDateFromFilter(Builder $query, mixed $dateFrom): void
@@ -93,20 +82,6 @@ abstract class BaseController extends LaravelController
     protected function applyDateToFilter(Builder $query, mixed $dateTo): void
     {
         $query->whereDate('created_at', '<=', $dateTo);
-    }
-
-    /**
-     * Apply urgent filter.
-     */
-    protected function applyUrgentFilter(Builder $query, mixed $urgent): void
-    {
-        if ($urgent) {
-            $query->where(function ($q) {
-                $q->where('deadline', '>=', now())
-                  ->where('deadline', '<=', now()->addDays(3))
-                  ->where('status_id', '!=', \App\Enums\RequestStatus::STAFF2_APPROVED->value);
-            });
-        }
     }
 
     /**
@@ -207,12 +182,10 @@ abstract class BaseController extends LaravelController
         return [
             'user' => $user,
             'filters' => $request->only([
-                'search', 'status', 'type', 'priority', 
-                'date_from', 'date_to', 'urgent'
+                'search', 'status', 'type', 'date_from', 'date_to'
             ]),
             'hasFilters' => $request->hasAny([
-                'search', 'status', 'type', 'priority', 
-                'date_from', 'date_to', 'urgent'
+                'search', 'status', 'type', 'date_from', 'date_to'
             ]),
         ];
     }

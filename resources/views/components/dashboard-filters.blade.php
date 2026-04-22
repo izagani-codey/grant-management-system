@@ -15,7 +15,7 @@
     </div>
     
     <form method="GET" action="{{ route('dashboard') }}" class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
                 <input type="text" name="search" value="{{ request('search') }}" 
@@ -38,14 +38,6 @@
                     @foreach($requestTypes as $type)
                         <option value="{{ $type->id }}" @selected(request('type') == $type->id)>{{ $type->name }}</option>
                     @endforeach
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Priority</label>
-                <select name="priority" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm {{ $colorClasses['focus'] }}">
-                    <option value="">All Priority</option>
-                    <option value="1" @selected(request('priority') === '1')">High Priority</option>
-                    <option value="0" @selected(request('priority') === '0')">Normal</option>
                 </select>
             </div>
         </div>

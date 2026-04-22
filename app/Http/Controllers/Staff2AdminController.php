@@ -204,7 +204,7 @@ class Staff2AdminController extends BaseController
 
     public function requestTypes()
     {
-        $this->ensureAdminAccess();
+        $this->ensureStaff2OrAdminAccess();
 
         $requestTypes = RequestType::query()
             ->withCount('requests')
@@ -219,14 +219,18 @@ class Staff2AdminController extends BaseController
 
     public function storeRequestType()
     {
+        $this->ensureStaff2OrAdminAccess();
         try {
-            $validated = request()->validate([
-                'name' => 'required|string|max:255|unique:request_types',
+            $req = request();
+            $validated = $req->validate([
+                'name'        => 'required|string|max:255|unique:request_types',
                 'description' => 'nullable|string',
             ]);
 
-            // Create slug from name
-            $validated['slug'] = \Str::slug($validated['name']);
+            $validated['slug']               = \Str::slug($validated['name']);
+            $validated['requires_vot']        = $req->boolean('requires_vot');
+            $validated['requires_signature']  = $req->boolean('requires_signature');
+            $validated['is_active']           = true;
 
             $requestType = RequestType::create($validated);
 
@@ -248,31 +252,42 @@ class Staff2AdminController extends BaseController
 
     public function updateRequestType($id)
     {
+        $this->ensureStaff2OrAdminAccess();
         try {
             $requestType = RequestType::findOrFail($id);
             
-            $validated = request()->validate([
-                'name' => 'required|string|max:255|unique:request_types,name,' . $id,
-                'description' => 'nullable|string',
-                'default_template_id' => 'nullable|exists:documents,id',
+            $req = request();
+            $validated = $req->validate([
+                'name'               => 'required|string|max:255|unique:request_types,name,' . $id,
+                'description'        => 'nullable|string',
+                'default_template_id'=> 'nullable|exists:documents,id',
                 'required_documents' => 'nullable|array',
                 'required_documents.*' => 'string|max:255',
+                'field_schema'       => 'nullable|string',
             ]);
 
-            // Update slug if name changed
             $validated['slug'] = \Str::slug($validated['name']);
 
-            // Filter out empty document entries
             $validated['required_documents'] = array_values(
                 array_filter($validated['required_documents'] ?? [], fn ($d) => trim($d) !== '')
             ) ?: null;
 
+            $fieldSchema = null;
+            if (!empty($validated['field_schema'])) {
+                $decoded = json_decode($validated['field_schema'], true);
+                $fieldSchema = is_array($decoded) ? $decoded : null;
+            }
+
             $requestType->update([
-                'name' => $validated['name'],
-                'slug' => $validated['slug'],
-                'description' => $validated['description'] ?? null,
+                'name'                => $validated['name'],
+                'slug'                => $validated['slug'],
+                'description'         => $validated['description'] ?? null,
                 'default_template_id' => $validated['default_template_id'] ?? null,
-                'required_documents' => $validated['required_documents'],
+                'required_documents'  => $validated['required_documents'],
+                'requires_vot'        => $req->boolean('requires_vot'),
+                'requires_signature'  => $req->boolean('requires_signature'),
+                'is_active'           => $req->boolean('is_active'),
+                ...($fieldSchema !== null ? ['field_schema' => $fieldSchema] : []),
             ]);
 
             return back()->with('success', 'Request type updated successfully.');
@@ -284,6 +299,7 @@ class Staff2AdminController extends BaseController
 
     public function destroyRequestType($id)
     {
+        $this->ensureStaff2OrAdminAccess();
         try {
             $requestType = RequestType::findOrFail($id);
             
@@ -312,6 +328,14 @@ class Staff2AdminController extends BaseController
     {
         if (!auth()->user()?->canAccessAdminPanel()) {
             abort(403, 'Unauthorized access to admin panel');
+        }
+    }
+
+    private function ensureStaff2OrAdminAccess(): void
+    {
+        $user = auth()->user();
+        if (!$user || (!$user->isStaff2() && !$user->canAccessAdminPanel())) {
+            abort(403, 'Unauthorized');
         }
     }
 
@@ -377,7 +401,7 @@ class Staff2AdminController extends BaseController
 
     public function checklists(Request $request)
     {
-        $this->ensureAdminAccess();
+        $this->ensureStaff2OrAdminAccess();
 
         $requestTypes = RequestType::with(['checklistItems' => function($query) {
             $query->orderBy('sort_order');
@@ -388,7 +412,7 @@ class Staff2AdminController extends BaseController
 
     public function storeChecklistItem(Request $request)
     {
-        $this->ensureAdminAccess();
+        $this->ensureStaff2OrAdminAccess();
 
         $request->validate([
             'request_type_id' => 'required|exists:request_types,id',
@@ -411,7 +435,7 @@ class Staff2AdminController extends BaseController
 
     public function updateChecklistItem(Request $request, $id)
     {
-        $this->ensureAdminAccess();
+        $this->ensureStaff2OrAdminAccess();
 
         $request->validate([
             'label' => 'required|string|max:255',
@@ -434,7 +458,7 @@ class Staff2AdminController extends BaseController
 
     public function destroyChecklistItem($id)
     {
-        $this->ensureAdminAccess();
+        $this->ensureStaff2OrAdminAccess();
 
         $checklistItem = \App\Models\ChecklistItem::findOrFail($id);
         
@@ -465,7 +489,7 @@ class Staff2AdminController extends BaseController
 
     public function reorderChecklistItems(Request $request)
     {
-        $this->ensureAdminAccess();
+        $this->ensureStaff2OrAdminAccess();
 
         $request->validate([
             'items' => 'required|array',

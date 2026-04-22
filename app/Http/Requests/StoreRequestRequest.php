@@ -14,18 +14,26 @@ class StoreRequestRequest extends FormRequest
 
     public function rules(): array
     {
-        $requestType = RequestType::find($this->input('request_type_id'));
-        $requiresVot = $requestType?->requires_vot ?? false;
+        $requestType       = RequestType::find($this->input('request_type_id'));
+        $requiresVot       = $requestType?->requires_vot ?? false;
+        $requiresSignature = $requestType?->requires_signature ?? false;
+
+        $mimeTypes = 'mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx';
+        $mimeCheck = 'mimetypes:application/pdf,image/jpeg,image/png,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
         $rules = [
-            'request_type_id'         => 'required|exists:request_types,id',
-            'description'             => 'required|string|max:500',
-            'dynamic_fields'          => 'nullable|array',
-            'signature_data'          => 'required|string',
-            'document'                => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
-            'additional_documents'    => 'nullable|array|max:10',
-            'additional_documents.*'  => ['file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'request_type_id' => 'required|exists:request_types,id',
+            'description'     => 'required|string|max:2000',
+            'field_values'    => 'nullable|array',
+            'documents'       => 'nullable|array',
+            'documents.*'     => ['file', $mimeTypes, $mimeCheck, 'max:5120'],
         ];
+
+        if ($requiresSignature) {
+            $rules['signature_data'] = ['required', 'string', 'starts_with:data:image/png;base64,', 'max:819200'];
+        } else {
+            $rules['signature_data'] = ['nullable', 'string', 'starts_with:data:image/png;base64,', 'max:819200'];
+        }
 
         if ($requiresVot) {
             $rules['vot_items']               = 'required|array|min:1';
@@ -38,21 +46,15 @@ class StoreRequestRequest extends FormRequest
 
         if ($requestType && $requestType->field_schema) {
             foreach ($requestType->field_schema as $field) {
-                $fieldName  = "dynamic_fields.{$field['name']}";
+                $fieldName  = "field_values.{$field['name']}";
                 $isRequired = $field['required'] ?? false;
 
-                $rules[$fieldName] = match ($field['type']) {
-                    'number'     => $isRequired ? 'required|numeric' : 'nullable|numeric',
-                    'date'       => $isRequired ? 'required|date' : 'nullable|date',
-                    'checkbox'   => 'nullable|boolean',
-                    default      => $isRequired ? 'required|string' : 'nullable|string',
+                $rules[$fieldName] = match ($field['type'] ?? 'text') {
+                    'number'   => $isRequired ? 'required|numeric' : 'nullable|numeric',
+                    'date'     => $isRequired ? 'required|date' : 'nullable|date',
+                    'checkbox' => 'nullable|boolean',
+                    default    => $isRequired ? 'required|string' : 'nullable|string',
                 };
-
-                if ($field['type'] === 'date_range' && isset($field['fields'])) {
-                    foreach ($field['fields'] as $rangeField) {
-                        $rules["dynamic_fields.{$rangeField}"] = $isRequired ? 'required|date' : 'nullable|date';
-                    }
-                }
             }
         }
 
@@ -65,7 +67,6 @@ class StoreRequestRequest extends FormRequest
             'request_type_id.required'         => 'Please select a request type.',
             'request_type_id.exists'           => 'Selected request type is invalid.',
             'description.required'             => 'Description is required.',
-            'description.max'                  => 'Description must not exceed 500 characters.',
             'vot_items.required'               => 'At least one VOT item is required.',
             'vot_items.*.vot_code.required'    => 'Each VOT item must have a VOT code.',
             'vot_items.*.vot_code.exists'      => 'Invalid VOT code selected.',
@@ -73,8 +74,7 @@ class StoreRequestRequest extends FormRequest
             'vot_items.*.amount.required'      => 'Each VOT item must have an amount.',
             'vot_items.*.amount.min'           => 'VOT amount must be zero or greater.',
             'signature_data.required'          => 'Please sign the form before submitting.',
-            'document.max'                     => 'Document file size must not exceed 5MB.',
-            'document.mimes'                   => 'Document must be a PDF, JPG, or PNG file.',
+            'documents.*.max'                  => 'Each file must not exceed 5MB.',
         ];
     }
 }

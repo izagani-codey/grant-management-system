@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Edit & Resubmit — {{ $grantRequest->ref_number }}
+                Edit &amp; Resubmit — {{ $grantRequest->ref_number }}
             </h2>
             <span class="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-full">
                 Revision #{{ $grantRequest->revision_count + 1 }}
@@ -13,382 +13,285 @@
     <div class="py-8">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
-            {{-- Return Reason --}}
+            {{-- Return reason --}}
             @if($grantRequest->return_reason)
-            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h3 class="font-bold text-yellow-700 mb-1">Reason for Return:</h3>
-                <p class="text-yellow-700 text-sm">{{ $grantRequest->return_reason }}</p>
-            </div>
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h3 class="font-bold text-yellow-700 mb-1">Reason for Return</h3>
+                    <p class="text-yellow-800 text-sm">{{ $grantRequest->return_reason }}</p>
+                </div>
             @endif
 
-            {{-- Edit Form --}}
-            <div class="bg-white shadow-sm rounded-lg p-6">
-                <form action="{{ route('requests.update', $grantRequest->id) }}"
-                      method="POST"
-                      enctype="multipart/form-data"
-                      onsubmit="editRenameVotInputs()">
-                    @csrf
-                    @method('PATCH')
-                    <input type="hidden" name="request_type_id" value="{{ $grantRequest->request_type_id }}">
+            @if ($errors->any())
+                <div class="rounded-lg border border-red-200 bg-red-50 p-4">
+                    <p class="text-sm font-semibold text-red-800 mb-2">Please fix the following:</p>
+                    <ul class="list-disc pl-5 text-sm text-red-700 space-y-1">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
-                    {{-- Email (readonly) --}}
-                    <div class="mb-4">
-                        <label class="block text-sm font-bold text-gray-700 mb-1">Your Email</label>
-                        <input type="text"
-                               value="{{ auth()->user()->email }}"
-                               class="w-full rounded border-gray-300 bg-gray-100 text-sm"
-                               readonly>
+            <form action="{{ route('requests.update', $grantRequest->id) }}"
+                  method="POST"
+                  enctype="multipart/form-data"
+                  onsubmit="prepareSubmit()">
+                @csrf
+                @method('PATCH')
+                <input type="hidden" name="request_type_id" value="{{ $grantRequest->request_type_id }}">
+
+                {{-- Reference templates --}}
+                @if($templates->isNotEmpty())
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-5">
+                        <h3 class="text-sm font-bold text-blue-800 mb-2">Reference Templates</h3>
+                        <ul class="space-y-2">
+                            @foreach($templates as $template)
+                                <li>
+                                    <a href="{{ route('documents.download', $template->id) }}"
+                                       target="_blank"
+                                       class="inline-flex items-center gap-2 text-sm text-blue-700 hover:underline font-medium">
+                                        ⬇ {{ $template->name ?: $template->original_name }}
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
                     </div>
+                @endif
 
-                    {{-- Request Type (readonly — can't change type on revision) --}}
-                    <div class="mb-4">
+                <div class="bg-white shadow-sm rounded-lg p-6 space-y-5">
+                    <h3 class="text-base font-bold text-gray-800">Request Details</h3>
+
+                    {{-- Request type (read-only) --}}
+                    <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">Request Type</label>
-                        <input type="text"
-                               value="{{ $grantRequest->requestType->name }}"
-                               class="w-full rounded border-gray-300 bg-gray-100 text-sm"
-                               readonly>
+                        <input type="text" value="{{ $grantRequest->requestType->name }}"
+                               class="w-full rounded border-gray-300 bg-gray-100 text-sm" readonly>
                     </div>
 
-                    {{-- VOT Items --}}
-                    <div class="mb-4">
+                    {{-- Staff2-defined fields --}}
+                    @php
+                        $fieldSchema  = $grantRequest->requestType->field_schema ?? [];
+                        $fieldValues  = $grantRequest->field_values ?? [];
+                    @endphp
+                    @foreach($fieldSchema as $field)
                         @php
-                            $votCodes = \App\Models\VotCode::active()->ordered()->get();
-                            $existingItems = collect(old('vot_items', $grantRequest->vot_items ?? []))->values();
-                            if ($existingItems->isEmpty()) {
-                                $existingItems = collect([['vot_code' => '', 'description' => '', 'amount' => 0]]);
-                            }
-                            $lockVotItems = $grantRequest->shouldLockVotItems();
+                            $fieldName = $field['name'];
+                            $value     = old("field_values.{$fieldName}", $fieldValues[$fieldName] ?? ($field['default'] ?? ''));
+                            $required  = $field['required'] ?? false;
                         @endphp
-
-                        <label class="block text-sm font-bold text-gray-700 mb-1">
-                            VOT Breakdown
-                            @if($lockVotItems)
-                                <span class="text-xs text-orange-600 ml-2">Locked — cannot be modified after verification</span>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                {{ $field['label'] ?? $fieldName }}
+                                @if($required) <span class="text-red-500">*</span> @endif
+                            </label>
+                            @if(($field['type'] ?? 'text') === 'textarea')
+                                <textarea name="field_values[{{ $fieldName }}]" rows="3"
+                                          class="w-full rounded border-gray-300 text-sm"
+                                          @if($required) required @endif>{{ $value }}</textarea>
+                            @elseif(($field['type'] ?? 'text') === 'date')
+                                <input type="date" name="field_values[{{ $fieldName }}]" value="{{ $value }}"
+                                       class="w-full rounded border-gray-300 text-sm" @if($required) required @endif>
+                            @elseif(($field['type'] ?? 'text') === 'number')
+                                <input type="number" step="any" name="field_values[{{ $fieldName }}]" value="{{ $value }}"
+                                       class="w-full rounded border-gray-300 text-sm" @if($required) required @endif>
+                            @else
+                                <input type="text" name="field_values[{{ $fieldName }}]" value="{{ $value }}"
+                                       class="w-full rounded border-gray-300 text-sm" @if($required) required @endif>
                             @endif
-                        </label>
+                        </div>
+                    @endforeach
 
-                        @if(! $lockVotItems)
-                            <div class="mb-3 rounded-lg bg-blue-50 border border-blue-200 px-4 py-2 text-sm text-blue-800">
-                                You may add or remove VOT items before resubmitting. Use the buttons below to adjust your budget breakdown.
-                            </div>
-                        @endif
+                    {{-- Description --}}
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Justification / Description <span class="text-red-500">*</span></label>
+                        <textarea name="description" rows="4" class="w-full rounded border-gray-300 text-sm" required>{{ old('description', $grantRequest->description ?? ($grantRequest->payload['description'] ?? '')) }}</textarea>
+                        @error('description') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+                    </div>
 
-                        <div id="edit-vot-items-container" class="space-y-3">
-                            @foreach($existingItems as $i => $item)
-                                @if($lockVotItems)
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 bg-orange-50 border border-orange-200 rounded">
-                                        <div class="text-sm font-medium text-gray-700">{{ $item['vot_code'] ?? 'N/A' }}</div>
-                                        <div class="text-sm text-gray-600">{{ $item['description'] ?? 'N/A' }}</div>
-                                        <div class="text-sm font-medium text-gray-900">RM {{ number_format($item['amount'] ?? 0, 2) }}</div>
-                                        @if(!empty($item['vot_code']))
-                                            <input type="hidden" name="vot_items[{{ $i }}][vot_code]" value="{{ $item['vot_code'] }}">
-                                            <input type="hidden" name="vot_items[{{ $i }}][description]" value="{{ $item['description'] }}">
-                                            <input type="hidden" name="vot_items[{{ $i }}][amount]" value="{{ $item['amount'] }}">
-                                        @endif
+                    {{-- VOT items --}}
+                    @if($grantRequest->requestType->requires_vot)
+                        @php
+                            $existingItems = collect(old('vot_items', $grantRequest->vot_items ?? []))->values();
+                            if ($existingItems->isEmpty()) $existingItems = collect([['vot_code'=>'','description'=>'','amount'=>0]]);
+                            $votCodes = \App\Models\VotCode::active()->ordered()->get();
+                            $lock = $grantRequest->shouldLockVotItems();
+                        @endphp
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">
+                                VOT Breakdown
+                                @if($lock) <span class="text-xs text-orange-600 ml-2">Locked after verification</span> @endif
+                            </label>
+                            @if($lock)
+                                @foreach($existingItems as $i => $item)
+                                    <div class="grid grid-cols-3 gap-2 p-2 bg-orange-50 border border-orange-200 rounded text-sm mb-2">
+                                        <span class="font-medium">{{ $item['vot_code'] ?? '' }}</span>
+                                        <span class="text-gray-600">{{ $item['description'] ?? '' }}</span>
+                                        <span class="font-medium text-right">RM {{ number_format($item['amount'] ?? 0, 2) }}</span>
+                                        <input type="hidden" name="vot_items[{{ $i }}][vot_code]" value="{{ $item['vot_code'] }}">
+                                        <input type="hidden" name="vot_items[{{ $i }}][description]" value="{{ $item['description'] }}">
+                                        <input type="hidden" name="vot_items[{{ $i }}][amount]" value="{{ $item['amount'] }}">
                                     </div>
-                                @else
-                                    <div class="edit-vot-row bg-gray-50 p-3 rounded border border-gray-200">
-                                        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                @endforeach
+                            @else
+                                <div id="edit-vot-rows" class="space-y-3">
+                                    @foreach($existingItems as $i => $item)
+                                        <div class="vot-row grid grid-cols-1 md:grid-cols-4 gap-3 p-3 bg-gray-50 border rounded">
                                             <div class="md:col-span-1">
-                                                <label class="block text-xs font-semibold text-gray-600 mb-1">VOT Code</label>
-                                                <select class="edit-vot-code-select w-full rounded border-gray-300 text-sm"
-                                                        onchange="editHandleVotSelection(this)" required>
-                                                    <option value="">Select VOT code</option>
-                                                    @foreach($votCodes as $votCode)
-                                                        <option value="{{ $votCode->code }}"
-                                                                data-description="{{ $votCode->description }}"
-                                                                @selected(($item['vot_code'] ?? '') === $votCode->code)>
-                                                            {{ $votCode->code }} - {{ $votCode->description }}
+                                                <select class="vot-code w-full rounded border-gray-300 text-sm" onchange="fillVotDesc(this)">
+                                                    <option value="">Select...</option>
+                                                    @foreach($votCodes as $vc)
+                                                        <option value="{{ $vc->code }}" data-desc="{{ $vc->description }}"
+                                                                @selected(($item['vot_code'] ?? '') === $vc->code)>
+                                                            {{ $vc->code }} — {{ $vc->description }}
                                                         </option>
                                                     @endforeach
                                                 </select>
-                                                <input type="hidden" class="edit-vot-code-input">
-                                                <input type="hidden" class="edit-vot-desc-input">
                                             </div>
                                             <div class="md:col-span-2">
-                                                <label class="block text-xs font-semibold text-gray-600 mb-1">Description</label>
-                                                <input type="text" class="edit-vot-desc-text w-full rounded border-gray-300 text-sm"
-                                                       value="{{ $item['description'] ?? '' }}" required>
+                                                <input type="text" class="vot-desc w-full rounded border-gray-300 text-sm"
+                                                       value="{{ $item['description'] ?? '' }}" placeholder="Description">
                                             </div>
                                             <div>
-                                                <label class="block text-xs font-semibold text-gray-600 mb-1">Amount (RM)</label>
                                                 <div class="flex gap-2">
-                                                    <input type="number" step="0.01" min="0"
-                                                           class="edit-vot-amount w-full rounded border-gray-300 text-sm"
-                                                           value="{{ $item['amount'] ?? 0 }}"
-                                                           oninput="editCalculateTotal()" required>
-                                                    <button type="button" onclick="editRemoveVotRow(this)"
-                                                            class="px-2 py-1 rounded bg-red-100 text-red-700 text-sm font-bold hover:bg-red-200 whitespace-nowrap">
-                                                        ✕
-                                                    </button>
+                                                    <input type="number" step="0.01" min="0" class="vot-amount w-full rounded border-gray-300 text-sm"
+                                                           value="{{ $item['amount'] ?? 0 }}" oninput="calcTotal()">
+                                                    <button type="button" onclick="removeVotRow(this)"
+                                                            class="px-2 rounded bg-red-100 text-red-700 text-sm font-bold">✕</button>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                @endif
-                            @endforeach
-                        </div>
-
-                        @if(! $lockVotItems)
-                            <button type="button" onclick="editAddVotRow()"
-                                    class="mt-3 px-4 py-2 rounded bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
-                                + Add VOT Item
-                            </button>
-
-                            <div class="mt-4 flex justify-between items-center bg-gray-100 p-3 rounded-lg">
-                                <span class="text-sm font-medium text-gray-700">Total Amount:</span>
-                                <span class="text-base font-bold text-blue-600">RM <span id="edit-total-amount">{{ number_format(collect($existingItems)->sum(fn($i) => $i['amount'] ?? 0), 2) }}</span></span>
-                            </div>
-                        @endif
-
-                        @if($lockVotItems)
-                            <p class="text-xs text-orange-600 mt-2">
-                                <strong>Note:</strong> VOT items are locked because this request has already been verified. You can only modify other fields like description and additional documents.
-                            </p>
-                        @endif
-                    </div>
-
-                    {{-- Hidden VOT item template for JS cloning (only when editable) --}}
-                    @if(! $lockVotItems)
-                    <template id="edit-vot-item-template">
-                        <div class="edit-vot-row bg-gray-50 p-3 rounded border border-gray-200">
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                                <div class="md:col-span-1">
-                                    <label class="block text-xs font-semibold text-gray-600 mb-1">VOT Code</label>
-                                    <select class="edit-vot-code-select w-full rounded border-gray-300 text-sm"
-                                            onchange="editHandleVotSelection(this)" required>
-                                        <option value="">Select VOT code</option>
-                                        @foreach($votCodes as $votCode)
-                                            <option value="{{ $votCode->code }}" data-description="{{ $votCode->description }}">
-                                                {{ $votCode->code }} - {{ $votCode->description }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <input type="hidden" class="edit-vot-code-input">
-                                    <input type="hidden" class="edit-vot-desc-input">
-                                </div>
-                                <div class="md:col-span-2">
-                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Description</label>
-                                    <input type="text" class="edit-vot-desc-text w-full rounded border-gray-300 text-sm" required>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Amount (RM)</label>
-                                    <div class="flex gap-2">
-                                        <input type="number" step="0.01" min="0"
-                                               class="edit-vot-amount w-full rounded border-gray-300 text-sm"
-                                               placeholder="0.00" oninput="editCalculateTotal()" required>
-                                        <button type="button" onclick="editRemoveVotRow(this)"
-                                                class="px-2 py-1 rounded bg-red-100 text-red-700 text-sm font-bold hover:bg-red-200 whitespace-nowrap">
-                                            ✕
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                    @endif
-
-                    {{-- Dynamic Fields --}}
-                    @if($grantRequest->requestType && $grantRequest->requestType->field_schema)
-                        @php
-                            $dynamicFields = $grantRequest->requestType->field_schema;
-                            $dynamicValues = $grantRequest->payload['dynamic_fields'] ?? [];
-                        @endphp
-                        <div class="mb-4">
-                            <label class="block text-sm font-bold text-gray-700 mb-2">
-                                Additional Information
-                            </label>
-                            <div class="space-y-3">
-                                @foreach($dynamicFields as $index => $field)
-                                    @php
-                                        $fieldKey = $field['name'] ?? $field['id'] ?? 'field_' . $index;
-                                        $fieldValue = $dynamicValues[$fieldKey] ?? ($field['default'] ?? '');
-                                    @endphp
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-600 mb-1">
-                                            {{ $field['label'] ?? $field['name'] }}
-                                            @if($field['required'] ?? false) <span class="text-red-500">*</span> @endif
-                                        </label>
-                                        @if($field['type'] === 'textarea')
-                                            <textarea name="dynamic_fields[{{ $fieldKey }}]"
-                                                      rows="3"
-                                                      class="w-full rounded border-gray-300 text-sm"
-                                                      @if($field['required'] ?? false) required @endif>{{ $fieldValue }}</textarea>
-                                        @elseif($field['type'] === 'select')
-                                            <select name="dynamic_fields[{{ $fieldKey }}]"
-                                                    class="w-full rounded border-gray-300 text-sm"
-                                                    @if($field['required'] ?? false) required @endif>
-                                                <option value="">Select...</option>
-                                                @foreach($field['options'] ?? [] as $option)
-                                                    <option value="{{ $option }}" @selected($fieldValue === $option)>{{ $option }}</option>
-                                                @endforeach
-                                            </select>
-                                        @else
-                                            <input type="text"
-                                                   name="dynamic_fields[{{ $fieldKey }}]"
-                                                   value="{{ $fieldValue }}"
-                                                   class="w-full rounded border-gray-300 text-sm"
-                                                   @if($field['required'] ?? false) required @endif>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
-
-                    {{-- Description --}}
-                    <div class="mb-4">
-                        <label class="block text-sm font-bold text-gray-700 mb-1">
-                            Justification / Description
-                        </label>
-                        <textarea name="description"
-                                  rows="4"
-                                  class="w-full rounded border-gray-300 text-sm"
-                                  required>{{ $grantRequest->payload['description'] ?? '' }}</textarea>
-                    </div>
-
-                    {{-- Current Document --}}
-                    @if($grantRequest->file_path)
-                    <div class="mb-4 p-3 bg-gray-50 rounded border text-sm">
-                        <p class="text-gray-500 mb-1">Current document:</p>
-                        <a href="{{ asset('storage/' . $grantRequest->file_path) }}"
-                           target="_blank"
-                           class="text-blue-600 hover:underline font-semibold">
-                            View current file ↗
-                        </a>
-                    </div>
-                    @endif
-
-                    {{-- Main Document Upload --}}
-                    <div class="mb-6 p-4 border-2 border-dashed border-blue-200 rounded-lg bg-blue-50">
-                        <label class="block text-sm font-bold text-blue-700 mb-2">
-                            Replace Document (optional)
-                        </label>
-                        <input type="file"
-                               name="document"
-                               class="w-full text-sm text-gray-500
-                                      file:mr-4 file:py-2 file:px-4
-                                      file:rounded-full file:border-0
-                                      file:text-sm file:font-semibold
-                                      file:bg-blue-600 file:text-white
-                                      hover:file:bg-blue-700">
-                        <p class="text-xs text-gray-500 mt-2 italic">
-                            Leave empty to keep current document. PDF, JPG, PNG (Max 5MB)
-                        </p>
-                    </div>
-
-                    {{-- Additional Supporting Documents --}}
-                    @php
-                        $additionalDocuments = collect($grantRequest->payload['additional_documents'] ?? [])
-                            ->filter(fn ($path) => is_string($path) && $path !== '')
-                            ->values();
-                    @endphp
-                    <div class="mb-6 p-4 border-2 border-dashed border-emerald-200 rounded-lg bg-emerald-50">
-                        <h3 class="text-sm font-bold text-emerald-700 mb-2">Additional Supporting Documents</h3>
-                        <p class="text-xs text-emerald-700 mb-3">
-                            You can add new supporting documents here. Existing uploaded documents are kept and cannot be removed in Edit &amp; Resubmit.
-                        </p>
-
-                        @if($additionalDocuments->isNotEmpty())
-                            <div class="mb-4 rounded border border-emerald-100 bg-white p-3">
-                                <p class="text-xs font-semibold text-gray-600 mb-2">Previously uploaded supporting documents</p>
-                                <ul class="space-y-1 text-sm">
-                                    @foreach($additionalDocuments as $documentPath)
-                                        <li>
-                                            <a href="{{ asset('storage/' . $documentPath) }}"
-                                               target="_blank"
-                                               class="text-emerald-700 hover:underline">
-                                                ↗ {{ basename($documentPath) }}
-                                            </a>
-                                        </li>
                                     @endforeach
-                                </ul>
-                            </div>
-                        @endif
+                                </div>
+                                <button type="button" onclick="addVotRow()"
+                                        class="mt-3 px-4 py-2 rounded bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">+ Add VOT Item</button>
+                                <div class="mt-3 flex justify-between bg-gray-100 p-3 rounded">
+                                    <span class="text-sm font-medium text-gray-700">Total:</span>
+                                    <span class="font-bold text-blue-700">RM <span id="vot-total">{{ number_format(collect($existingItems)->sum(fn($i) => $i['amount'] ?? 0), 2) }}</span></span>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
 
-                        <label class="block text-sm font-bold text-emerald-700 mb-2">Upload additional files (optional)</label>
-                        <input type="file"
-                               name="additional_documents[]"
-                               multiple
-                               class="w-full text-sm text-gray-500
-                                      file:mr-4 file:py-2 file:px-4
-                                      file:rounded-full file:border-0
-                                      file:text-sm file:font-semibold
-                                      file:bg-emerald-600 file:text-white
-                                      hover:file:bg-emerald-700">
-                        <p class="text-xs text-gray-500 mt-2 italic">
-                            PDF, JPG, PNG (Max 5MB each)
-                        </p>
+                    {{-- Existing user-submitted documents --}}
+                    @if($userDocuments->isNotEmpty())
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Previously Submitted Documents</label>
+                            <ul class="space-y-1">
+                                @foreach($userDocuments as $doc)
+                                    <li class="flex items-center gap-2 text-sm">
+                                        <span class="text-gray-400">📄</span>
+                                        <a href="{{ route('documents.download', $doc->id) }}"
+                                           target="_blank"
+                                           class="text-blue-700 hover:underline">
+                                            {{ $doc->original_name }}
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    {{-- Upload new documents --}}
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">
+                            Upload New / Replacement Documents
+                            <span class="text-gray-400 font-normal text-xs">(PDF, Word, Excel, JPG, PNG — max 5MB each)</span>
+                        </label>
+                        <input type="file" name="documents[]" multiple
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                               class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700">
+                        @error('documents.*') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
 
-                    <div class="flex gap-3">
-                        <button type="submit"
-                                class="flex-1 bg-blue-600 text-white font-bold py-3 px-4 rounded hover:bg-blue-700 transition">
-                            ↺ Resubmit for Verification
-                        </button>
-                        <a href="{{ route('dashboard') }}"
-                           class="px-6 py-3 border border-gray-300 rounded text-gray-600 hover:bg-gray-50 text-sm font-semibold">
-                            Cancel
-                        </a>
-                    </div>
+                    {{-- Signature (if required) --}}
+                    @if($grantRequest->requestType->requires_signature)
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Signature <span class="text-gray-400 font-normal text-xs">(optional if already signed)</span></label>
+                            <canvas id="sig-canvas" width="600" height="180"
+                                    class="border-2 border-gray-300 rounded w-full cursor-crosshair bg-white"></canvas>
+                            <input type="hidden" name="signature_data" id="signature_data">
+                            <button type="button" onclick="clearSig()" class="mt-2 px-4 py-1 rounded border border-gray-300 text-sm text-gray-600 hover:bg-gray-50">Clear</button>
+                        </div>
+                    @endif
 
-                </form>
-            </div>
+                </div>
 
+                <div class="flex gap-3">
+                    <button type="submit" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 transition">
+                        ↺ Resubmit for Verification
+                    </button>
+                    <a href="{{ route('dashboard') }}" class="px-6 py-3 border border-gray-300 rounded text-gray-600 hover:bg-gray-50 text-sm font-semibold flex items-center">
+                        Cancel
+                    </a>
+                </div>
+
+            </form>
         </div>
     </div>
 
 <script>
-function editAddVotRow() {
-    const template = document.getElementById('edit-vot-item-template');
-    if (!template) return;
-    const clone = template.content.cloneNode(true);
-    document.getElementById('edit-vot-items-container').appendChild(clone);
-    editCalculateTotal();
+function fillVotDesc(sel) {
+    const row = sel.closest('.vot-row');
+    const desc = sel.options[sel.selectedIndex]?.dataset.desc ?? '';
+    const inp = row.querySelector('.vot-desc');
+    if (inp && !inp.value) inp.value = desc;
+}
+function addVotRow() {
+    const rows = document.getElementById('edit-vot-rows');
+    if (!rows) return;
+    const clone = rows.querySelector('.vot-row').cloneNode(true);
+    clone.querySelectorAll('input,select').forEach(el => el.value = '');
+    rows.appendChild(clone);
+}
+function removeVotRow(btn) {
+    const rows = document.querySelectorAll('#edit-vot-rows .vot-row');
+    if (rows.length <= 1) { alert('At least one VOT item is required.'); return; }
+    btn.closest('.vot-row').remove();
+    calcTotal();
+}
+function calcTotal() {
+    let t = 0;
+    document.querySelectorAll('#edit-vot-rows .vot-amount').forEach(i => t += parseFloat(i.value)||0);
+    const el = document.getElementById('vot-total');
+    if (el) el.textContent = t.toFixed(2);
 }
 
-function editRemoveVotRow(btn) {
-    const row = btn.closest('.edit-vot-row');
-    const container = document.getElementById('edit-vot-items-container');
-    if (container.querySelectorAll('.edit-vot-row').length <= 1) {
-        alert('At least one VOT item is required.');
-        return;
-    }
-    row.remove();
-    editCalculateTotal();
+// Signature
+let sigCanvas, sigCtx, sigDrawing = false, sigLastX = 0, sigLastY = 0;
+document.addEventListener('DOMContentLoaded', () => {
+    sigCanvas = document.getElementById('sig-canvas');
+    if (!sigCanvas) return;
+    sigCtx = sigCanvas.getContext('2d');
+    sigCtx.strokeStyle = '#1e293b';
+    sigCtx.lineWidth = 2;
+    sigCtx.lineCap = 'round';
+    sigCanvas.addEventListener('mousedown',  e => { sigDrawing = true; [sigLastX, sigLastY] = pos(e); });
+    sigCanvas.addEventListener('mousemove',  e => { if (!sigDrawing) return; draw(pos(e)); });
+    sigCanvas.addEventListener('mouseup',    () => { sigDrawing = false; });
+    sigCanvas.addEventListener('touchstart', e => { e.preventDefault(); sigDrawing = true; [sigLastX, sigLastY] = pos(e.touches[0]); }, { passive: false });
+    sigCanvas.addEventListener('touchmove',  e => { e.preventDefault(); if (sigDrawing) draw(pos(e.touches[0])); }, { passive: false });
+    sigCanvas.addEventListener('touchend',   () => { sigDrawing = false; });
+});
+function pos(e) { const r = sigCanvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+function draw([x,y]) {
+    sigCtx.beginPath(); sigCtx.moveTo(sigLastX, sigLastY); sigCtx.lineTo(x,y); sigCtx.stroke();
+    [sigLastX, sigLastY] = [x, y];
 }
+function clearSig() { sigCtx?.clearRect(0, 0, sigCanvas.width, sigCanvas.height); document.getElementById('signature_data').value = ''; }
 
-function editHandleVotSelection(select) {
-    const row = select.closest('.edit-vot-row');
-    const desc = select.options[select.selectedIndex]?.dataset.description ?? '';
-    const descInput = row.querySelector('.edit-vot-desc-text');
-    if (descInput && !descInput.value) {
-        descInput.value = desc;
-    }
-}
-
-function editCalculateTotal() {
-    let total = 0;
-    document.querySelectorAll('#edit-vot-items-container .edit-vot-amount').forEach(input => {
-        total += parseFloat(input.value) || 0;
+function prepareSubmit() {
+    // Rename VOT inputs
+    const rows = document.querySelectorAll('#edit-vot-rows .vot-row');
+    rows.forEach((row, i) => {
+        const code = row.querySelector('.vot-code');
+        const desc = row.querySelector('.vot-desc');
+        const amt  = row.querySelector('.vot-amount');
+        if (code) code.name = `vot_items[${i}][vot_code]`;
+        if (desc) desc.name = `vot_items[${i}][description]`;
+        if (amt)  amt.name  = `vot_items[${i}][amount]`;
     });
-    const el = document.getElementById('edit-total-amount');
-    if (el) el.textContent = total.toFixed(2);
+    // Save signature if canvas exists
+    if (sigCanvas) document.getElementById('signature_data').value = sigCanvas.toDataURL('image/png');
 }
-
-function editRenameVotInputs() {
-    const rows = document.querySelectorAll('#edit-vot-items-container .edit-vot-row');
-    rows.forEach((row, index) => {
-        const codeSelect = row.querySelector('.edit-vot-code-select');
-        const descText = row.querySelector('.edit-vot-desc-text');
-        const amountInput = row.querySelector('.edit-vot-amount');
-        if (codeSelect) codeSelect.name = `vot_items[${index}][vot_code]`;
-        if (descText) descText.name = `vot_items[${index}][description]`;
-        if (amountInput) amountInput.name = `vot_items[${index}][amount]`;
-    });
-}
-
-// Init total on load
-document.addEventListener('DOMContentLoaded', editCalculateTotal);
 </script>
 </x-app-layout>

@@ -38,10 +38,8 @@ abstract class BaseRepository
                 'search' => $this->applySearchFilter($query, $value),
                 'status' => $this->applyStatusFilter($query, $value),
                 'type' => $this->applyTypeFilter($query, $value),
-                'priority' => $this->applyPriorityFilter($query, $value),
                 'date_from' => $this->applyDateFromFilter($query, $value),
                 'date_to' => $this->applyDateToFilter($query, $value),
-                'urgent' => $this->applyUrgentFilter($query, $value),
                 default => null
             };
         }
@@ -77,14 +75,6 @@ abstract class BaseRepository
     }
 
     /**
-     * Apply priority filter.
-     */
-    protected function applyPriorityFilter(Builder $query, mixed $priority): void
-    {
-        // priority filter removed — is_priority column no longer exists
-    }
-
-    /**
      * Apply date from filter.
      */
     protected function applyDateFromFilter(Builder $query, mixed $dateFrom): void
@@ -98,14 +88,6 @@ abstract class BaseRepository
     protected function applyDateToFilter(Builder $query, mixed $dateTo): void
     {
         $query->whereDate('created_at', '<=', $dateTo);
-    }
-
-    /**
-     * Apply urgent filter.
-     */
-    protected function applyUrgentFilter(Builder $query, mixed $urgent): void
-    {
-        // urgent/deadline filter removed
     }
 
     /**

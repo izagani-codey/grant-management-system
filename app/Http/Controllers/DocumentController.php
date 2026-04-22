@@ -10,31 +10,21 @@ use Illuminate\Support\Facades\Storage;
 
 class DocumentController extends BaseController
 {
-    /** Staff2 uploads a document to a specific request. */
+    /** Staff2 uploads a staff attachment to a specific request. */
     public function store(Request $request, $requestId)
     {
         $grantRequest = GrantRequest::findOrFail($requestId);
 
-        if (!in_array(Auth::user()->role, ['staff2', 'admin'])) {
+        if (Auth::user()->role !== 'staff2') {
             abort(403, 'Only Staff 2 can upload documents to requests.');
         }
 
         $request->validate([
-            'document'    => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:10240'],
-            'is_template' => 'nullable|boolean',
-            'document_type' => 'nullable|in:template,staff_attachment',
+            'document' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx', 'mimetypes:application/pdf,image/jpeg,image/png,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'max:10240'],
         ]);
 
         $file     = $request->file('document');
         $path     = $file->store("documents/request-{$requestId}", 'public');
-
-        // Determine document type
-        $documentType = 'staff_attachment'; // Default for Staff2 uploads
-        if ($request->boolean('is_template', false)) {
-            $documentType = 'template';
-        } elseif ($request->filled('document_type')) {
-            $documentType = $request->document_type;
-        }
 
         Document::create([
             'request_id'      => $grantRequest->id,
@@ -43,8 +33,7 @@ class DocumentController extends BaseController
             'uploader_role'   => Auth::user()->role,
             'file_path'       => $path,
             'original_name'   => $file->getClientOriginalName(),
-            'document_type'   => $documentType,
-            'is_template'     => $request->boolean('is_template', false),
+            'document_type'   => 'staff_attachment',
         ]);
 
         return redirect()->route('requests.show', $grantRequest->id)
@@ -61,7 +50,7 @@ class DocumentController extends BaseController
         }
 
         $request->validate([
-            'document' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:10240'],
+            'document' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx', 'mimetypes:application/pdf,image/jpeg,image/png,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'max:10240'],
             'request_id' => 'nullable|exists:requests,id',
         ]);
 
@@ -112,7 +101,11 @@ class DocumentController extends BaseController
         $document     = Document::with('request')->findOrFail($id);
         $grantRequest = $document->request;
 
-        $this->authorize('view', $grantRequest);
+        if ($grantRequest) {
+            $this->authorize('view', $grantRequest);
+        } elseif (!$document->isTemplate() || !$document->is_active) {
+            abort(403);
+        }
 
         if (!Storage::disk('public')->exists($document->file_path)) {
             abort(404, 'File not found.');

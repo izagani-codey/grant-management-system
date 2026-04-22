@@ -51,11 +51,6 @@ class Comment extends Model
         return $this->comment_type === 'staff2';
     }
 
-    public function isDeanComment(): bool
-    {
-        return $this->comment_type === 'dean';
-    }
-
     public function isInternalComment(): bool
     {
         return $this->comment_type === 'internal';
@@ -66,7 +61,6 @@ class Comment extends Model
         return match ($this->comment_type) {
             'staff1' => 'Staff 1 Note',
             'staff2' => 'Staff 2 Note',
-            'dean' => 'Dean Note',
             'internal' => 'Internal',
             default => 'Comment'
         };
@@ -77,7 +71,6 @@ class Comment extends Model
         return match ($this->comment_type) {
             'staff1' => 'blue',
             'staff2' => 'purple',
-            'dean' => 'green',
             'internal' => 'gray',
             default => 'gray'
         };
@@ -85,24 +78,16 @@ class Comment extends Model
 
     public function canBeViewedBy(User $user): bool
     {
-        // Staff 1 comments can only be viewed by staff roles
         if ($this->isStaff1Comment()) {
             return in_array($user->role, ['staff1', 'staff2', 'admin']);
         }
 
-        // Staff 2 comments can be viewed by staff roles and dean
         if ($this->isStaff2Comment()) {
-            return in_array($user->role, ['staff2', 'admin', 'dean']);
+            return in_array($user->role, ['staff2', 'admin']);
         }
 
-        // Dean comments can be viewed by dean and admin
-        if ($this->isDeanComment()) {
-            return in_array($user->role, ['dean', 'admin']);
-        }
-
-        // Internal comments can be viewed by all staff roles
         if ($this->isInternalComment()) {
-            return in_array($user->role, ['staff1', 'staff2', 'admin', 'dean']);
+            return in_array($user->role, ['staff1', 'staff2', 'admin']);
         }
 
         return false;

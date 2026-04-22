@@ -12,11 +12,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Update priorities daily at midnight
-        $schedule->command('requests:update-priorities')
-            ->daily()
-            ->at('00:00')
-            ->description('Update automatic priorities for all requests based on deadlines');
+        // No scheduled commands.
     }
 
     /**

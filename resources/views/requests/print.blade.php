@@ -53,7 +53,7 @@
                     <div class="text-right">
                         <p class="text-sm text-gray-500">Submitted on</p>
                         <p class="font-semibold">{{ $grantRequest->created_at->format('d F Y') }}</p>
-                        @if($grantRequest->deadline)
+                        @if(false)
                             <p class="text-sm text-gray-500 mt-1">Deadline</p>
                             <p class="font-semibold {{ $grantRequest->isUrgent() ? 'text-red-600' : 'text-gray-700' }}">
                                 {{ $grantRequest->deadline->format('d F Y') }}

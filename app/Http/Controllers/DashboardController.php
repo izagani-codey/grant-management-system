@@ -15,14 +15,18 @@ class DashboardController extends BaseController
     public function index(Request $request)
     {
         $user = $this->currentUser();
+        $allowedDashboardRoles = ['admission', 'staff1', 'staff2', 'admin'];
+
+        if (!in_array($user->role, $allowedDashboardRoles, true)) {
+            abort(403, 'Unauthorized dashboard role.');
+        }
 
         if ($user->isAdmin()) {
             return redirect()->route('admin.dashboard');
         }
 
         $filters = $request->only([
-            'search', 'status', 'type', 'priority', 
-            'date_from', 'date_to', 'urgent'
+            'search', 'status', 'type', 'date_from', 'date_to'
         ]);
 
         // Get dashboard data using service
@@ -53,17 +57,6 @@ class DashboardController extends BaseController
         $activity = $this->dashboardService->getActivityTimeline($user, $limit);
         
         return $this->apiResponse($activity);
-    }
-
-    /**
-     * Get deadline alerts for dashboard.
-     */
-    public function getDeadlineAlerts(Request $request)
-    {
-        $user = $this->currentUser();
-        $alerts = $this->dashboardService->getDeadlineAlerts($user);
-        
-        return $this->apiResponse($alerts);
     }
 
     /**

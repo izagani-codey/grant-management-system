@@ -156,11 +156,7 @@ class RequestRepository extends BaseRepository
      */
     public function generateReferenceNumber(): string
     {
-        do {
-            $refNumber = 'REQ-' . date('Y') . '-' . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
-        } while ($this->newQuery()->where('ref_number', $refNumber)->exists());
-
-        return $refNumber;
+        return 'REQ-' . date('Y') . '-' . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
     }
 
     /**

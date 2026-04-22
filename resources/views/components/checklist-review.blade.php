@@ -287,12 +287,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Handle forward button
+    // Handle forward button — submits the status update form on the page
     if (forwardBtn) {
         forwardBtn.addEventListener('click', () => {
             if (confirm('Are you ready to forward this request to Staff 2? This action cannot be undone.')) {
-                // Forward to Staff 2 (this would be handled by the existing status change functionality)
-                window.location.href = `/requests/${requestId}/status?status=staff1_reviewed`;
+                const form = document.getElementById('staff1-action-form');
+                if (form) {
+                    document.getElementById('s1-status').value = '{{ \App\Enums\RequestStatus::STAFF1_REVIEWED->value }}';
+                    form.submit();
+                }
             }
         });
     }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DocumentType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -24,9 +25,10 @@ class Document extends Model
     ];
 
     protected $casts = [
-        'is_template' => 'boolean',
-        'is_active' => 'boolean',
-        'download_count' => 'integer',
+        'is_template'   => 'boolean',
+        'is_active'     => 'boolean',
+        'download_count'=> 'integer',
+        'document_type' => DocumentType::class,
     ];
 
     protected $attributes = [
@@ -50,10 +52,10 @@ class Document extends Model
     public function getFieldTypeLabel(): string
     {
         return match($this->document_type) {
-            'template' => 'Template',
-            'user_submission' => 'User Submission',
-            'staff_attachment' => 'Staff Attachment',
-            default => 'Document',
+            DocumentType::Template        => 'Template',
+            DocumentType::UserSubmission  => 'User Submission',
+            DocumentType::StaffAttachment => 'Staff Attachment',
+            default                       => 'Document',
         };
     }
 
@@ -70,7 +72,7 @@ class Document extends Model
     // Scope for templates
     public function scopeTemplates($query)
     {
-        return $query->where('document_type', 'template');
+        return $query->where('document_type', DocumentType::Template->value);
     }
 
     public function scopeActive($query)
@@ -80,33 +82,33 @@ class Document extends Model
 
     public function scopeActiveTemplates($query)
     {
-        return $query->where('document_type', 'template')->where('is_active', true);
+        return $query->where('document_type', DocumentType::Template->value)->where('is_active', true);
     }
 
     public function scopeUserSubmissions($query)
     {
-        return $query->where('document_type', 'user_submission');
+        return $query->where('document_type', DocumentType::UserSubmission->value);
     }
 
     public function scopeStaffAttachments($query)
     {
-        return $query->where('document_type', 'staff_attachment');
+        return $query->where('document_type', DocumentType::StaffAttachment->value);
     }
 
     // Template-specific helper methods
     public function isTemplate(): bool
     {
-        return $this->document_type === 'template';
+        return $this->document_type === DocumentType::Template;
     }
 
     public function isUserSubmission(): bool
     {
-        return $this->document_type === 'user_submission';
+        return $this->document_type === DocumentType::UserSubmission;
     }
 
     public function isStaffAttachment(): bool
     {
-        return $this->document_type === 'staff_attachment';
+        return $this->document_type === DocumentType::StaffAttachment;
     }
 
     public function getStoragePath(): string

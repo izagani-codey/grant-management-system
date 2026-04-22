@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class RequestType extends Model
 {
     use HasFactory;
-    protected $fillable = ['name', 'slug', 'description', 'default_template_id', 'field_schema', 'requires_vot', 'metadata', 'is_active', 'required_documents'];
+    protected $fillable = ['name', 'slug', 'description', 'default_template_id', 'field_schema', 'requires_vot', 'requires_signature', 'metadata', 'is_active', 'required_documents'];
 
     protected $casts = [
         'created_at' => 'datetime',
@@ -16,8 +16,9 @@ class RequestType extends Model
         'field_schema' => 'array',
         'metadata' => 'array',
         'required_documents' => 'array',
-        'requires_vot' => 'boolean',
-        'is_active' => 'boolean',
+        'requires_vot'       => 'boolean',
+        'requires_signature' => 'boolean',
+        'is_active'          => 'boolean',
     ];
 
     public function requests()

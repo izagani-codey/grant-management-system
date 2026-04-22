@@ -28,14 +28,6 @@
         </form>
         <form action="{{ route('dev.login') }}" method="POST">
             @csrf
-            <input type="hidden" name="email" value="dean@unikl.edu.my">
-            <button type="submit"
-                    class="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-xs {{ auth()->user()->role === 'dean' ? 'ring-2 ring-white' : '' }}">
-                Become: Dean
-            </button>
-        </form>
-        <form action="{{ route('dev.login') }}" method="POST">
-            @csrf
             <input type="hidden" name="email" value="admin@unikl.edu.my">
             <button type="submit"
                     class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-xs {{ auth()->user()->role === 'admin' ? 'ring-2 ring-white' : '' }}">

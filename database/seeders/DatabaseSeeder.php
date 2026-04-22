@@ -32,9 +32,6 @@ class DatabaseSeeder extends Seeder
                 'department' => 'Student Affairs',
                 'phone' => '+60123456789',
                 'employee_level' => 'Executive',
-                // Enable dev features
-                'override_enabled' => false,
-                'override_enabled_at' => null,
             ]
         );
 
@@ -54,39 +51,19 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Staff 2 User (with override enabled)
+        // Staff 2 User
         User::updateOrCreate(
             ['email' => 'staff2@unikl.edu.my'],
             [
-                'name' => 'Staff Two', 
-                'password' => Hash::make('password'), 
-                'role' => 'staff2', 
+                'name' => 'Staff Two',
+                'password' => Hash::make('password'),
+                'role' => 'staff2',
                 'email_verified_at' => now(),
                 'staff_id' => 'STF002',
                 'designation' => 'Director',
                 'department' => 'Academic Affairs',
                 'phone' => '+60123456781',
                 'employee_level' => 'Management',
-                'override_enabled' => true,
-                'override_enabled_at' => now(),
-            ]
-        );
-
-        // Dean User
-        User::updateOrCreate(
-            ['email' => 'dean@unikl.edu.my'],
-            [
-                'name' => 'Department Dean', 
-                'password' => Hash::make('password'), 
-                'role' => 'dean', 
-                'email_verified_at' => now(),
-                'staff_id' => 'DEAN001',
-                'designation' => 'Dean',
-                'department' => 'Academic Affairs',
-                'phone' => '+60123456782',
-                'employee_level' => 'Management',
-                'override_enabled' => false,
-                'override_enabled_at' => null,
             ]
         );
 
@@ -103,8 +80,6 @@ class DatabaseSeeder extends Seeder
                 'department' => 'IT Department',
                 'phone' => '+60123456783',
                 'employee_level' => 'Management',
-                'override_enabled' => false,
-                'override_enabled_at' => null,
             ]
         );
 
@@ -116,8 +91,7 @@ class DatabaseSeeder extends Seeder
         $this->command->info('Seeded updated development accounts:');
         $this->command->info('   admissions@unikl.edu.my (password) - Admissions Dev User');
         $this->command->info('   staff1@unikl.edu.my (password) - Staff One');
-        $this->command->info('   staff2@unikl.edu.my (password) - Staff Two (Override Enabled)');
-        $this->command->info('   dean@unikl.edu.my (password) - Department Dean');
+        $this->command->info('   staff2@unikl.edu.my (password) - Staff Two');
         $this->command->info('   admin@unikl.edu.my (password) - System Administrator');
     }
 }

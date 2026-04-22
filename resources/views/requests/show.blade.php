@@ -5,8 +5,10 @@
         $RS             = \App\Enums\RequestStatus::class;
         $staff1Active   = $status === $RS::SUBMITTED->value;
         $staff1Complete = in_array($status, [$RS::STAFF1_REVIEWED->value, $RS::STAFF2_APPROVED->value, $RS::COMPLETED->value]);
-        $staff2Active   = $status === $RS::STAFF1_REVIEWED->value;
+        $staff1Completed = $staff1Complete;
+        $staff2Active   = in_array($status, [$RS::STAFF1_REVIEWED->value, $RS::SUBMITTED->value]);
         $staff2Complete = in_array($status, [$RS::STAFF2_APPROVED->value, $RS::COMPLETED->value]);
+        $staff2Completed = $staff2Complete;
         $finalDone      = $status === $RS::COMPLETED->value;
         $isReturned     = $status === $RS::RETURNED->value;
         $isDeclined     = $status === $RS::DECLINED->value;
@@ -94,7 +96,7 @@
                 <div class="mt-4">
                     <p class="text-gray-500 text-sm">Justification / Description</p>
                     <div class="mt-1 p-3 bg-gray-50 rounded border text-sm whitespace-pre-wrap break-all [overflow-wrap:anywhere]">
-                        {{ $grantRequest->payload['description'] ?? 'No description provided.' }}
+                        {{ $grantRequest->description ?? $grantRequest->payload['description'] ?? 'No description provided.' }}
                     </div>
                 </div>
 
@@ -234,33 +236,7 @@
                 </div>
             </div>
 
-            {{-- Section 1: System-Generated Template --}}
-            <div class="bg-white shadow-sm rounded-lg p-6">
-               <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
- Generate forms
-</div>
-                @if($systemTemplate)
-                <p class="text-xs text-gray-500 mb-4">Template: <span class="italic">{{ $systemTemplate->title }}</span></p>
-                @endif
-
-                <div class="border border-gray-200 rounded-lg overflow-hidden mb-3" style="height: 500px;">
-                    <iframe
-                        src="{{ route('requests.pdf.inline', $grantRequest->id) }}"
-                        class="w-full h-full"
-                        title="Generated form preview">
-                    </iframe>
-                </div>
-
-                <a href="{{ route('requests.downloadPdf', $grantRequest->id) }}"
-                   class="inline-flex items-center text-blue-600 hover:underline text-sm font-semibold">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    Download PDF
-                </a>
-            </div>
-
-            {{-- Section 2: Supporting Documents (admin-uploaded, linked to request type) --}}
+            {{-- Reference Templates --}}
             @if($supportingDocuments->isNotEmpty())
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
@@ -275,10 +251,10 @@
                             <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                             </svg>
-                            <a href="{{ asset('storage/' . $doc->file_path) }}"
+                            <a href="{{ route('documents.download', $doc->id) }}"
                                target="_blank"
                                class="text-blue-600 hover:underline font-medium">
-                                {{ $doc->title }}
+                                {{ $doc->name ?: $doc->original_name }}
                             </a>
                         </li>
                     @endforeach
@@ -288,46 +264,26 @@
 
             {{-- Applicant-Uploaded Documents --}}
             @php
-                $mainDocumentUrl = $grantRequest->file_path ? route('requests.document.main', $grantRequest->id) : null;
-                $additionalDocuments = collect($grantRequest->payload['additional_documents'] ?? [])
-                    ->filter(fn ($path) => is_string($path) && $path !== '')
-                    ->values();
+                $userSubmissions = $grantRequest->documents->where('document_type', \App\Enums\DocumentType::UserSubmission);
             @endphp
-            @if($mainDocumentUrl || $additionalDocuments->isNotEmpty())
+            @if($userSubmissions->isNotEmpty())
             <div class="bg-white shadow-sm rounded-lg p-6">
-               <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">
-  Apllicant Uploaded Documents
-</div>
+                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Applicant Uploaded Documents</div>
                 <p class="text-xs text-gray-500 mb-4">Files submitted by the applicant with this request.</p>
 
-                @if($mainDocumentUrl)
-                    @php $ext = pathinfo($grantRequest->file_path, PATHINFO_EXTENSION); @endphp
-                    <div class="mb-3">
-                        @if(in_array(strtolower($ext), ['jpg', 'jpeg', 'png']))
-                            <img src="{{ $mainDocumentUrl }}" class="max-w-full rounded border" alt="Uploaded document">
-                        @elseif(strtolower($ext) === 'pdf')
-                            <iframe src="{{ $mainDocumentUrl }}" class="w-full h-96 border rounded" title="PDF Viewer"></iframe>
-                        @endif
-                        <a href="{{ $mainDocumentUrl }}" target="_blank"
-                           class="mt-2 inline-block text-blue-600 hover:underline text-sm font-semibold">
-                            ↗ Open main document
-                        </a>
-                    </div>
-                @endif
-
-                @if($additionalDocuments->isNotEmpty())
-                    <ul class="space-y-2 text-sm mt-2">
-                        @foreach($additionalDocuments as $documentPath)
+                @if($userSubmissions->isNotEmpty())
+                    <ul class="space-y-2 text-sm">
+                        @foreach($userSubmissions as $doc)
                             <li>
-                                <a href="{{ route('requests.document.additional', ['id' => $grantRequest->id, 'index' => $loop->index]) }}"
-                                   target="_blank"
-                                   class="text-blue-600 hover:underline font-semibold break-all">
-                                    ↗ {{ basename($documentPath) }}
+                                <a href="{{ route('documents.download', $doc->id) }}" target="_blank"
+                                   class="text-blue-600 hover:underline font-semibold">
+                                    ↗ {{ $doc->original_name }}
                                 </a>
                             </li>
                         @endforeach
                     </ul>
                 @endif
+
             </div>
             @endif
 
@@ -505,7 +461,7 @@
                 {{-- STAFF 1: SUBMITTED &#8594; review/return/decline --}}
                 @can('changeStatus', $grantRequest)
                     @if(auth()->user()->role === 'staff1' && $staff1Active)
-                        <form action="{{ route('requests.updateStatus', $grantRequest->id) }}" method="POST" class="space-y-3" onsubmit="return handleFormSubmit(this, 'Submitting...')">
+                        <form id="staff1-action-form" action="{{ route('requests.updateStatus', $grantRequest->id) }}" method="POST" class="space-y-3" onsubmit="return handleFormSubmit(this, 'Submitting...')">
                             @csrf
                             @method('PATCH')
                             <textarea name="notes" rows="2" placeholder="Internal notes (optional)" class="w-full border rounded p-2 text-sm"></textarea>
@@ -592,10 +548,6 @@
                         <form action="{{ route('documents.store', $grantRequest->id) }}" method="POST" enctype="multipart/form-data" class="space-y-3">
                             @csrf
                             <input type="file" name="document" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="block text-sm text-gray-600" required>
-                            <label class="flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" name="is_template" value="1">
-                                Mark as fillable template for user
-                            </label>
                             <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-700">Upload</button>
                         </form>
                         @if($grantRequest->documents->where('uploader_role', 'staff2')->count() > 0)
@@ -604,7 +556,6 @@
                                     <div class="flex items-center justify-between bg-white rounded p-2 border">
                                         <span class="text-sm text-gray-700 truncate max-w-xs" title="{{ $doc->original_name }}">
                                             {{ $doc->original_name }}
-                                            @if($doc->is_template) <span class="text-xs bg-blue-100 text-blue-700 px-1 rounded ml-1">Template</span> @endif
                                         </span>
                                         <div class="flex gap-2">
                                             <a href="{{ route('documents.download', $doc->id) }}" class="text-xs text-blue-600 hover:underline">Download</a>
@@ -627,7 +578,7 @@
                         <ul class="space-y-2">
                             @foreach($grantRequest->documents->where('uploader_role', 'staff2') as $doc)
                                 <li class="flex items-center justify-between text-sm">
-                                    <span>{{ $doc->original_name }} @if($doc->is_template)<span class="text-xs bg-blue-200 text-blue-800 px-1 rounded ml-1">Fillable</span>@endif</span>
+                                    <span>{{ $doc->original_name }}</span>
                                     <a href="{{ route('documents.download', $doc->id) }}" class="text-blue-600 hover:underline font-medium">Download</a>
                                 </li>
                             @endforeach
@@ -718,28 +669,6 @@
                     </div>
                 @endif
 
-                {{-- Dean Comments --}}
-                @if($deanComments->count() > 0)
-                    <div class="mb-6">
-                        <h4 class="font-semibold text-green-700 mb-3 flex items-center">
-                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                            </svg>
-                            Dean Notes
-                        </h4>
-                        @foreach($deanComments as $comment)
-                            <div class="mb-3 p-3 bg-green-50 rounded border border-green-200">
-                                <p class="text-xs text-green-600 mb-1">
-                                    <span class="font-bold">{{ $comment->user->name }}</span>
-                                    <span class="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">Dean</span>
-                                    · {{ \Carbon\Carbon::parse($comment->created_at)->format('d M Y, h:i A') }}
-                                </p>
-                                <p class="text-sm text-gray-700">{{ $comment->content }}</p>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
-
                 {{-- Internal Comments --}}
                 <div class="mb-6">
                     <h4 class="font-semibold text-gray-700 mb-3 flex items-center">
@@ -758,7 +687,7 @@
                             <p class="text-sm">{{ $comment->content }}</p>
                         </div>
                     @empty
-                        @if($staff1Comments->count() === 0 && $staff2Comments->count() === 0 && $deanComments->count() === 0)
+                        @if($staff1Comments->count() === 0 && $staff2Comments->count() === 0)
                             <p class="text-gray-400 italic text-sm">No comments yet.</p>
                         @endif
                     @endforelse
@@ -770,19 +699,17 @@
                             <p class="text-sm text-blue-600 mb-2">You're posting a Staff 1 Note (visible to all staff)</p>
                         @elseif(auth()->user()->role === 'staff2')
                             <p class="text-sm text-purple-600 mb-2">You're posting a Staff 2 Note (visible to all staff)</p>
-                        @elseif(auth()->user()->role === 'dean')
-                            <p class="text-sm text-green-600 mb-2">You're posting a Dean Note (visible to all staff)</p>
                         @else
                             <p class="text-sm text-gray-600 mb-2">You're posting an Internal Comment (visible to all staff)</p>
                         @endif
                         <form action="{{ route('requests.comment', $grantRequest->id) }}" method="POST" class="mt-4" onsubmit="return handleFormSubmit(this, 'Posting comment...')">
                             @csrf
                             <textarea name="content" rows="2" 
-                                placeholder="{{ auth()->user()->role === 'staff1' ? 'Leave a Staff 1 note for the review team...' : (auth()->user()->role === 'staff2' ? 'Leave a Staff 2 note for the review team...' : (auth()->user()->role === 'dean' ? 'Leave a Dean note for the review team...' : 'Leave an internal comment for the review team...')) }}"
+                                placeholder="{{ auth()->user()->role === 'staff1' ? 'Leave a Staff 1 note for the review team...' : (auth()->user()->role === 'staff2' ? 'Leave a Staff 2 note for the review team...' : 'Leave an internal comment for the review team...') }}"
                                 class="w-full border rounded p-2 text-sm"></textarea>
                             <button type="submit"
-                                class="mt-2 {{ auth()->user()->role === 'staff1' ? 'bg-blue-600 hover:bg-blue-700' : (auth()->user()->role === 'staff2' ? 'bg-purple-600 hover:bg-purple-700' : (auth()->user()->role === 'dean' ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-700 hover:bg-gray-800')) }} text-white px-4 py-2 rounded text-sm font-bold transition-colors">
-                                {{ auth()->user()->role === 'staff1' ? 'Post Staff 1 Note' : (auth()->user()->role === 'staff2' ? 'Post Staff 2 Note' : (auth()->user()->role === 'dean' ? 'Post Dean Note' : 'Post Comment')) }}
+                                class="mt-2 {{ auth()->user()->role === 'staff1' ? 'bg-blue-600 hover:bg-blue-700' : (auth()->user()->role === 'staff2' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-700 hover:bg-gray-800') }} text-white px-4 py-2 rounded text-sm font-bold transition-colors">
+                                {{ auth()->user()->role === 'staff1' ? 'Post Staff 1 Note' : (auth()->user()->role === 'staff2' ? 'Post Staff 2 Note' : 'Post Comment') }}
                             </button>
                         </form>
                     </div>
@@ -1013,7 +940,7 @@
         }
 
         // Initialize signature pads
-        let staff2SignaturePad, deanSignaturePad;
+        let staff2SignaturePad;
 
         document.addEventListener('DOMContentLoaded', function() {
             // Staff 2 signature
@@ -1021,19 +948,12 @@
                 staff2SignaturePad = new SignaturePad('staff2-signature-canvas', 'staff2-signature-data');
             }
 
-            // Dean signature
-            if (document.getElementById('dean-signature-canvas')) {
-                deanSignaturePad = new SignaturePad('dean-signature-canvas', 'dean-signature-data');
-            }
         });
 
         function clearStaff2Signature() {
             if (staff2SignaturePad) staff2SignaturePad.clear();
         }
 
-        function clearDeanSignature() {
-            if (deanSignaturePad) deanSignaturePad.clear();
-        }
     </script>
 </x-app-layout>
 

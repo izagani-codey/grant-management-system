@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'staff_id', 'designation', 'department', 'phone', 'employee_level', 'signature_data', 'override_enabled', 'override_enabled_at'])]
+#[Fillable(['name', 'email', 'password', 'role', 'staff_id', 'designation', 'department', 'phone', 'employee_level', 'signature_data', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -38,12 +38,12 @@ class User extends Authenticatable
 
     public function canAccessAdminPanel(): bool
     {
-        return $this->isAdmin() || $this->role === 'staff2';
+        return $this->isAdmin();
     }
 
     public function canManageRequestTypes(): bool
     {
-        return $this->isAdmin();
+        return $this->isStaff2();
     }
 
     public function canManageUsers(): bool
@@ -53,7 +53,7 @@ class User extends Authenticatable
 
     public function canManageTemplates(): bool
     {
-        return $this->isAdmin();
+        return $this->isStaff2();
     }
 
     public function canExportData(): bool
@@ -67,34 +67,6 @@ class User extends Authenticatable
     }
 
     // ==========================================
-    // Override system methods
-    // ==========================================
-
-    public function enableOverride(): void
-    {
-        $this->update([
-            'override_enabled' => true,
-            'override_enabled_at' => now(),
-        ]);
-    }
-
-    public function disableOverride(): void
-    {
-        $this->update([
-            'override_enabled' => false,
-            'override_enabled_at' => null,
-        ]);
-    }
-
-    public function toggleOverride(): void
-    {
-        if ($this->override_enabled) {
-            $this->disableOverride();
-        } else {
-            $this->enableOverride();
-        }
-    }
-
     // ==========================================
     // Profile helpers
     // ==========================================

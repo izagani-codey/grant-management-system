@@ -10,6 +10,7 @@ use App\Models\Request as GrantRequest;
 use App\Models\Signature;
 use App\Models\User;
 use App\Repositories\RequestRepository;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
@@ -43,7 +44,6 @@ class RequestService
             $requestData = [
                 'user_id' => $user->id,
                 'request_type_id' => $data['request_type_id'],
-                'ref_number' => $this->requestRepository->generateReferenceNumber(),
                 'status_id' => RequestStatus::SUBMITTED->value,
                 'payload' => $payload,
                 'vot_items' => $data['vot_items'],
@@ -59,7 +59,16 @@ class RequestService
                 'submitted_at' => now(),
             ];
 
-            $request = $this->requestRepository->create($requestData);
+            $attempts = 0;
+            while (true) {
+                try {
+                    $requestData['ref_number'] = $this->requestRepository->generateReferenceNumber();
+                    $request = $this->requestRepository->create($requestData);
+                    break;
+                } catch (UniqueConstraintViolationException) {
+                    if (++$attempts >= 5) throw new \RuntimeException('Could not generate a unique reference number.');
+                }
+            }
 
             // Store additional documents if provided
             if (isset($data['additional_documents']) && is_array($data['additional_documents'])) {
@@ -226,87 +235,4 @@ class RequestService
         return $this->requestRepository->getDashboardStats($user);
     }
 
-    /**
-     * Get urgent requests.
-     */
-    public function getUrgentRequests(User $user): \Illuminate\Support\Collection
-    {
-        return $this->requestRepository->getUrgentRequests($user);
-    }
-
-    /**
-     * Delete request with cleanup.
-     */
-    public function deleteRequest(GrantRequest $request, User $user): bool
-    {
-        // Delete associated file
-        if ($request->file_path) {
-            Storage::disk('public')->delete($request->file_path);
-        }
-
-        // Create audit log - WorkflowService handles this now
-        // $this->createAuditLog($request, $request->status_id, RequestStatus::from($request->status_id), 'Request deleted');
-
-        return $this->requestRepository->delete($request);
-    }
-
-    /**
-     * Bulk update request statuses.
-     */
-    public function bulkUpdateStatus(array $requestIds, int $statusId, User $user, array $data = []): void
-    {
-        foreach ($requestIds as $requestId) {
-            $request = $this->requestRepository->findWithRelations($requestId);
-            if ($request && $this->canUserUpdateRequest($user, $request)) {
-                $this->workflowService->executeTransition($request, RequestStatus::from($statusId), $data);
-            }
-        }
-    }
-
-    /**
-     * Check if user can update request.
-     */
-    private function canUserUpdateRequest(User $user, GrantRequest $request): bool
-    {
-        // Staff can update based on workflow rules
-        if (in_array($user->role, ['staff1', 'staff2'])) {
-            return $this->workflowService->canTransition(
-                $request, 
-                RequestStatus::from($request->status_id), 
-                $user
-            );
-        }
-
-        // Admission can only update their own returned requests
-        if ($user->role === 'admission') {
-            return $request->user_id === $user->id && 
-                   $request->status_id === RequestStatus::RETURNED->value;
-        }
-
-        return false;
-    }
-
-    /**
-     * Get request statistics for reporting.
-     */
-    public function getRequestStatistics(\Carbon\Carbon $fromDate, \Carbon\Carbon $toDate, ?string $role = null): array
-    {
-        $query = GrantRequest::whereBetween('created_at', [$fromDate, $toDate]);
-
-        if ($role) {
-            $query->whereHas('user', fn($q) => $q->where('role', $role));
-        }
-
-        return [
-            'total' => $query->count(),
-            'approved' => (clone $query)->where('status_id', RequestStatus::COMPLETED->value)->count(),
-            'declined' => (clone $query)->where('status_id', RequestStatus::DECLINED->value)->count(),
-            'pending' => (clone $query)->whereIn('status_id', [
-                RequestStatus::SUBMITTED->value,
-                RequestStatus::STAFF1_REVIEWED->value,
-                RequestStatus::STAFF2_APPROVED->value,
-            ])->count(),
-            'average_amount' => $query->avg('payload->amount') ?? 0,
-        ];
-    }
 }

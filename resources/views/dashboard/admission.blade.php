@@ -175,16 +175,11 @@
                                                 </svg>
                                             </div>
                                             <div>
-                                                <h5 class="font-medium text-gray-900 text-sm">{{ $template->title }}</h5>
+                                                <h5 class="font-medium text-gray-900 text-sm">{{ $template->name ?: $template->original_name }}</h5>
                                                 <p class="text-xs text-gray-500">by {{ $template->uploader->name }}</p>
-                                                @if($template->pivot->is_default)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 mt-1">
-                                                        Default
-                                                    </span>
-                                                @endif
                                             </div>
                                         </div>
-                                        <a href="{{ asset('storage/' . $template->file_path) }}" target="_blank"
+                                        <a href="{{ route('documents.download', $template->id) }}" target="_blank"
                                            class="inline-flex items-center px-3 py-1.5 bg-blue-900 text-white text-xs font-medium rounded-lg hover:bg-blue-950 transition-colors">
                                             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -226,11 +221,11 @@
                                                 </svg>
                                             </div>
                                             <div>
-                                                <h5 class="font-medium text-gray-900 text-sm">{{ $template->title }}</h5>
+                                                <h5 class="font-medium text-gray-900 text-sm">{{ $template->name ?: $template->original_name }}</h5>
                                                 <p class="text-xs text-gray-500">by {{ $template->uploader->name }}</p>
                                             </div>
                                         </div>
-                                        <a href="{{ asset('storage/' . $template->file_path) }}" target="_blank"
+                                        <a href="{{ route('documents.download', $template->id) }}" target="_blank"
                                            class="inline-flex items-center px-3 py-1.5 bg-gray-600 text-white text-xs font-medium rounded-lg hover:bg-gray-700 transition-colors">
                                             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>

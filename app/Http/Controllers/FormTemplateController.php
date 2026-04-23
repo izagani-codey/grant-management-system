@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Document;
+use App\Services\PdfInfoService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -68,7 +69,7 @@ class FormTemplateController extends BaseController
                 }
                 
                 // Create new template document
-                Document::create([
+                $document = Document::create([
                     'name' => $request->input('name'),
                     'description' => $request->input('description'),
                     'request_type_id' => $request->input('request_type_id'),
@@ -81,6 +82,15 @@ class FormTemplateController extends BaseController
                     'is_active' => true,
                     'download_count' => 0,
                 ]);
+
+                if (str_ends_with(strtolower($originalName), '.pdf')) {
+                    try {
+                        $count = app(PdfInfoService::class)->getPageCount($document->file_path);
+                        $document->update(['pdf_page_count' => $count]);
+                    } catch (\Throwable $e) {
+                        \Log::warning('PDF page count failed: ' . $e->getMessage());
+                    }
+                }
             }
 
             return back()->with('success', 'Template uploaded successfully.');

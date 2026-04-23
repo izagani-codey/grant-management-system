@@ -76,6 +76,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/staff2/requests/export', [RequestController::class, 'exportExcel'])->name('requests.exportExcel');
         Route::patch('/admin/templates/{document}/zones', [Staff2AdminController::class, 'updateTemplateZones'])->name('admin.templates.zones');
         Route::patch('/admin/templates/{document}/field-zones', [Staff2AdminController::class, 'updateTemplateFieldZones'])->name('admin.templates.field-zones');
+        Route::get('/staff2/templates/{document}/zones', [Staff2AdminController::class, 'showZoneDesigner'])->name('staff2.zones.edit');
+        Route::post('/staff2/templates/{document}/zones', [Staff2AdminController::class, 'saveZones'])->name('staff2.zones.save');
+        Route::get('/staff2/templates/{document}/pdf', [Staff2AdminController::class, 'servePdf'])->name('staff2.zones.pdf');
     });
 
     Route::get('/documents/{id}/download', [DocumentController::class, 'download'])->name('documents.download');

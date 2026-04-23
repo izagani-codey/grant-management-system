@@ -37,16 +37,6 @@ class RequestPolicy
         return false;
     }
 
-    public function delete(User $user, Request $request): bool
-    {
-        return $user->role === 'admission' &&
-               $user->id === $request->user_id &&
-               in_array($request->status_id, [
-                   RequestStatus::SUBMITTED->value,
-                   RequestStatus::RETURNED->value,
-               ]);
-    }
-
     public function changeStatus(User $user, Request $request): Response|bool
     {
         if (!in_array($user->role, ['staff1', 'staff2'])) {

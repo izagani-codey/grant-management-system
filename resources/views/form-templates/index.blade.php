@@ -195,6 +195,24 @@
                                     <td class="px-6 py-4 text-slate-500">{{ $template->created_at?->format('d M Y') }}</td>
                                     <td class="px-6 py-4">
                                         <div class="flex flex-wrap items-center gap-2">
+                                            @if($isPdf && in_array(auth()->user()->role, ['staff2', 'admin']))
+                                                @php
+                                                    $zoneCount = collect($template->zones ?? [])->flatten(1)->count();
+                                                @endphp
+                                                <a href="{{ route('staff2.zones.edit', $template) }}"
+                                                   class="rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition inline-flex items-center gap-1">
+                                                    ⚙ Configure Zones
+                                                </a>
+                                                @if($zoneCount > 0)
+                                                    <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                                                        {{ $zoneCount }} zone{{ $zoneCount !== 1 ? 's' : '' }}
+                                                    </span>
+                                                @else
+                                                    <span class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-medium">
+                                                        No zones
+                                                    </span>
+                                                @endif
+                                            @endif
                                             <button type="button"
                                                 onclick="openPreview('{{ addslashes($template->name) }}', '{{ $fileUrl }}', '{{ $isPdf ? 'pdf' : 'image' }}')"
                                                 class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition inline-flex items-center gap-1">

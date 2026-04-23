@@ -25,6 +25,8 @@ class Document extends Model
         'download_count',
         'signature_zones',
         'field_zones',
+        'zones',
+        'pdf_page_count',
     ];
 
     protected $casts = [
@@ -34,6 +36,8 @@ class Document extends Model
         'document_type'   => DocumentType::class,
         'signature_zones' => 'array',
         'field_zones'     => 'array',
+        'zones'           => 'array',
+        'pdf_page_count'  => 'integer',
     ];
 
     protected $attributes = [

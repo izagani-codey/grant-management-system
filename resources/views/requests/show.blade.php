@@ -14,6 +14,7 @@
         $isDeclined     = $status === $RS::DECLINED->value;
         $isStaff        = in_array(auth()->user()->role, ['staff1', 'staff2', 'admin']);
         $userSubmissions = $grantRequest->documents->where('document_type', \App\Enums\DocumentType::UserSubmission);
+        $signedDocument  = $grantRequest->signedDocument;
         $applicantSignature = $grantRequest->getSignatureImageForRole('applicant');
         $requiresVot    = $grantRequest->requestType?->requires_vot;
     @endphp
@@ -380,7 +381,7 @@
             </div>
 
             {{-- Document Review Panel (Staff only) --}}
-            @if($isStaff && ($userSubmissions->isNotEmpty() || $supportingDocuments->isNotEmpty()))
+            @if($isStaff && ($signedDocument || $userSubmissions->isNotEmpty() || $supportingDocuments->isNotEmpty()))
             <div class="bg-white shadow-sm rounded-lg overflow-hidden" id="doc-review-panel">
                 <div class="card-header-miit px-6 py-3 flex items-center justify-between">
                     <span>Document Review</span>
@@ -396,6 +397,17 @@
                     <div class="flex h-[70vh] min-h-[400px]">
                         {{-- Left: doc list --}}
                         <div class="w-64 shrink-0 border-r border-gray-200 overflow-y-auto bg-gray-50 p-3 space-y-1">
+                            @if($signedDocument)
+                                <p class="text-xs font-bold text-teal-700 uppercase mb-2">Signed Document</p>
+                                <button type="button" data-signed="1"
+                                    onclick="loadDocReview('{{ route('documents.preview', $signedDocument->id) }}', 'Signed — {{ addslashes($grantRequest->ref_number) }}', '{{ route('documents.download', $signedDocument->id) }}', true)"
+                                    class="doc-review-btn w-full text-left px-3 py-2 rounded text-xs font-semibold text-teal-800 bg-teal-50 border border-teal-200 hover:bg-teal-100 flex items-center gap-2 mb-3">
+                                    <svg class="w-3.5 h-3.5 shrink-0 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <span>Signed Document</span>
+                                </button>
+                            @endif
                             @if($userSubmissions->isNotEmpty())
                                 <p class="text-xs font-bold text-gray-500 uppercase mb-2">Applicant Documents</p>
                                 @foreach($userSubmissions as $doc)
@@ -461,10 +473,17 @@
                             <p class="font-bold text-teal-800 text-sm">Signed document ready</p>
                             <p class="text-xs text-teal-600 mt-0.5">Both signatures have been embedded. Download to print and process offline.</p>
                         </div>
-                        <a href="{{ route('documents.download', $grantRequest->signed_document_id) }}"
-                           class="shrink-0 bg-teal-600 text-white px-5 py-2 rounded font-bold text-sm hover:bg-teal-700">
-                            ↓ Download Signed PDF
-                        </a>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button type="button"
+                                onclick="loadDocReview('{{ route('documents.preview', $grantRequest->signed_document_id) }}', 'Signed Document', '{{ route('documents.download', $grantRequest->signed_document_id) }}', true); document.getElementById('doc-review-panel')?.scrollIntoView({behavior:'smooth'})"
+                                class="bg-white border border-teal-400 text-teal-700 px-4 py-2 rounded font-bold text-sm hover:bg-teal-50">
+                                Preview
+                            </button>
+                            <a href="{{ route('documents.download', $grantRequest->signed_document_id) }}"
+                               class="bg-teal-600 text-white px-5 py-2 rounded font-bold text-sm hover:bg-teal-700">
+                                ↓ Download
+                            </a>
+                        </div>
                     </div>
                 @endif
 
@@ -730,9 +749,10 @@
             }
         }
 
-        // Auto-load first document if panel is visible
+        // Auto-load first document if panel is visible (prefer signed document)
         document.addEventListener('DOMContentLoaded', function() {
-            const firstBtn = document.querySelector('.doc-review-btn');
+            const firstBtn = document.querySelector('.doc-review-btn[data-signed]')
+                          ?? document.querySelector('.doc-review-btn');
             if (firstBtn) firstBtn.click();
         });
 
@@ -803,24 +823,30 @@
             }
         }
 
-        function captureSignatureIfNeeded(canvasId, inputId) {
-            const canvas = document.getElementById(canvasId);
-            const input  = document.getElementById(inputId);
-            if (!canvas || !input || input.value) return;
-            const ctx    = canvas.getContext('2d');
-            const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-            const blank  = !Array.from(pixels).some((v, i) => i % 4 === 3 && v > 0);
-            if (!blank) input.value = canvas.toDataURL('image/png');
+        function isCanvasBlank(canvas) {
+            const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+            // Canvas is filled white on init — treat any non-white pixel as drawn content
+            for (let i = 0; i < pixels.length; i += 4) {
+                if (pixels[i] < 250 || pixels[i+1] < 250 || pixels[i+2] < 250) return false;
+            }
+            return true;
         }
 
         function handleFormSubmit(form, message, event) {
             if (form.dataset.roleAction === 'staff2') {
-                captureSignatureIfNeeded('staff2-signature-canvas', 'staff2-signature-data');
+                const canvas = document.getElementById('staff2-signature-canvas');
+                const input  = document.getElementById('staff2-signature-data');
                 const currentStatus = document.getElementById('s2-status')?.value;
                 const approveStatus = '{{ \App\Enums\RequestStatus::STAFF2_APPROVED->value }}';
-                if (currentStatus === approveStatus && !document.getElementById('staff2-signature-data')?.value) {
-                    alert('Please provide your signature before approving.');
-                    return false;
+                if (currentStatus === approveStatus) {
+                    // Capture from canvas if not already captured by stopDrawing
+                    if (!input?.value && canvas && !isCanvasBlank(canvas)) {
+                        input.value = canvas.toDataURL('image/png');
+                    }
+                    if (!input?.value || isCanvasBlank(canvas)) {
+                        alert('Please provide your signature before approving.');
+                        return false;
+                    }
                 }
             }
             const submitButtons = form.querySelectorAll('button[type="submit"]');

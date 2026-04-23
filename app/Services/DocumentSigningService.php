@@ -12,8 +12,12 @@ use setasign\Fpdi\Fpdi;
 class DocumentSigningService
 {
     /**
-     * Stamp applicant + staff2 signatures onto the user's uploaded PDF.
+     * Stamp applicant + staff2 signatures (and field values) onto the user's uploaded PDF.
      * Runs after STAFF2_APPROVED transition. Returns the signed Document or null on any failure.
+     *
+     * Stamping strategy:
+     *  - New path: uses template->zones (normalized nx/ny/nw/nh ratios keyed by page index 0-based)
+     *  - Legacy fallback: uses template->signature_zones + template->field_zones (absolute mm coords)
      */
     public function stampAndStore(GrantRequest $request): ?Document
     {
@@ -21,9 +25,8 @@ class DocumentSigningService
             return null;
         }
 
-        $request->loadMissing(['documents', 'signatures', 'requestType']);
+        $request->load(['documents', 'signatures', 'requestType']);
 
-        // Find first PDF uploaded by the applicant for this request
         $userPdf = $request->documents
             ->where('document_type', DocumentType::UserSubmission)
             ->first(fn(Document $d) => $d->isPdf());
@@ -33,10 +36,13 @@ class DocumentSigningService
             return null;
         }
 
-        // Find template for this request type that has at least signature_zones or field_zones configured
         $template = Document::where('request_type_id', $request->request_type_id)
             ->where('document_type', DocumentType::Template->value)
-            ->where(fn($q) => $q->whereNotNull('signature_zones')->orWhereNotNull('field_zones'))
+            ->where(fn($q) => $q
+                ->whereNotNull('zones')
+                ->orWhereNotNull('signature_zones')
+                ->orWhereNotNull('field_zones')
+            )
             ->where('is_active', true)
             ->latest()
             ->first();
@@ -46,7 +52,6 @@ class DocumentSigningService
             return null;
         }
 
-        $zones        = $template->signature_zones ?? [];
         $applicantSig = $request->getSignatureImageForRole('applicant');
         $staff2Sig    = $request->getSignatureImageForRole('staff2');
 
@@ -56,9 +61,14 @@ class DocumentSigningService
         $sourcePath = Storage::disk('public')->path($userPdf->file_path);
 
         try {
+            Storage::makeDirectory('tmp');
+            Storage::makeDirectory('private/signed');
+
             $pdf = new Fpdi('P', 'mm');
             $pdf->SetAutoPageBreak(false);
             $pageCount = $pdf->setSourceFile($sourcePath);
+
+            $pdfInfo = app(PdfInfoService::class);
 
             for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
                 $tpl  = $pdf->importPage($pageNo);
@@ -66,17 +76,56 @@ class DocumentSigningService
                 $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
                 $pdf->useTemplate($tpl, 0, 0, $size['width'], $size['height']);
 
-                if ($tmpApplicant && isset($zones['applicant']) && (int) $zones['applicant']['page'] === $pageNo) {
-                    $z = $zones['applicant'];
+                $pageW = (float) $size['width'];
+                $pageH = (float) $size['height'];
+
+                // ── New zones path (normalized ratios) ──────────────────────────
+                if (!empty($template->zones)) {
+                    $pageIndex = $pageNo - 1;
+                    $pageZones = $template->zones[$pageIndex] ?? $template->zones[(string) $pageIndex] ?? [];
+
+                    foreach ($pageZones as $zone) {
+                        $x = (float) $zone['nx'] * $pageW;
+                        $y = (float) $zone['ny'] * $pageH;
+                        $w = (float) $zone['nw'] * $pageW;
+                        $h = (float) $zone['nh'] * $pageH;
+
+                        $tool = $zone['tool'] ?? '';
+
+                        if ($tool === 'applicant_signature' && $tmpApplicant) {
+                            $pdf->Image($tmpApplicant, $x, $y, $w, $h, 'PNG');
+                        } elseif ($tool === 'staff2_signature' && $tmpStaff2) {
+                            $pdf->Image($tmpStaff2, $x, $y, $w, $h, 'PNG');
+                        } elseif (str_starts_with($tool, 'field_')) {
+                            $fieldName = substr($tool, 6);
+                            $value     = (string) ($request->field_values[$fieldName] ?? '');
+                            if ($value === '') continue;
+                            $fontSize = max(8, $h * 2.8);
+                            $pdf->SetFont('Helvetica', '', $fontSize);
+                            $pdf->SetTextColor(30, 30, 30);
+                            $pdf->SetXY($x, $y);
+                            $pdf->Cell($w, $h, $value, 0, 0, 'L');
+                        }
+                    }
+
+                    continue; // skip legacy path for this page
+                }
+
+                // ── Legacy fallback path (absolute mm coords) ────────────────────
+                $legacySigZones = $template->signature_zones ?? [];
+
+                if ($tmpApplicant && isset($legacySigZones['applicant'])
+                    && (int) $legacySigZones['applicant']['page'] === $pageNo) {
+                    $z = $legacySigZones['applicant'];
                     $pdf->Image($tmpApplicant, (float) $z['x'], (float) $z['y'], (float) $z['width'], (float) $z['height'], 'PNG');
                 }
 
-                if ($tmpStaff2 && isset($zones['staff2']) && (int) $zones['staff2']['page'] === $pageNo) {
-                    $z = $zones['staff2'];
+                if ($tmpStaff2 && isset($legacySigZones['staff2'])
+                    && (int) $legacySigZones['staff2']['page'] === $pageNo) {
+                    $z = $legacySigZones['staff2'];
                     $pdf->Image($tmpStaff2, (float) $z['x'], (float) $z['y'], (float) $z['width'], (float) $z['height'], 'PNG');
                 }
 
-                // Stamp field values as text
                 foreach ($template->field_zones ?? [] as $fieldName => $z) {
                     if ((int) $z['page'] !== $pageNo) continue;
                     $value = (string) ($request->field_values[$fieldName] ?? '');
@@ -111,7 +160,7 @@ class DocumentSigningService
 
             return $signedDoc;
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::warning('DocumentSigningService: failed to stamp PDF', [
                 'request_id' => $request->id,
                 'error'      => $e->getMessage(),
@@ -122,11 +171,15 @@ class DocumentSigningService
         }
     }
 
-    private function base64ToTempFile(string $base64): string
+    private function base64ToTempFile(string $base64): ?string
     {
-        $data = preg_replace('/^data:image\/\w+;base64,/', '', $base64);
+        $data    = preg_replace('/^data:image\/\w+;base64,/', '', $base64);
+        $decoded = base64_decode($data, true);
+        if ($decoded === false || $decoded === '') {
+            return null;
+        }
         $path = sys_get_temp_dir() . '/' . uniqid('sig_', true) . '.png';
-        file_put_contents($path, base64_decode($data));
+        file_put_contents($path, $decoded);
         return $path;
     }
 

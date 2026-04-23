@@ -38,6 +38,11 @@ class WorkflowTransitionService
                     RequestStatus::DECLINED->value,
                 ],
             ],
+            'admission' => [
+                RequestStatus::RETURNED->value => [
+                    RequestStatus::SUBMITTED->value,
+                ],
+            ],
         ];
     }
 
@@ -59,19 +64,28 @@ class WorkflowTransitionService
     {
         $user = Auth::user();
 
-        if (!self::canTransition($request, $newStatus, $user)) {
-            throw new AuthorizationException('You are not authorized to perform this status transition.');
-        }
+        $oldStatus  = null;
+        $isOverride = false;
 
-        self::validateTransitionRequirements($request, $user, $newStatus, $data);
+        DB::transaction(function () use ($request, $newStatus, $data, $user, &$oldStatus, &$isOverride): void {
+            // Lock the row so concurrent transitions on the same request queue
+            // behind this one instead of racing past the validation checks.
+            $locked = GrantRequest::lockForUpdate()->findOrFail($request->id);
 
-        $oldStatus = RequestStatus::from($request->status_id);
+            // Re-read status from the locked row; the caller's in-memory model may be stale.
+            $request->status_id = $locked->status_id;
 
-        $isOverride = $user->role === 'staff2'
-            && $oldStatus === RequestStatus::SUBMITTED
-            && $newStatus === RequestStatus::STAFF2_APPROVED;
+            if (!self::canTransition($request, $newStatus, $user)) {
+                throw new AuthorizationException('You are not authorized to perform this status transition.');
+            }
 
-        DB::transaction(function () use ($request, $newStatus, $data, $user, $oldStatus, $isOverride): void {
+            self::validateTransitionRequirements($request, $user, $newStatus, $data);
+
+            $oldStatus  = RequestStatus::from($request->status_id);
+            $isOverride = $user->role === 'staff2'
+                && $oldStatus === RequestStatus::SUBMITTED
+                && $newStatus === RequestStatus::STAFF2_APPROVED;
+
             self::createAuditLog($request, $oldStatus, $newStatus, $user, $data, $isOverride);
 
             $updateData = [
@@ -114,18 +128,45 @@ class WorkflowTransitionService
     private static function validateTransitionRequirements(GrantRequest $request, User $user, RequestStatus $newStatus, array $data): void
     {
         if ($user->role === 'staff1' && $newStatus === RequestStatus::STAFF1_REVIEWED) {
-            if ($request->hasAnyFlaggedItems()) {
-                throw new AuthorizationException('Flagged checklist items block forwarding. Return or decline this request.');
+            // Load all review statuses in one query; check only active checklist items.
+            $reviewStatuses = $request->checklistReviews()->pluck('status', 'checklist_item_id');
+            $activeItems    = ($request->requestType?->checklistItems ?? collect())->where('is_active', true);
+
+            $flaggedLabels = $activeItems
+                ->filter(fn($item) => ($reviewStatuses[$item->id] ?? null) === 'flagged')
+                ->pluck('label');
+
+            if ($flaggedLabels->isNotEmpty()) {
+                throw new AuthorizationException(
+                    'Flagged items must be resolved before forwarding: ' . $flaggedLabels->implode(', ') . '.'
+                );
             }
 
-            if (!$request->hasAllRequiredItemsChecked()) {
-                throw new AuthorizationException('All required checklist items must be checked before forwarding.');
+            $uncheckedLabels = $activeItems
+                ->where('is_required', true)
+                ->filter(fn($item) => ($reviewStatuses[$item->id] ?? null) !== 'checked')
+                ->pluck('label');
+
+            if ($uncheckedLabels->isNotEmpty()) {
+                throw new AuthorizationException(
+                    'Required items not yet checked: ' . $uncheckedLabels->implode(', ') . '.'
+                );
             }
         }
 
         if ($user->role === 'staff2' && $newStatus === RequestStatus::STAFF2_APPROVED) {
             if (empty($data['staff2_signature_data'])) {
                 throw new AuthorizationException('Staff 2 signature is required to approve.');
+            }
+            if (self::isSignatureBlank($data['staff2_signature_data'])) {
+                throw new AuthorizationException('Signature appears blank. Please draw your signature before approving.');
+            }
+        }
+
+        if ($newStatus === RequestStatus::SUBMITTED && $request->requestType?->requires_signature) {
+            $applicantSig = $request->getSignatureImageForRole('applicant');
+            if (empty($applicantSig) || self::isSignatureBlank($applicantSig)) {
+                throw new AuthorizationException('Applicant signature is required and cannot be blank.');
             }
         }
 
@@ -167,6 +208,7 @@ class WorkflowTransitionService
             RequestStatus::RETURNED        => 'returned',
             RequestStatus::DECLINED        => 'declined',
             RequestStatus::COMPLETED       => 'completed',
+            RequestStatus::SUBMITTED       => 'resubmitted',
             default                        => 'status_changed',
         };
     }
@@ -239,6 +281,10 @@ class WorkflowTransitionService
                     'Request Completed',
                     "Request {$ref} has been completed and processed."),
 
+                RequestStatus::SUBMITTED => self::notifyRole('staff1', $request, 'request_resubmitted',
+                    'Request Resubmitted',
+                    "Request {$ref} has been resubmitted and is ready for verification."),
+
                 default => null,
             };
         } catch (\Throwable $e) {
@@ -257,6 +303,53 @@ class WorkflowTransitionService
 
         foreach ($users as $user) {
             \App\Models\Notification::createForUser($user->id, $type, $title, $message, $url, ['request_id' => $request->id]);
+        }
+    }
+
+    private static function isSignatureBlank(string $base64): bool
+    {
+        $raw   = preg_replace('/^data:image\/\w+;base64,/', '', $base64);
+        $bytes = base64_decode($raw, true);
+
+        if ($bytes === false || $bytes === '') {
+            return true;
+        }
+
+        try {
+            $image = @imagecreatefromstring($bytes);
+
+            if ($image === false) {
+                return true;
+            }
+
+            $width  = imagesx($image);
+            $height = imagesy($image);
+            $total  = $width * $height;
+
+            if ($total === 0) {
+                imagedestroy($image);
+                return true;
+            }
+
+            $whiteCount = 0;
+            for ($x = 0; $x < $width; $x++) {
+                for ($y = 0; $y < $height; $y++) {
+                    $rgb = imagecolorat($image, $x, $y);
+                    $r   = ($rgb >> 16) & 0xFF;
+                    $g   = ($rgb >> 8)  & 0xFF;
+                    $b   =  $rgb        & 0xFF;
+                    if ($r > 245 && $g > 245 && $b > 245) {
+                        $whiteCount++;
+                    }
+                }
+            }
+
+            imagedestroy($image);
+
+            return ($whiteCount / $total) >= 0.98;
+
+        } catch (\Throwable) {
+            return true;
         }
     }
 

@@ -127,19 +127,19 @@ class RequestController extends BaseController
                         }
                     }
 
+                    if ($request->filled('signature_data')) {
+                        Signature::updateOrCreate(
+                            ['request_id' => $gr->id, 'role' => 'applicant'],
+                            ['user_id' => $user->id, 'signature_path' => $request->input('signature_data'), 'signed_at' => now()]
+                        );
+                    }
+
                     return $gr;
                 } catch (UniqueConstraintViolationException) {
                     if (++$attempts >= 5) throw new \RuntimeException('Could not generate a unique reference number.');
                 }
             }
         });
-
-        if ($request->filled('signature_data')) {
-            Signature::updateOrCreate(
-                ['request_id' => $grantRequest->id, 'role' => 'applicant'],
-                ['user_id' => $user->id, 'signature_path' => $request->input('signature_data'), 'signed_at' => now()]
-            );
-        }
 
         AuditLog::create([
             'request_id'  => $grantRequest->id,
@@ -175,6 +175,7 @@ class RequestController extends BaseController
             'templateUsages' => fn ($q) => $q->latest('created_at'),
             'signatures',
             'checklistReviews.reviewer',
+            'signedDocument',
         ])->findOrFail($id);
 
         $this->authorize('view', $grantRequest);
@@ -207,11 +208,9 @@ class RequestController extends BaseController
 
         $votItems    = collect($request->input('vot_items', []))->values()->all();
         $totalAmount = collect($votItems)->sum(fn ($item) => (float) ($item['amount'] ?? 0));
-        $oldStatus   = $grantRequest->status_id;
 
         DB::transaction(function () use ($request, $grantRequest, $requestType, $votItems, $totalAmount) {
             $grantRequest->update([
-                'status_id'     => RequestStatus::SUBMITTED->value,
                 'description'   => $request->input('description'),
                 'field_values'  => $request->input('field_values', []),
                 'vot_items'     => $votItems,
@@ -238,32 +237,16 @@ class RequestController extends BaseController
                     ]);
                 }
             }
+
+            if ($request->filled('signature_data')) {
+                Signature::updateOrCreate(
+                    ['request_id' => $grantRequest->id, 'role' => 'applicant'],
+                    ['user_id' => Auth::id(), 'signature_path' => $request->input('signature_data'), 'signed_at' => now()]
+                );
+            }
         });
 
-        if ($request->filled('signature_data')) {
-            Signature::updateOrCreate(
-                ['request_id' => $grantRequest->id, 'role' => 'applicant'],
-                ['user_id' => Auth::id(), 'signature_path' => $request->input('signature_data'), 'signed_at' => now()]
-            );
-        }
-
-        AuditLog::create([
-            'request_id'  => $grantRequest->id,
-            'actor_id'    => Auth::id(),
-            'actor_role'  => Auth::user()->role,
-            'action'      => 'resubmitted',
-            'from_status' => $oldStatus,
-            'to_status'   => RequestStatus::SUBMITTED->value,
-            'note'        => 'Resubmitted after revision.',
-            'created_at'  => now(),
-        ]);
-
-        $this->notificationService->sendRoleNotification(
-            'staff1',
-            'Request Resubmitted',
-            "Request {$grantRequest->ref_number} has been resubmitted and is ready for verification.",
-            route('requests.show', $grantRequest->id)
-        );
+        WorkflowTransitionService::executeTransition($grantRequest, RequestStatus::SUBMITTED);
 
         return redirect()->route('dashboard')->with('success', 'Request resubmitted successfully.');
     }

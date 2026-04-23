@@ -9,8 +9,11 @@ use App\Models\RequestTypeTemplate;
 use App\Models\User;
 use App\Models\Document;
 use App\Models\AuditLog;
+use App\Services\PdfInfoService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class Staff2AdminController extends BaseController
@@ -479,10 +482,12 @@ class Staff2AdminController extends BaseController
             'items.*.sort_order' => 'required|integer|min:0',
         ]);
 
-        foreach ($request->items as $item) {
-            \App\Models\ChecklistItem::where('id', $item['id'])
-                ->update(['sort_order' => $item['sort_order']]);
-        }
+        DB::transaction(function () use ($request) {
+            foreach ($request->items as $item) {
+                \App\Models\ChecklistItem::where('id', $item['id'])
+                    ->update(['sort_order' => $item['sort_order']]);
+            }
+        });
 
         return response()->json(['success' => true]);
     }
@@ -517,26 +522,92 @@ class Staff2AdminController extends BaseController
         if (!empty($validated['applicant_page'])) {
             $zones['applicant'] = [
                 'page'   => (int)   $validated['applicant_page'],
-                'x'      => (float) $validated['applicant_x']      ?? 10,
-                'y'      => (float) $validated['applicant_y']       ?? 240,
-                'width'  => (float) $validated['applicant_width']   ?? 70,
-                'height' => (float) $validated['applicant_height']  ?? 25,
+                'x'      => (float) ($validated['applicant_x']     ?? 10),
+                'y'      => (float) ($validated['applicant_y']      ?? 240),
+                'width'  => (float) ($validated['applicant_width']  ?? 70),
+                'height' => (float) ($validated['applicant_height'] ?? 25),
             ];
         }
 
         if (!empty($validated['staff2_page'])) {
             $zones['staff2'] = [
                 'page'   => (int)   $validated['staff2_page'],
-                'x'      => (float) $validated['staff2_x']      ?? 110,
-                'y'      => (float) $validated['staff2_y']       ?? 240,
-                'width'  => (float) $validated['staff2_width']   ?? 70,
-                'height' => (float) $validated['staff2_height']  ?? 25,
+                'x'      => (float) ($validated['staff2_x']     ?? 110),
+                'y'      => (float) ($validated['staff2_y']      ?? 240),
+                'width'  => (float) ($validated['staff2_width']  ?? 70),
+                'height' => (float) ($validated['staff2_height'] ?? 25),
             ];
         }
 
         $document->update(['signature_zones' => empty($zones) ? null : $zones]);
 
         return redirect()->back()->with('success', 'Signature zones saved for "' . ($document->name ?: $document->original_name) . '".');
+    }
+
+    // ==========================================
+    // Zone Designer
+    // ==========================================
+
+    public function showZoneDesigner(Document $document)
+    {
+        abort_if(!auth()->user()->isStaff2() && !auth()->user()->canAccessAdminPanel(), 403);
+
+        if ($document->pdf_page_count === null) {
+            try {
+                $count = app(PdfInfoService::class)->getPageCount($document->file_path);
+                $document->update(['pdf_page_count' => $count]);
+            } catch (\Throwable) {
+                // leave null — view will default to 1
+            }
+        }
+
+        $existingZones      = $document->zones ?? [];
+        $fieldSchema        = $document->requestType?->field_schema ?? [];
+        $pageCount          = $document->pdf_page_count ?? 1;
+        $firstPageDimensions = app(PdfInfoService::class)->getPageDimensions($document->file_path);
+
+        return view('staff2.zone-designer', compact(
+            'document', 'existingZones', 'fieldSchema', 'pageCount', 'firstPageDimensions'
+        ));
+    }
+
+    public function saveZones(Request $httpRequest, Document $document)
+    {
+        abort_if(!auth()->user()->isStaff2() && !auth()->user()->canAccessAdminPanel(), 403);
+
+        $httpRequest->validate([
+            'zones'           => ['required', 'array'],
+            'zones.*'         => ['array'],
+            'zones.*.*'       => ['array'],
+            'zones.*.*.nx'    => ['numeric', 'between:0,1'],
+            'zones.*.*.ny'    => ['numeric', 'between:0,1'],
+            'zones.*.*.nw'    => ['numeric', 'between:0.01,1'],
+            'zones.*.*.nh'    => ['numeric', 'between:0.01,1'],
+            'zones.*.*.tool'  => ['required', 'string'],
+        ]);
+
+        $document->update(['zones' => $httpRequest->zones]);
+
+        $totalZones = collect($httpRequest->zones)->flatten(1)->count();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Saved {$totalZones} zone" . ($totalZones !== 1 ? 's' : ''),
+        ]);
+    }
+
+    public function servePdf(Document $document)
+    {
+        abort_if(!auth()->user()->isStaff2() && !auth()->user()->canAccessAdminPanel(), 403);
+        abort_if($document->document_type !== \App\Enums\DocumentType::Template, 403);
+
+        $path = Storage::disk('public')->path($document->file_path);
+        abort_if(!file_exists($path), 404);
+
+        return response()->file($path, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $document->original_name . '"',
+        ]);
     }
 
     public function updateTemplateFieldZones(Request $request, Document $document)

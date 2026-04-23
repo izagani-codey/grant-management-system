@@ -159,7 +159,7 @@ class Request extends Model
 
     public function getChecklistItems()
     {
-        return $this->requestType?->checklistItems ?? collect();
+        return ($this->requestType?->checklistItems ?? collect())->where('is_active', true);
     }
 
     public function getChecklistReviews()

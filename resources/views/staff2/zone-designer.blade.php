@@ -119,6 +119,7 @@
                 <div id="canvas-wrap"
                      x-show="!pdfError"
                      class="relative inline-block select-none shadow-lg"
+                     style="width:100%; max-width:900px;"
                      :style="activeTool ? 'cursor:crosshair' : 'cursor:default'"
                      @mousedown="startDraw($event)"
                      @mousemove="whileDrawing($event)"
@@ -192,12 +193,16 @@
     </div>
 
     {{-- PDF.js must be loaded before Alpine initialises the component --}}
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/legacy/build/pdf.min.js"></script>
+    <script src="{{ asset('vendor/pdfjs/pdf.min.js') }}"></script>
 
     <script>
     function zoneDesigner() {
+        // Stored outside Alpine's reactive data so it is never wrapped in a Proxy.
+        // PDF.js internal classes use private fields (#r, #s …) which become
+        // inaccessible the moment Alpine's reactivity system proxies the object.
+        let _pdfDoc = null;
+
         return {
-            pdfDoc:    null,
             currentPage: 1,
             pageCount: {{ $pageCount }},
             activeTool: null,
@@ -223,20 +228,20 @@
             },
 
             async loadPdf() {
-                // The CDN build exposes window.pdfjsLib (NOT window['pdfjs-dist/build/pdf'])
-                const pdfjsLib = window.pdfjsLib;
+                // Legacy UMD build exposes window['pdfjs-dist/build/pdf']
+                const pdfjsLib = window['pdfjs-dist/build/pdf'];
                 if (!pdfjsLib) {
-                    this.pdfError = 'PDF.js failed to load from CDN. Check your internet connection.';
-                    console.error('[ZoneDesigner] window.pdfjsLib is undefined — pdf.min.js did not load');
+                    this.pdfError = 'PDF.js failed to load. Check that /vendor/pdfjs/pdf.min.js is accessible.';
+                    console.error('[ZoneDesigner] window["pdfjs-dist/build/pdf"] is undefined — pdf.min.js did not load');
                     return;
                 }
 
                 pdfjsLib.GlobalWorkerOptions.workerSrc =
-                    'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/legacy/build/pdf.worker.min.js';
+                    '{{ asset('vendor/pdfjs/pdf.worker.min.js') }}';
 
                 try {
-                    this.pdfDoc = await pdfjsLib.getDocument(this.pdfUrl).promise;
-                    this.pageCount = this.pdfDoc.numPages;
+                    _pdfDoc = await pdfjsLib.getDocument(this.pdfUrl).promise;
+                    this.pageCount = _pdfDoc.numPages;
                     await this.renderPage(this.currentPage);
                 } catch (err) {
                     this.pdfError = 'Could not load PDF: ' + err.message;
@@ -246,22 +251,23 @@
 
             async renderPage(num) {
                 this.currentPage = num;
-                const page      = await this.pdfDoc.getPage(num);
+                const page      = await _pdfDoc.getPage(num);
                 const canvas    = document.getElementById('pdf-canvas');
                 const container = document.getElementById('canvas-wrap');
 
-                const viewport = page.getViewport({ scale: 1 });
-                const scale    = Math.min(900, container.offsetWidth || 900) / viewport.width;
-                const scaled   = page.getViewport({ scale });
+                const baseViewport  = page.getViewport({ scale: 1 });
+                const desiredWidth  = container.offsetWidth || 900;
+                const scale         = desiredWidth / baseViewport.width;
+                const viewport      = page.getViewport({ scale });
 
-                canvas.width  = scaled.width;
-                canvas.height = scaled.height;
-                this.canvasW  = scaled.width;
-                this.canvasH  = scaled.height;
+                canvas.width  = viewport.width;
+                canvas.height = viewport.height;
+                this.canvasW  = viewport.width;
+                this.canvasH  = viewport.height;
 
                 await page.render({
                     canvasContext: canvas.getContext('2d'),
-                    viewport: scaled,
+                    viewport,
                 }).promise;
             },
 

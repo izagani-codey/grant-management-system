@@ -15,7 +15,8 @@
       "Read(//usr/bin/**)",
       "Read(//usr/local/**)",
       "Read(//home/izagani/.config/herd/**)",
-      "Bash(snap run *)"
+      "Bash(snap run *)",
+      "Bash(grep -rn \"simulate\\\\|test\\\\|debug\\\\|dev\" . --include=\"*.php\" --maxdepth 1)"
     ]
   }
 }

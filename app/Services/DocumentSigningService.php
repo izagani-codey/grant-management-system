@@ -7,6 +7,9 @@ use App\Models\Document;
 use App\Models\Request as GrantRequest;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Worksheet\MemoryDrawing;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
 use setasign\Fpdi\Fpdi;
 
 class DocumentSigningService
@@ -32,8 +35,18 @@ class DocumentSigningService
             ->first(fn(Document $d) => $d->isPdf());
 
         if (!$userPdf) {
-            Log::info('DocumentSigningService: no user PDF found', ['request_id' => $request->id]);
-            return null;
+            $userXls = $request->documents
+                ->where('document_type', DocumentType::UserSubmission)
+                ->first(fn(Document $d) => $d->isExcelDocument());
+
+            if (!$userXls) {
+                Log::info('DocumentSigningService: no user PDF or XLS found', [
+                    'request_id' => $request->id,
+                ]);
+                return null;
+            }
+
+            return $this->stampAndStoreXls($request, $userXls);
         }
 
         $template = Document::where('request_type_id', $request->request_type_id)
@@ -169,6 +182,140 @@ class DocumentSigningService
         } finally {
             $this->cleanupTempFiles($tmpApplicant, $tmpStaff2);
         }
+    }
+
+    private function stampAndStoreXls(
+        GrantRequest $request,
+        Document $userXls
+    ): ?Document {
+        $template = Document::where('request_type_id', $request->request_type_id)
+            ->where('document_type', DocumentType::Template->value)
+            ->where(fn($q) => $q->whereNotNull('zones')->orWhereNotNull('signature_zones'))
+            ->where('is_active', true)
+            ->latest()
+            ->first();
+
+        if (!$template) {
+            Log::info('DocumentSigningService: no XLS template with zones configured', [
+                'request_id' => $request->id,
+            ]);
+            return null;
+        }
+
+        $applicantSig = $request->getSignatureImageForRole('applicant');
+        $staff2Sig    = $request->getSignatureImageForRole('staff2');
+
+        try {
+            $sourcePath  = Storage::disk('public')->path($userXls->file_path);
+            $spreadsheet = IOFactory::load($sourcePath);
+            $sheet       = $spreadsheet->getActiveSheet();
+
+            if (!empty($template->zones)) {
+                // ── New zones format (visual zone designer) ──────────────
+                // Flatten all page arrays into a single list.
+                $allZones = [];
+                foreach ($template->zones as $pageZones) {
+                    if (is_array($pageZones)) {
+                        $allZones = array_merge($allZones, $pageZones);
+                    }
+                }
+
+                foreach ($allZones as $zone) {
+                    $tool = $zone['tool'] ?? '';
+
+                    if ($tool === 'applicant_signature' && $applicantSig) {
+                        $this->placeXlsSignature($sheet, $applicantSig, $zone);
+                    } elseif ($tool === 'staff2_signature' && $staff2Sig) {
+                        $this->placeXlsSignature($sheet, $staff2Sig, $zone);
+                    } elseif (str_starts_with($tool, 'field_') && !empty($zone['cell_start'])) {
+                        $fieldName = substr($tool, 6);
+                        $value     = (string) ($request->field_values[$fieldName] ?? '');
+                        if ($value !== '') {
+                            $sheet->setCellValue($zone['cell_start'], $value);
+                        }
+                    }
+                }
+            } else {
+                // ── Legacy signature_zones (manual mm coordinates) ────────
+                $sigZones = $template->signature_zones ?? [];
+                $mmToPx   = 3.7795;
+
+                foreach ([
+                    'applicant' => $applicantSig,
+                    'staff2'    => $staff2Sig,
+                ] as $role => $sigBase64) {
+                    if (empty($sigBase64) || empty($sigZones[$role])) continue;
+
+                    $z = $sigZones[$role];
+                    $this->placeXlsSignature($sheet, $sigBase64, [
+                        'x' => (float) $z['x'] * $mmToPx,
+                        'y' => (float) $z['y'] * $mmToPx,
+                        'w' => (float) $z['width'] * $mmToPx,
+                        'h' => (float) $z['height'] * $mmToPx,
+                    ]);
+                }
+            }
+
+            $filename    = 'signed_' . $request->ref_number . '_' . time() . '.xlsx';
+            $storagePath = "documents/request-{$request->id}/signed/{$filename}";
+            $fullPath    = Storage::disk('public')->path($storagePath);
+
+            Storage::disk('public')->makeDirectory(
+                "documents/request-{$request->id}/signed"
+            );
+
+            $writer = new XlsxWriter($spreadsheet);
+            $writer->save($fullPath);
+
+            $signedDoc = Document::create([
+                'request_id'      => $request->id,
+                'request_type_id' => $request->request_type_id,
+                'uploaded_by'     => $request->recommended_by ?? $request->user_id,
+                'uploader_role'   => 'system',
+                'file_path'       => $storagePath,
+                'original_name'   => $filename,
+                'document_type'   => DocumentType::SignedDocument->value,
+            ]);
+
+            $request->update(['signed_document_id' => $signedDoc->id]);
+
+            Log::info('DocumentSigningService: signed XLSX created', [
+                'request_id'      => $request->id,
+                'signed_document' => $signedDoc->id,
+            ]);
+
+            return $signedDoc;
+
+        } catch (\Throwable $e) {
+            Log::warning('DocumentSigningService: XLSX stamp failed', [
+                'request_id' => $request->id,
+                'error'      => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    private function placeXlsSignature($sheet, string $sigBase64, array $zone): void
+    {
+        $data = base64_decode(
+            preg_replace('/^data:image\/\w+;base64,/', '', $sigBase64),
+            true
+        );
+        if (!$data) return;
+
+        $gd = imagecreatefromstring($data);
+        if (!$gd) return;
+
+        $drawing = new MemoryDrawing();
+        $drawing->setImageResource($gd);
+        $drawing->setRenderingFunction(MemoryDrawing::RENDERING_PNG);
+        $drawing->setMimeType(MemoryDrawing::MIMETYPE_PNG);
+        $drawing->setCoordinates('A1');
+        $drawing->setOffsetX((int) ($zone['x'] ?? 0));
+        $drawing->setOffsetY((int) ($zone['y'] ?? 0));
+        $drawing->setWidth((int) ($zone['w'] ?? 100));
+        $drawing->setHeight((int) ($zone['h'] ?? 30));
+        $drawing->setWorksheet($sheet);
     }
 
     private function base64ToTempFile(string $base64): ?string

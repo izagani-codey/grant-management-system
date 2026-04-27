@@ -16,7 +16,6 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         if (($_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? '') === 'testing') {
-            // Keep feature tests deterministic: disable CSRF checks only in test environment.
             $middleware->validateCsrfTokens(except: ['*']);
         }
 

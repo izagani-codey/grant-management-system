@@ -25,3 +25,16 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+-
+,
+documents
+.gitignore
+id
+DocumentType::SignedDocument-
+id,
+recommended_by
+request_type_id,
+system,
+signature_zones
+user_id,
+value,

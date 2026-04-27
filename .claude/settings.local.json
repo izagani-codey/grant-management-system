@@ -11,7 +11,11 @@
       "Bash(cmd.exe /c \"cd /d ${PROJECT_PATH} && php artisan --version 2>&1\")",
       "Bash(cmd.exe /c \"where php 2>&1\")",
       "Bash(powershell.exe -Command \"Get-Command php -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source; php --version 2>&1\")",
-      "Bash(powershell.exe -Command \"Set-Location '${PROJECT_PATH}'; php artisan --version 2>&1\")"
+      "Bash(powershell.exe -Command \"Set-Location '${PROJECT_PATH}'; php artisan --version 2>&1\")",
+      "Read(//usr/bin/**)",
+      "Read(//usr/local/**)",
+      "Read(//home/izagani/.config/herd/**)",
+      "Bash(snap run *)"
     ]
   }
 }

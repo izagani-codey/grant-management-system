@@ -552,7 +552,9 @@ class Staff2AdminController extends BaseController
     {
         abort_if(!auth()->user()->isStaff2() && !auth()->user()->canAccessAdminPanel(), 403);
 
-        if ($document->pdf_page_count === null) {
+        $isExcel = $document->isExcelDocument();
+
+        if (!$isExcel && $document->pdf_page_count === null) {
             try {
                 $count = app(PdfInfoService::class)->getPageCount($document->file_path);
                 $document->update(['pdf_page_count' => $count]);
@@ -561,13 +563,15 @@ class Staff2AdminController extends BaseController
             }
         }
 
-        $existingZones      = $document->zones ?? [];
-        $fieldSchema        = $document->requestType?->field_schema ?? [];
-        $pageCount          = $document->pdf_page_count ?? 1;
-        $firstPageDimensions = app(PdfInfoService::class)->getPageDimensions($document->file_path);
+        $existingZones       = $document->zones ?? [];
+        $fieldSchema         = $document->requestType?->field_schema ?? [];
+        $pageCount           = $isExcel ? 1 : ($document->pdf_page_count ?? 1);
+        $firstPageDimensions = !$isExcel
+            ? app(PdfInfoService::class)->getPageDimensions($document->file_path)
+            : ['width' => 210, 'height' => 297];
 
         return view('staff2.zone-designer', compact(
-            'document', 'existingZones', 'fieldSchema', 'pageCount', 'firstPageDimensions'
+            'document', 'existingZones', 'fieldSchema', 'pageCount', 'firstPageDimensions', 'isExcel'
         ));
     }
 
@@ -604,8 +608,12 @@ class Staff2AdminController extends BaseController
         $path = Storage::disk('public')->path($document->file_path);
         abort_if(!file_exists($path), 404);
 
+        $mime = $document->isExcelDocument()
+            ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            : 'application/pdf';
+
         return response()->file($path, [
-            'Content-Type'        => 'application/pdf',
+            'Content-Type'        => $mime,
             'Content-Disposition' => 'inline; filename="' . $document->original_name . '"',
         ]);
     }

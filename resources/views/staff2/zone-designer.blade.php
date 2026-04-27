@@ -1,3 +1,5 @@
+@php $isExcel = $document->isExcelDocument(); @endphp
+
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
@@ -5,7 +7,12 @@
                 <h1 class="text-2xl font-bold text-gray-900">Zone Designer</h1>
                 <p class="text-sm text-gray-500 mt-0.5">
                     {{ $document->name ?: $document->original_name }}
-                    &mdash; {{ $pageCount }} page{{ $pageCount !== 1 ? 's' : '' }}
+                    &mdash;
+                    @if($isExcel)
+                        Excel template
+                    @else
+                        {{ $pageCount }} page{{ $pageCount !== 1 ? 's' : '' }}
+                    @endif
                 </p>
             </div>
             <a href="{{ route('admin.request-types') }}"
@@ -17,13 +24,12 @@
 
     <div class="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
          x-data="zoneDesigner()"
-         x-init="loadPdf()">
+         x-init="init()">
 
         {{-- ── TOOLBAR ─────────────────────────────────────────────── --}}
         <div class="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm mb-4 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3">
             <div class="flex flex-wrap items-center gap-2">
 
-                {{-- Tool buttons --}}
                 <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider mr-1">Place:</span>
 
                 <button type="button"
@@ -57,7 +63,6 @@
 
                 <div class="flex-1"></div>
 
-                {{-- Cancel --}}
                 <button type="button"
                         x-show="activeTool !== null"
                         @click="activeTool = null"
@@ -65,7 +70,6 @@
                     Cancel
                 </button>
 
-                {{-- Save --}}
                 <button type="button"
                         @click="saveZones()"
                         :disabled="saving"
@@ -77,22 +81,17 @@
                     <span x-text="saving ? 'Saving…' : '💾 Save Zones'"></span>
                 </button>
 
-                <span x-show="saved"
-                      x-transition
-                      class="text-sm font-medium text-green-600">
-                    ✓ Saved!
-                </span>
+                <span x-show="saved" x-transition class="text-sm font-medium text-green-600">✓ Saved!</span>
             </div>
 
-            {{-- Active tool hint --}}
             <p x-show="activeTool !== null"
                class="mt-1.5 text-xs text-amber-600 font-medium"
-               x-text="'Click and drag on the PDF to place: ' + toolLabel(activeTool)">
+               x-text="'Click and drag on the ' + (isExcel ? 'Excel sheet' : 'PDF') + ' to place: ' + toolLabel(activeTool)">
             </p>
         </div>
 
-        {{-- ── PAGE TABS ────────────────────────────────────────────── --}}
-        <div class="flex gap-1 mb-3 flex-wrap" x-show="pageCount > 1">
+        {{-- ── PAGE TABS (PDF only) ─────────────────────────────────── --}}
+        <div class="flex gap-1 mb-3 flex-wrap" x-show="!isExcel && pageCount > 1">
             <template x-for="n in pageCount" :key="n">
                 <button type="button"
                         @click="switchPage(n)"
@@ -108,16 +107,22 @@
         {{-- ── CANVAS AREA ──────────────────────────────────────────── --}}
         <div class="flex gap-6">
 
-            {{-- Canvas + overlay --}}
             <div class="flex-1 overflow-auto">
-                {{-- Error state --}}
-                <div x-show="pdfError"
+
+                {{-- PDF error --}}
+                <div x-show="!isExcel && pdfError"
                      class="rounded-lg border border-red-200 bg-red-50 p-6 text-red-700 text-sm mb-3">
                     <strong>PDF load error:</strong> <span x-text="pdfError"></span>
                 </div>
 
+                {{-- XLS error --}}
+                <div x-show="isExcel && xlsError"
+                     class="rounded-lg border border-red-200 bg-red-50 p-6 text-red-700 text-sm mb-3">
+                    <strong>Excel load error:</strong> <span x-text="xlsError"></span>
+                </div>
+
                 <div id="canvas-wrap"
-                     x-show="!pdfError"
+                     x-show="isExcel ? !xlsError : !pdfError"
                      class="relative inline-block select-none shadow-lg"
                      style="width:100%; max-width:900px;"
                      :style="activeTool ? 'cursor:crosshair' : 'cursor:default'"
@@ -126,15 +131,32 @@
                      @mouseup="endDraw($event)"
                      @mouseleave="isDrawing && endDraw($event)">
 
-                    <canvas id="pdf-canvas" class="block"></canvas>
+                    {{-- PDF canvas --}}
+                    <canvas id="pdf-canvas" class="block" x-show="!isExcel"></canvas>
 
-                    {{-- Placed zones --}}
+                    {{-- XLS: loading spinner --}}
+                    <div x-show="isExcel && xlsLoading"
+                         class="flex items-center justify-center h-64 bg-gray-50 border border-gray-200 rounded">
+                        <div class="text-center text-gray-500">
+                            <svg class="animate-spin h-8 w-8 mx-auto mb-2 text-gray-400" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                            </svg>
+                            <p class="text-sm">Loading Excel template…</p>
+                        </div>
+                    </div>
+
+                    {{-- XLS rendered table --}}
+                    <div id="xls-content" x-show="isExcel && !xlsLoading" class="w-full overflow-auto"></div>
+
+                    {{-- Placed zones (both PDF and XLS) --}}
                     <template x-for="zone in currentZones()" :key="zone.id">
                         <div class="absolute border-2 pointer-events-auto"
                              :class="zoneColorClass(zone.tool)"
                              :style="zoneStyle(zone)">
                             <span class="text-xs font-medium px-1 leading-none truncate block"
-                                  x-text="zone.label"></span>
+                                  x-text="zone.label + (zone.cell_start ? ' [' + zone.cell_start + ']' : '')">
+                            </span>
                             <button type="button"
                                     @click.stop="removeZone(currentPage - 1, zone.id)"
                                     class="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center shadow hover:bg-red-600">
@@ -166,7 +188,12 @@
                     <template x-for="zone in currentZones()" :key="zone.id">
                         <li class="flex items-center justify-between text-sm rounded px-2 py-1 border"
                             :class="zoneColorClass(zone.tool)">
-                            <span class="truncate" x-text="zone.label"></span>
+                            <div class="truncate">
+                                <span x-text="zone.label"></span>
+                                <span x-show="zone.cell_start"
+                                      class="text-xs opacity-60 ml-1"
+                                      x-text="'[' + (zone.cell_start || '') + ']'"></span>
+                            </div>
                             <button type="button"
                                     @click="removeZone(currentPage - 1, zone.id)"
                                     class="ml-1 text-red-500 hover:text-red-700 font-bold flex-shrink-0">
@@ -188,51 +215,108 @@
                          x-text="'Total: ' + totalZoneCount() + ' zone(s)'">
                     </div>
                 </div>
+
+                @if($isExcel)
+                <div class="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-500 space-y-1">
+                    <p class="font-semibold text-gray-600">Excel tips:</p>
+                    <p>Cell references (e.g. <code class="bg-gray-100 px-1 rounded">B5</code>) are detected automatically when you draw a zone.</p>
+                    <p>Field zones use the cell reference to insert the value directly into the cell.</p>
+                    <p>Signature zones are placed as images at the drawn pixel position.</p>
+                </div>
+                @endif
             </div>
         </div>
     </div>
 
-    {{-- PDF.js must be loaded before Alpine initialises the component --}}
+    {{-- PDF.js — only for PDF templates --}}
+    @if(!$isExcel)
     <script src="{{ asset('vendor/pdfjs/pdf.min.js') }}"></script>
+    @endif
+
+    {{-- SheetJS — only for Excel templates --}}
+    @if($isExcel)
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    @endif
+
+    <style>
+    #xls-content table {
+        border-collapse: collapse;
+        font-size: 12px;
+        font-family: Calibri, Arial, sans-serif;
+        background: white;
+        min-width: 100%;
+    }
+    #xls-content table td,
+    #xls-content table th {
+        border: 1px solid #d1d5db;
+        padding: 2px 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        max-width: 300px;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+        min-height: 20px;
+    }
+    #xls-content table th {
+        background: #f3f4f6;
+        font-weight: 600;
+        text-align: center;
+    }
+    </style>
 
     <script>
     function zoneDesigner() {
-        // Stored outside Alpine's reactive data so it is never wrapped in a Proxy.
-        // PDF.js internal classes use private fields (#r, #s …) which become
-        // inaccessible the moment Alpine's reactivity system proxies the object.
+        // Keep _pdfDoc outside Alpine reactive scope — PDF.js uses private class fields
+        // that become inaccessible when proxied by Alpine's reactivity system.
         let _pdfDoc = null;
 
         return {
+            isExcel:    {{ $isExcel ? 'true' : 'false' }},
             currentPage: 1,
-            pageCount: {{ $pageCount }},
+            pageCount:  {{ $isExcel ? 1 : $pageCount }},
             activeTool: null,
-            allZones: @json($existingZones),
-            isDrawing: false,
-            drawStart: null,
-            drawRect:  null,
-            canvasW:   1,
-            canvasH:   1,
-            saving:    false,
-            saved:     false,
-            pdfError:  null,
-            pdfUrl:    "{{ route('staff2.zones.pdf', $document) }}",
-            documentId: {{ $document->id }},
+            allZones:   @json($existingZones),
+            isDrawing:  false,
+            drawStart:  null,
+            drawRect:   null,
+            canvasW:    1,
+            canvasH:    1,
+            saving:     false,
+            saved:      false,
+            pdfError:   null,
+            xlsError:   null,
+            xlsLoading: false,
+            templateUrl: "{{ route('staff2.zones.pdf', $document) }}",
+            documentId:  {{ $document->id }},
             fieldSchema: @json($fieldSchema),
+
+            // ── Shared ────────────────────────────────────────────────────
+
+            init() {
+                if (this.isExcel) {
+                    this.loadXls();
+                } else {
+                    this.loadPdf();
+                }
+            },
 
             currentZones() {
                 return this.allZones[this.currentPage - 1] || [];
             },
 
             totalZoneCount() {
-                return Object.values(this.allZones).reduce((sum, z) => sum + (z ? z.length : 0), 0);
+                return Object.values(this.allZones).reduce(
+                    (sum, z) => sum + (z ? z.length : 0), 0
+                );
             },
 
+            // ── PDF path ──────────────────────────────────────────────────
+
             async loadPdf() {
-                // Legacy UMD build exposes window['pdfjs-dist/build/pdf']
                 const pdfjsLib = window['pdfjs-dist/build/pdf'];
                 if (!pdfjsLib) {
                     this.pdfError = 'PDF.js failed to load. Check that /vendor/pdfjs/pdf.min.js is accessible.';
-                    console.error('[ZoneDesigner] window["pdfjs-dist/build/pdf"] is undefined — pdf.min.js did not load');
+                    console.error('[ZoneDesigner] pdf.min.js did not load');
                     return;
                 }
 
@@ -240,7 +324,7 @@
                     '{{ asset('vendor/pdfjs/pdf.worker.min.js') }}';
 
                 try {
-                    _pdfDoc = await pdfjsLib.getDocument(this.pdfUrl).promise;
+                    _pdfDoc = await pdfjsLib.getDocument(this.templateUrl).promise;
                     this.pageCount = _pdfDoc.numPages;
                     await this.renderPage(this.currentPage);
                 } catch (err) {
@@ -255,10 +339,10 @@
                 const canvas    = document.getElementById('pdf-canvas');
                 const container = document.getElementById('canvas-wrap');
 
-                const baseViewport  = page.getViewport({ scale: 1 });
-                const desiredWidth  = container.offsetWidth || 900;
-                const scale         = desiredWidth / baseViewport.width;
-                const viewport      = page.getViewport({ scale });
+                const baseViewport = page.getViewport({ scale: 1 });
+                const desiredWidth = container.offsetWidth || 900;
+                const scale        = desiredWidth / baseViewport.width;
+                const viewport     = page.getViewport({ scale });
 
                 canvas.width  = viewport.width;
                 canvas.height = viewport.height;
@@ -270,6 +354,110 @@
                     viewport,
                 }).promise;
             },
+
+            async switchPage(num) {
+                await this.renderPage(num);
+            },
+
+            // ── XLS path ──────────────────────────────────────────────────
+
+            async loadXls() {
+                this.xlsLoading = true;
+                try {
+                    const resp = await fetch(this.templateUrl);
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    const ab = await resp.arrayBuffer();
+
+                    if (typeof XLSX === 'undefined') {
+                        throw new Error('SheetJS (XLSX) library did not load.');
+                    }
+
+                    const wb     = XLSX.read(ab, { type: 'array' });
+                    const wsName = wb.SheetNames[0];
+                    const ws     = wb.Sheets[wsName];
+
+                    // Render sheet as HTML table
+                    const html = XLSX.utils.sheet_to_html(ws, {
+                        id: 'xls-table',
+                        editable: false,
+                    });
+                    document.getElementById('xls-content').innerHTML = html;
+
+                    // Apply column widths from workbook metadata
+                    const table    = document.getElementById('xls-table');
+                    const allRows  = table.querySelectorAll('tr');
+                    const colInfo  = ws['!cols'] || [];
+
+                    if (allRows.length > 0) {
+                        const firstRowCells = allRows[0].querySelectorAll('td, th');
+                        colInfo.forEach((col, i) => {
+                            if (col && col.wpx && firstRowCells[i]) {
+                                firstRowCells[i].style.width    = col.wpx + 'px';
+                                firstRowCells[i].style.minWidth = col.wpx + 'px';
+                            }
+                        });
+                    }
+
+                    // Apply row heights from workbook metadata
+                    const rowInfo = ws['!rows'] || [];
+                    allRows.forEach((row, i) => {
+                        if (rowInfo[i] && rowInfo[i].hpx) {
+                            row.style.height = rowInfo[i].hpx + 'px';
+                        }
+                    });
+
+                    // Capture dimensions for zone normalisation
+                    await this.$nextTick();
+                    this.canvasW = table.offsetWidth  || 900;
+                    this.canvasH = table.offsetHeight || 1200;
+
+                } catch (err) {
+                    this.xlsError = 'Could not load Excel file: ' + err.message;
+                    console.error('[ZoneDesigner] XLS load failed:', err);
+                } finally {
+                    this.xlsLoading = false;
+                }
+            },
+
+            // Return all <td> cells whose bounding rect overlaps the drawn rectangle.
+            getCellsForRect(rect) {
+                const container = document.getElementById('canvas-wrap');
+                if (!container) return [];
+                const cRect  = container.getBoundingClientRect();
+                const covered = [];
+
+                document.querySelectorAll('#xls-content table td').forEach(td => {
+                    const r  = td.getBoundingClientRect();
+                    const x1 = r.left - cRect.left;
+                    const y1 = r.top  - cRect.top;
+                    const x2 = x1 + r.width;
+                    const y2 = y1 + r.height;
+
+                    if (rect.x < x2 && rect.x + rect.w > x1 &&
+                        rect.y < y2 && rect.y + rect.h > y1) {
+                        covered.push({
+                            row: td.parentElement.rowIndex,
+                            col: td.cellIndex,
+                        });
+                    }
+                });
+
+                return covered;
+            },
+
+            // Convert zero-based row/col to Excel cell reference (e.g. row=4, col=2 → "C5").
+            encodeCellRef(row, col) {
+                let colStr = '';
+                if (col < 26) {
+                    colStr = String.fromCharCode(65 + col);
+                } else {
+                    colStr = String.fromCharCode(64 + Math.floor(col / 26)) +
+                             String.fromCharCode(65 + (col % 26));
+                }
+                return colStr + (row + 1);
+            },
+
+            // ── Zone drawing (shared) ─────────────────────────────────────
 
             startDraw(e) {
                 if (!this.activeTool) return;
@@ -305,11 +493,9 @@
                 }
 
                 const pageIndex = this.currentPage - 1;
-                if (!this.allZones[pageIndex]) {
-                    this.allZones[pageIndex] = [];
-                }
+                if (!this.allZones[pageIndex]) this.allZones[pageIndex] = [];
 
-                this.allZones[pageIndex].push({
+                const zone = {
                     id:    Date.now(),
                     tool:  this.activeTool,
                     label: this.toolLabel(this.activeTool),
@@ -322,8 +508,23 @@
                     ny:    this.drawRect.y / this.canvasH,
                     nw:    this.drawRect.w / this.canvasW,
                     nh:    this.drawRect.h / this.canvasH,
-                });
+                };
 
+                // For Excel: detect which cells are covered and store the top-left reference.
+                // Field zones use cell_start for direct setCellValue() during signing.
+                if (this.isExcel) {
+                    const covered = this.getCellsForRect(this.drawRect);
+                    if (covered.length > 0) {
+                        covered.sort((a, b) => a.row - b.row || a.col - b.col);
+                        zone.cell_start = this.encodeCellRef(covered[0].row, covered[0].col);
+                        zone.cell_end   = this.encodeCellRef(
+                            covered[covered.length - 1].row,
+                            covered[covered.length - 1].col
+                        );
+                    }
+                }
+
+                this.allZones[pageIndex].push(zone);
                 this.activeTool = null;
                 this.drawRect   = null;
             },
@@ -357,15 +558,13 @@
                 return `left:${zone.x}px;top:${zone.y}px;width:${zone.w}px;height:${zone.h}px`;
             },
 
-            async switchPage(num) {
-                await this.renderPage(num);
-            },
+            // ── Save ──────────────────────────────────────────────────────
 
             async saveZones() {
                 this.saving = true;
                 try {
                     const res = await fetch(`/staff2/templates/${this.documentId}/zones`, {
-                        method: 'POST',
+                        method:  'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,

@@ -1,341 +1,119 @@
-# STRG Request Management System
+# Grant Management System
 
-> A Laravel-based workflow platform for managing grant requests, covering multi-stage approvals, digital signatures, and a full audit trail.
-
-> **AI-Assisted Development** — Built with [Claude](https://claude.ai) · [ChatGPT](https://chat.openai.com) · [Windsurf](https://codeium.com/windsurf)
+A full-stack Laravel application for managing grant requests through a structured multi-stage approval pipeline. Built for organisations that need a traceable, paperless workflow — from initial submission through staff review, digital signing, PDF stamping, and final completion. Designed for teams of administrators, reviewers, and approving officers who handle document-heavy request processes.
 
 ---
 
-## Table of Contents
+## Features
 
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [Technical Architecture](#technical-architecture)
-- [Installation](#installation)
-- [Roles & Workflow](#roles--workflow)
-- [Document System](#document-system)
-- [Development](#development)
-- [Testing](#testing)
-- [Deployment](#deployment)
-- [Troubleshooting](#troubleshooting)
-- [License](#license)
+- **Multi-stage approval workflow** — configurable state machine with role-gated transitions and concurrent-write protection via pessimistic locking
+- **PDF zone designer** — drag-and-drop signature and stamp zone placement powered by PDF.js
+- **Digital signature capture and stamping** — canvas-based signature pads with blank-detection; signatures are embedded into PDFs via FPDI at approval time
+- **Immutable audit trail** — every status transition is logged with actor, role, IP address, user agent, timestamp, and optional notes
+- **Role-based authorization** — four distinct roles with per-transition permission enforcement at the service layer
+- **White-label theming** — organisation name, logo, and colour scheme configurable through admin settings
+- **Checklist enforcement per request type** — Staff 1 cannot forward a request until all required checklist items are marked; flagged items block progression
+- **VOT budget breakdown support** — structured vote-code line items for budget-linked grant requests
 
 ---
 
-## Overview
-
-The STRG System digitises the full grant request lifecycle — from initial submission through multi-level review, digital sign-off, and completion. It replaces paper-based processes with a transparent, auditable workflow.
-
-**Goals:**
-- All forms, signatures, and documents handled digitally
-- Every action logged in an immutable audit trail
-- Role-based dashboards surface the right requests to the right people
-- Workflow rules enforced by code, not convention
-
----
-
-## Key Features
-
-### Workflow Engine
-
-- **State machine** with 6 statuses: `SUBMITTED → STAFF1_REVIEWED → STAFF2_APPROVED → COMPLETED` (plus `RETURNED` and `DECLINED`)
-- **Single transition service** (`WorkflowTransitionService`) is the only code path that changes request status
-- **Policy-based authorisation** (`RequestPolicy`) controls who can view, edit, sign, or change status
-- **Staff 2 override** — can approve a request still at `SUBMITTED`, bypassing Staff 1; role alone grants capability
-- **Revision cycle** — `RETURNED` requests can be edited and resubmitted
-
-### Checklist Enforcement
-
-- Staff 2 configures checklist items per request type
-- Staff 1 must mark every item checked or flagged before forwarding
-- Backend validates checklist completion as part of the transition — a UI-only bypass is impossible
-
-### Signature System
-
-- Digital signature capture via canvas (no third-party service required)
-- Applicant signs at submission; Staff 2 signs at approval
-- Signatures stored in a normalised `signatures` table (roles: `applicant`, `staff2`)
-- Staff 2 signature enforced server-side before `STAFF2_APPROVED` transition is allowed
-
-### Administrative Tools
-
-- User management with role assignment (Admin only)
-- Request type configuration: field schemas, VOT requirement, signature requirement, required documents
-- Template and supporting document upload per request type (Staff 2)
-- Checklist item management per request type (Staff 2)
-- Full audit log on every request
-
----
-
-## Technical Architecture
-
-### Stack
-
-| Layer | Technology |
-|---|---|
-| Backend | Laravel 11 · PHP 8.3+ |
-| Frontend | Blade · Tailwind CSS · Vite · Alpine.js |
-| Database | SQLite (dev) · MySQL (production) |
-| Authentication | Laravel Breeze (session-based) |
-
-### Application Structure
+## Workflow
 
 ```
-app/
-├── Enums/
-│   ├── RequestStatus.php          # 6-state workflow enum
-│   └── DocumentType.php           # template / user_submission / staff_attachment
-├── Http/
-│   ├── Controllers/               # RequestController, DocumentController, etc.
-│   ├── Middleware/                 # RoleMiddleware, PerformanceMonitoring
-│   └── Requests/                  # StoreRequestRequest, UpdateStatusRequest, etc.
-├── Models/
-│   ├── Request.php                # Core request model
-│   ├── RequestType.php            # Request type config (field schema, VOT, checklist)
-│   ├── Document.php               # Unified document model (3 types)
-│   ├── ChecklistItem.php          # Per-request-type checklist items
-│   ├── ChecklistReview.php        # Staff 1 review result per checklist item
-│   ├── Signature.php              # Normalised multi-role signatures
-│   ├── AuditLog.php
-│   ├── Notification.php
-│   └── VotCode.php
-├── Policies/
-│   └── RequestPolicy.php          # view / changeStatus / revise / addComment / review / print
-└── Services/
-    ├── WorkflowTransitionService.php   # Single entry point for all status changes
-    ├── DashboardService.php            # Role-specific dashboard data
-    ├── NotificationService.php         # Role-based in-app notifications
-    └── RequestService.php
+                        [Staff 2 override — skips Staff 1]
+                ┌──────────────────────────────────────────────────┐
+                │                                                  │
+                ▼                                                  │
+          SUBMITTED ──[Staff 1]──► STAFF1_REVIEWED ──[Staff 2]──► STAFF2_APPROVED ──[Staff 1]──► COMPLETED
+              │  ▲                       │                              │
+              │  │                       │                              │
+              │  └──── resubmit ──── RETURNED ◄──────── return ─────────┘
+              │
+              └──────────────────────────────────────────────────────────────────────────────► DECLINED
+                                                              [Staff 1 from SUBMITTED, or Staff 1/2 from any active state]
 ```
 
-### Database
-
-Key tables: `requests`, `request_types`, `documents`, `checklist_items`, `checklist_reviews`, `signatures`, `audit_logs`, `notifications`, `vot_codes`, `comments`, `users`
-
----
-
-## Installation
-
-### Prerequisites
-
-- PHP 8.3+
-- Composer 2.x
-- Node.js 18+
-- SQLite 3.x (dev) or MySQL 8.0+ (production)
-
-### Quick Start
-
-```bash
-# 1. Install PHP dependencies
-composer install
-
-# 2. Install JS dependencies
-npm install
-
-# 3. Configure environment
-cp .env.example .env
-php artisan key:generate
-
-# 4. Create and seed the database
-php artisan migrate --seed
-
-# 5. Link public storage
-php artisan storage:link
-
-# 6. Start the dev server (Laravel + Vite)
-composer run dev
-```
-
-### Environment
-
-Copy `.env.example` to `.env` and set at minimum:
-
-```env
-APP_NAME="STRG System"
-APP_ENV=local
-APP_DEBUG=false
-APP_URL=http://localhost:8000
-
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=strg
-DB_USERNAME=root
-DB_PASSWORD=
-```
-
----
-
-## Roles & Workflow
-
-### Roles
-
-| Role | Responsibilities |
-|---|---|
-| **Admission** | Submit new requests, revise returned requests, track own request status |
-| **Staff 1** | Verify submitted requests, complete checklist review, forward to Staff 2 or return with notes |
-| **Staff 2** | Review and approve requests, manage request types, templates, checklists, and VOT codes |
-| **Admin** | User management and role assignment only |
-
-### Workflow State Machine
-
-```
-SUBMITTED ──► STAFF1_REVIEWED ──► STAFF2_APPROVED ──► COMPLETED
-    │               │                    │
-    └───────────────┴────────────────► RETURNED
-    │               │
-    └───────────────┴────────────────► DECLINED
-    │
-    └──► STAFF2_APPROVED  (Staff 2 override — bypasses Staff 1)
-
-RETURNED ──► SUBMITTED  (Applicant revises and resubmits)
-```
-
-**Key rules:**
-- Staff 1 cannot forward until all checklist items are reviewed
-- Staff 2 must have a saved signature before approving
-- All transitions go through `WorkflowTransitionService` — no direct status updates anywhere else
-
-### Demo Accounts
-
-All demo accounts use the password `password`.
-
-| Role | Email |
-|---|---|
-| Admission | admission@example.com |
-| Staff 1 | staff1@example.com |
-| Staff 2 | staff2@example.com |
-| Admin | admin@example.com |
-
----
-
-## Document System
-
-All files are stored in the unified `documents` table, separated by `document_type`:
-
-| Type | Who uploads | Purpose |
+| Transition | Actor | Requirement |
 |---|---|---|
-| `template` | Staff 2 | Blank form files linked to a request type; shown to Admission when creating a request |
-| `user_submission` | Admission | Files attached to a specific request at submission or revision |
-| `staff_attachment` | Staff 2 | Files attached to a specific request during review |
-
-Downloads are always routed through `documents.download` (authenticated, logged) — never via a direct `storage/` URL.
-
----
-
-## Development
-
-### Commands
-
-```bash
-# Run all tests
-php artisan test
-
-# Code style (Laravel Pint)
-./vendor/bin/pint
-
-# Static analysis (PHPStan)
-./vendor/bin/phpstan analyse
-
-# Clear all caches
-php artisan optimize:clear
-
-# Refresh database with seed data
-php artisan migrate:fresh --seed
-```
-
-### Adding a New Request Type
-
-1. Log in as **Staff 2** → Dashboard → Request Types → Add New
-2. Set name, description, field schema (JSON), and whether VOT items and/or a signature are required
-3. Upload template files and link them to the request type
-4. Add checklist items for Staff 1 to review
-
-### Adding a New Workflow Transition
-
-All status transitions are defined in `WorkflowTransitionService::getAllowedTransitions()`. Add the new `role → [from_status => [to_statuses]]` entry there. Audit logging, notifications, and requirement validation are handled automatically by `executeTransition()`.
+| `SUBMITTED → STAFF1_REVIEWED` | Staff 1 | All required checklist items checked; no flagged items outstanding |
+| `STAFF1_REVIEWED → STAFF2_APPROVED` | Staff 2 | Mandatory digital signature |
+| `SUBMITTED → STAFF2_APPROVED` | Staff 2 | Override path — logged as `override_approved` |
+| `STAFF2_APPROVED → COMPLETED` | Staff 1 | Final processing; triggers PDF stamp |
+| `Any active → RETURNED` | Staff 1 or Staff 2 | Written return reason required |
+| `RETURNED → SUBMITTED` | Admission | Resubmission after addressing feedback |
+| `Any active → DECLINED` | Staff 1 or Staff 2 | Written decline reason required; terminal state |
 
 ---
 
-## Testing
+## Roles
 
-```bash
-# Full test suite
-php artisan test
-
-# Feature tests only
-php artisan test tests/Feature
-
-# With coverage (requires Xdebug or PCOV)
-php artisan test --coverage --min=70
-```
+| Role | Description | Permissions |
+|---|---|---|
+| **Admission** | Submits and manages grant requests | Create requests, upload supporting documents, capture applicant signature, resubmit returned requests, track status |
+| **Staff 1** | First-line reviewer and processor | Review checklist items, verify documents, forward to Staff 2, return or decline, finalise completed requests |
+| **Staff 2** | Approving authority | Approve with digital signature, override Staff 1 stage, return or decline, manage request types and checklists |
+| **Admin** | System administrator | Manage user accounts and roles, configure branding and system-wide settings |
 
 ---
 
-## Deployment
+## Tech Stack
+
+- **Laravel 13, PHP 8.3**
+- **SQLite** (development) / **MySQL 8.0** (production)
+- **Tailwind CSS, Alpine.js, Vite**
+- **FPDI 2.x** — PDF overlay stamping (signatures, approval marks)
+- **DomPDF** — server-side PDF generation
+- **PDF.js** — in-browser PDF zone designer
+- **PhpSpreadsheet** — Excel export for request data
+
+---
+
+## Requirements
+
+- PHP 8.2+
+- Composer
+- Node.js 18+
+- MySQL 8.0 (production)
+
+---
+
+## Quick Start
 
 ```bash
-# Install production dependencies
-composer install --no-dev --optimize-autoloader
-
-# Build frontend assets
-npm ci && npm run build
-
-# Configure environment
+git clone https://github.com/your-username/grant-management-system.git
+cd grant-management-system
+composer install
 cp .env.example .env
-# Set APP_ENV=production, APP_DEBUG=false, DB_* for MySQL
-
 php artisan key:generate
-php artisan migrate --force
+php artisan migrate --seed
 php artisan storage:link
-
-# Cache config, routes, and views
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+npm install && npm run build
+php artisan serve
 ```
 
-**Pre-launch checklist:**
-
-- [ ] `APP_DEBUG=false`
-- [ ] `APP_ENV=production`
-- [ ] Strong `APP_KEY` generated
-- [ ] Database credentials are not default values
-- [ ] `storage/` and `bootstrap/cache/` are writable by the web server only
-- [ ] HTTPS configured
-- [ ] Mail credentials set for notification delivery
+The application will be available at `http://localhost:8000`.
 
 ---
 
-## Troubleshooting
+## Default Accounts
 
-**Uploaded files not showing / 404 on documents**
-```bash
-php artisan storage:link
-```
+> **Note:** All seeded accounts use the password `password`. Do not deploy these credentials to any non-local environment.
 
-**Login redirect loop**
-```bash
-php artisan config:clear && php artisan cache:clear
-```
+| Email | Password | Role |
+|---|---|---|
+| `admin@example.com` | `password` | Admin |
+| `staff1@example.com` | `password` | Staff 1 |
+| `staff2@example.com` | `password` | Staff 2 |
+| `admissions@example.com` | `password` | Admission |
 
-**Database out of sync**
-```bash
-# Development only — destroys all data
-php artisan migrate:fresh --seed
-```
+---
 
-**Vite assets not loading**
-```bash
-npm run build
-```
+## Screenshots
+
+> Coming soon — screenshots of the request dashboard, PDF zone designer, signature capture flow, and audit trail will be added here.
 
 ---
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
-
----
-
-*Version 2.0.0*
+This project is open-sourced under the [MIT License](LICENSE).

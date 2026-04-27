@@ -5,32 +5,80 @@ namespace App\Services;
 use App\Models\SystemSetting;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Schema;
 
 class SettingsService
 {
-    private const CACHE_KEY = 'system_settings';
-
     public static function all(): Collection
     {
-        return Cache::rememberForever(self::CACHE_KEY, function () {
-            $settings = self::defaultSettings();
-
-            if (Schema::hasTable('system_settings')) {
-                SystemSetting::query()
-                    ->get()
-                    ->each(function (SystemSetting $setting) use (&$settings) {
-                        $settings[$setting->key] = $setting;
-                    });
+        try {
+            $cached = Cache::get('v2_all_settings');
+            if ($cached && !($cached instanceof \Illuminate\Support\Collection)) {
+                Cache::forget('v2_all_settings');
+                $cached = null;
             }
+            if ($cached) {
+                $first = $cached->first();
+                if ($first && !($first instanceof \App\Models\SystemSetting)) {
+                    Cache::forget('v2_all_settings');
+                    $cached = null;
+                }
+            }
+        } catch (\Throwable $e) {
+            Cache::forget('v2_all_settings');
+            $cached = null;
+        }
 
-            return collect($settings);
+        if (!$cached) {
+            $cached = SystemSetting::all()->keyBy('key');
+            Cache::forever('v2_all_settings', $cached);
+        }
+
+        if ($cached->isEmpty()) {
+            return static::defaults();
+        }
+
+        return $cached;
+    }
+
+    private static function defaults(): Collection
+    {
+        return collect([
+            'app_name'            => config('app.name', 'Grant Management System'),
+            'institution_name'    => env('SYSTEM_ORGANIZATION', 'Your Organization'),
+            'institution_tagline' => '',
+            'primary_color'       => '#1d4ed8',
+            'accent_color'        => '#7c3aed',
+            'footer_text'         => '© ' . date('Y') . ' Grant Management System',
+            'support_email'       => '',
+            'app_logo'            => null,
+            'app_favicon'         => null,
+            'mail_from_name'      => config('app.name', 'Grant Management System'),
+        ])->map(function ($value, $key) {
+            return (object)['key' => $key, 'value' => $value];
         });
     }
 
-    public static function get(string $key, mixed $fallback = null): mixed
+    public static function get(string $key, mixed $default = null): mixed
     {
-        return self::all()->get($key)?->value ?? $fallback;
+        try {
+            $cached = Cache::get("v2_setting_{$key}");
+            if ($cached && !($cached instanceof \App\Models\SystemSetting)) {
+                Cache::forget("v2_setting_{$key}");
+                $cached = null;
+            }
+        } catch (\Throwable $e) {
+            Cache::forget("v2_setting_{$key}");
+            $cached = null;
+        }
+
+        if (!$cached) {
+            $cached = SystemSetting::find($key);
+            if ($cached) {
+                Cache::forever("v2_setting_{$key}", $cached);
+            }
+        }
+
+        return $cached?->value ?? $default;
     }
 
     public static function set(string $key, mixed $value, array $attributes = []): SystemSetting
@@ -40,84 +88,10 @@ class SettingsService
             array_merge(['value' => $value], $attributes)
         );
 
-        Cache::forget(self::CACHE_KEY);
+        // FIX 1: forget both versioned keys on write
+        Cache::forget("v2_setting_{$key}");
+        Cache::forget('v2_all_settings');
 
         return $setting;
-    }
-
-    private static function defaultSettings(): array
-    {
-        $defaults = [
-            'app_name' => [
-                'value' => config('app.name', 'Grant Request System'),
-                'type' => 'text',
-                'group' => 'branding',
-                'label' => 'Application Name',
-            ],
-            'institution_name' => [
-                'value' => config('system.branding.organization', 'Your Organization'),
-                'type' => 'text',
-                'group' => 'branding',
-                'label' => 'Institution Name',
-            ],
-            'institution_tagline' => [
-                'value' => '',
-                'type' => 'text',
-                'group' => 'branding',
-                'label' => 'Institution Tagline',
-            ],
-            'app_logo' => [
-                'value' => '',
-                'type' => 'image',
-                'group' => 'branding',
-                'label' => 'Application Logo',
-            ],
-            'app_favicon' => [
-                'value' => '',
-                'type' => 'image',
-                'group' => 'branding',
-                'label' => 'Application Favicon',
-            ],
-            'primary_color' => [
-                'value' => '#003087',
-                'type' => 'color',
-                'group' => 'branding',
-                'label' => 'Primary Color',
-            ],
-            'accent_color' => [
-                'value' => '#C8971E',
-                'type' => 'color',
-                'group' => 'branding',
-                'label' => 'Accent Color',
-            ],
-            'footer_text' => [
-                'value' => '',
-                'type' => 'text',
-                'group' => 'branding',
-                'label' => 'Footer Text',
-            ],
-            'support_email' => [
-                'value' => '',
-                'type' => 'email',
-                'group' => 'contact',
-                'label' => 'Support Email',
-            ],
-            'allowed_email_domains' => [
-                'value' => '',
-                'type' => 'text',
-                'group' => 'security',
-                'label' => 'Allowed Email Domains',
-            ],
-            'mail_from_name' => [
-                'value' => config('app.name', 'Grant Request System'),
-                'type' => 'text',
-                'group' => 'mail',
-                'label' => 'Mail From Name',
-            ],
-        ];
-
-        return collect($defaults)
-            ->map(fn (array $setting, string $key) => new SystemSetting(array_merge(['key' => $key], $setting)))
-            ->all();
     }
 }

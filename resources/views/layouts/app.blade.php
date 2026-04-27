@@ -131,5 +131,8 @@
         </div>
 
         @stack('scripts')
+        @if(app()->environment('local') && auth()->check())
+            @include('_dev-switcher')
+        @endif
     </body>
 </html>

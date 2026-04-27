@@ -10,6 +10,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\RequestTypeController;
 use App\Http\Controllers\Staff2AdminController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('welcome'));
@@ -97,5 +98,15 @@ Route::middleware('auth')->group(function () {
         Route::patch('/requests/{requestModel}/checklist/bulk', [ChecklistController::class, 'bulkUpdate'])->name('requests.checklist.bulk');
     });
 });
+
+if (app()->environment('local')) {
+    Route::post('/dev-login', function (\Illuminate\Http\Request $request) {
+        $user = \App\Models\User::where('email', $request->email)
+            ->where('is_active', true)
+            ->firstOrFail();
+        Auth::login($user);
+        return redirect()->back();
+    })->name('dev.login');
+}
 
 require __DIR__ . '/auth.php';

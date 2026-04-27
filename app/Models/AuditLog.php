@@ -41,11 +41,10 @@ class AuditLog extends Model
     public function getActionLabel(): string
     {
         return match($this->action) {
-            'staff1_approved' => 'Staff 1 Approved',
+            'staff1_reviewed' => 'Staff 1 Reviewed',
             'staff2_approved' => 'Staff 2 Approved',
-            'dean_approved' => 'Dean Approved',
             'returned' => 'Returned for Revision',
-            'rejected' => 'Rejected',
+            'declined' => 'Declined',
             'override_staff1' => 'Staff 1 Override',
             'resubmitted' => 'Resubmitted',
             'status_changed' => 'Status Changed',

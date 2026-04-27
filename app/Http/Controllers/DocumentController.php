@@ -89,7 +89,7 @@ class DocumentController extends BaseController
             abort(403);
         }
 
-        Storage::disk('public')->delete($document->file_path);
+        Storage::disk($document->storageDisk())->delete($document->file_path);
         $document->delete();
 
         return redirect()->back()->with('success', 'Document removed.');
@@ -107,13 +107,15 @@ class DocumentController extends BaseController
             abort(403);
         }
 
-        if (!Storage::disk('public')->exists($document->file_path)) {
+        $disk = $document->storageDisk();
+
+        if (!Storage::disk($disk)->exists($document->file_path)) {
             abort(404, 'File not found.');
         }
 
         $document->incrementDownloadCount();
 
-        return Storage::disk('public')->download($document->file_path, $document->original_name);
+        return Storage::disk($disk)->download($document->file_path, $document->original_name);
     }
 
     /** Serve file inline for in-browser preview (PDF/images open in browser tab). */
@@ -128,11 +130,13 @@ class DocumentController extends BaseController
             abort(403);
         }
 
-        if (!Storage::disk('public')->exists($document->file_path)) {
+        $disk = $document->storageDisk();
+
+        if (!Storage::disk($disk)->exists($document->file_path)) {
             abort(404, 'File not found.');
         }
 
-        $fullPath = Storage::disk('public')->path($document->file_path);
+        $fullPath = Storage::disk($disk)->path($document->file_path);
         $mimeType = mime_content_type($fullPath) ?: 'application/octet-stream';
 
         return response()->file($fullPath, [

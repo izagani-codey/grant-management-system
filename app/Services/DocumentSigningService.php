@@ -74,9 +74,6 @@ class DocumentSigningService
         $sourcePath = Storage::disk('public')->path($userPdf->file_path);
 
         try {
-            Storage::makeDirectory('tmp');
-            Storage::makeDirectory('private/signed');
-
             $pdf = new Fpdi('P', 'mm');
             $pdf->SetAutoPageBreak(false);
             $pageCount = $pdf->setSourceFile($sourcePath);
@@ -152,7 +149,7 @@ class DocumentSigningService
 
             $filename    = 'signed_' . $request->ref_number . '_' . time() . '.pdf';
             $storagePath = "documents/request-{$request->id}/signed/{$filename}";
-            Storage::disk('public')->put($storagePath, $pdf->Output('S'));
+            Storage::disk('local')->put($storagePath, $pdf->Output('S'));
 
             $signedDoc = Document::create([
                 'request_id'      => $request->id,
@@ -258,9 +255,9 @@ class DocumentSigningService
 
             $filename    = 'signed_' . $request->ref_number . '_' . time() . '.xlsx';
             $storagePath = "documents/request-{$request->id}/signed/{$filename}";
-            $fullPath    = Storage::disk('public')->path($storagePath);
+            $fullPath    = Storage::disk('local')->path($storagePath);
 
-            Storage::disk('public')->makeDirectory(
+            Storage::disk('local')->makeDirectory(
                 "documents/request-{$request->id}/signed"
             );
 

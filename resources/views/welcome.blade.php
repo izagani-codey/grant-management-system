@@ -1,9 +1,20 @@
+@php
+    $appName = $settings['app_name']->value ?? config('app.name', 'Grant Request System');
+    $institutionName = $settings['institution_name']->value ?? config('system.branding.organization', 'Your Organization');
+    $tagline = $settings['institution_tagline']->value ?? '';
+    $primaryColor = $settings['primary_color']->value ?? '#003087';
+    $accentColor = $settings['accent_color']->value ?? '#C8971E';
+    $footerText = $settings['footer_text']->value ?? '';
+    $logoPath = $settings['app_logo']->value ?? '';
+    $logoUrl = $logoPath ? asset('storage/' . $logoPath) : null;
+    $brandInitial = mb_strtoupper(mb_substr($institutionName ?: $appName, 0, 1));
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('system.branding.product_name', 'Grant Request Management System') }}</title>
+    <title>{{ $appName }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,8 +23,8 @@
         body { font-family: 'Inter', sans-serif; }
 
         :root {
-            --primary-color: #003087;
-            --accent-color: #C8971E;
+            --primary-color: {{ $primaryColor }};
+            --accent-color: {{ $accentColor }};
         }
 
         .gradient-text {
@@ -56,10 +67,16 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center gap-3">
-                    <img src="{{ asset('Images/logo.png') }}" alt="{{ config('system.branding.organization') }} Logo" class="h-10 w-auto">
+                    @if($logoUrl)
+                        <img src="{{ $logoUrl }}" alt="{{ $institutionName }} Logo" class="h-10 w-auto">
+                    @else
+                        <div class="h-10 w-10 rounded-lg text-white font-bold flex items-center justify-center" style="background: var(--primary-color);">
+                            {{ $brandInitial }}
+                        </div>
+                    @endif
                     <div class="flex flex-col leading-tight">
-                        <span class="font-extrabold text-sm tracking-wide" style="color: var(--primary-color);">{{ config('system.branding.organization') }}</span>
-                        <span class="text-xs text-gray-500 font-medium">{{ config('system.branding.product_name') }}</span>
+                        <span class="font-extrabold text-sm tracking-wide" style="color: var(--primary-color);">{{ $institutionName }}</span>
+                        <span class="text-xs text-gray-500 font-medium">{{ $appName }}</span>
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
@@ -93,17 +110,23 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center">
                 <div class="flex justify-center mb-6">
-                    <img src="{{ asset('Images/logo.png') }}" alt="{{ config('system.branding.organization') }}" class="h-20 w-auto opacity-90">
+                    @if($logoUrl)
+                        <img src="{{ $logoUrl }}" alt="{{ $institutionName }}" class="h-20 w-auto opacity-90">
+                    @else
+                        <div class="h-20 w-20 rounded-2xl text-white font-bold text-3xl flex items-center justify-center border border-white/20" style="background: rgba(255,255,255,0.15);">
+                            {{ $brandInitial }}
+                        </div>
+                    @endif
                 </div>
                 <p class="text-sm font-semibold uppercase tracking-widest mb-3" style="color: var(--accent-color);">
-                    {{ config('system.branding.organization') }}
+                    {{ $institutionName }}
                 </p>
                 <h1 class="hero-title text-4xl md:text-5xl font-bold mb-6 leading-tight">
-                    {{ config('system.branding.request_label', 'Grant Request') }}<br>
+                    {{ $appName }}<br>
                     <span style="color: var(--accent-color);">Management System</span>
                 </h1>
                 <p class="text-lg md:text-xl mb-10 text-blue-100 max-w-2xl mx-auto">
-                    A fully digital workflow for grant request submission, multi-level review, and approval — from initial submission to final completion.
+                    {{ $tagline ?: 'A fully digital workflow for request submission, multi-level review, and approval from initial submission to final completion.' }}
                 </p>
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
                     @guest
@@ -177,7 +200,7 @@
                 <!-- Review Process -->
                 <div class="card-hover bg-white p-8 rounded-xl shadow-md border border-gray-100">
                     <div class="w-12 h-12 rounded-lg flex items-center justify-center mb-6" style="background: #FBF5E8;">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--miit-gold);">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--accent-color);">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                         </svg>
                     </div>
@@ -265,28 +288,28 @@
             <div class="grid md:grid-cols-4 gap-8">
                 <div class="text-center">
                     <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: #E8F0FB;">
-                        <span class="text-2xl font-bold" style="color: var(--miit-blue);">1</span>
+                        <span class="text-2xl font-bold" style="color: var(--primary-color);">1</span>
                     </div>
                     <h3 class="text-base font-semibold text-gray-900 mb-2">Submit Request</h3>
                     <p class="text-gray-500 text-sm">Fill out the form with details, VOT items, and digital signature</p>
                 </div>
                 <div class="text-center">
                     <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: #E8F0FB;">
-                        <span class="text-2xl font-bold" style="color: var(--miit-blue);">2</span>
+                        <span class="text-2xl font-bold" style="color: var(--primary-color);">2</span>
                     </div>
                     <h3 class="text-base font-semibold text-gray-900 mb-2">Staff Verification</h3>
                     <p class="text-gray-500 text-sm">Staff 1 verifies and forwards to the recommending officer</p>
                 </div>
                 <div class="text-center">
                     <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: #E8F0FB;">
-                        <span class="text-2xl font-bold" style="color: var(--miit-blue);">3</span>
+                        <span class="text-2xl font-bold" style="color: var(--primary-color);">3</span>
                     </div>
                     <h3 class="text-base font-semibold text-gray-900 mb-2">Recommendation</h3>
                     <p class="text-gray-500 text-sm">Staff 2 reviews, signs, and recommends for final approval</p>
                 </div>
                 <div class="text-center">
                     <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: #FBF5E8;">
-                        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20" style="color: var(--miit-gold);">
+                        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20" style="color: var(--accent-color);">
                             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                         </svg>
                     </div>
@@ -302,15 +325,15 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid md:grid-cols-3 gap-8 text-center">
                 <div>
-                    <div class="text-4xl font-bold mb-2" style="color: var(--miit-blue);">100%</div>
+                    <div class="text-4xl font-bold mb-2" style="color: var(--primary-color);">100%</div>
                     <p class="text-gray-500 font-medium">Digital Process — No Paperwork</p>
                 </div>
                 <div>
-                    <div class="text-4xl font-bold mb-2" style="color: var(--miit-blue);">24/7</div>
+                    <div class="text-4xl font-bold mb-2" style="color: var(--primary-color);">24/7</div>
                     <p class="text-gray-500 font-medium">Accessible Online Anytime</p>
                 </div>
                 <div>
-                    <div class="text-4xl font-bold mb-2" style="color: var(--miit-gold);">4 Roles</div>
+                    <div class="text-4xl font-bold mb-2" style="color: var(--accent-color);">4 Roles</div>
                     <p class="text-gray-500 font-medium">Admission · Staff 1 · Staff 2 · Admin</p>
                 </div>
             </div>
@@ -324,7 +347,7 @@
                 Ready to Submit Your Request?
             </h2>
             <p class="text-lg mb-8 text-blue-100">
-                Sign in with your {{ config('system.branding.organization') }} account to get started with the {{ config('system.branding.product_name') }}.
+                Sign in with your {{ $institutionName }} account to get started with {{ $appName }}.
             </p>
             @guest
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
@@ -357,19 +380,24 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col md:flex-row items-center justify-between gap-4">
                 <div class="flex items-center gap-3">
-                    <img src="{{ asset('Images/logo.png') }}" alt="{{ config('system.branding.organization') }}" class="h-10 w-auto opacity-80">
+                    @if($logoUrl)
+                        <img src="{{ $logoUrl }}" alt="{{ $institutionName }}" class="h-10 w-auto opacity-80">
+                    @else
+                        <div class="h-10 w-10 rounded-lg text-white font-bold flex items-center justify-center" style="background: var(--primary-color);">
+                            {{ $brandInitial }}
+                        </div>
+                    @endif
                     <div>
-                        <p class="font-bold text-sm" style="color: var(--accent-color);">{{ config('system.branding.organization') }}</p>
-                        <p class="text-gray-400 text-xs">{{ config('system.branding.product_name') }}</p>
+                        <p class="font-bold text-sm" style="color: var(--accent-color);">{{ $institutionName }}</p>
+                        <p class="text-gray-400 text-xs">{{ $appName }}</p>
                     </div>
                 </div>
                 <p class="text-gray-500 text-sm">
-                    © {{ date('Y') }} {{ config('system.branding.organization') }}. All rights reserved.
+                    {{ $footerText ?: '© ' . date('Y') . ' ' . $institutionName . '. All rights reserved.' }}
                 </p>
             </div>
         </div>
     </footer>
 </body>
 </html>
-
 

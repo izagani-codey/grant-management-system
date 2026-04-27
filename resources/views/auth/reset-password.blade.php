@@ -2,7 +2,7 @@
     <div class="bg-white border border-slate-200 shadow-lg rounded-2xl px-6 py-7 sm:px-8">
         <div class="mb-6">
             <h1 class="text-2xl font-bold text-slate-900">Set New Password</h1>
-            <p class="mt-1 text-sm text-slate-500">Choose a strong password for your UniKL MIIT account.</p>
+            <p class="mt-1 text-sm text-slate-500">Choose a strong password for your account.</p>
         </div>
 
         <form method="POST" action="{{ route('password.store') }}" class="space-y-4">

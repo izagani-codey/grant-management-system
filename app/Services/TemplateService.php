@@ -96,7 +96,6 @@ class TemplateService
             'ref_number' => $request->ref_number ?? '',
             'request_type' => $request->requestType->name ?? '',
             'total_amount' => number_format($request->total_amount ?? 0, 2),
-            'deadline' => $request->deadline?->format('d M Y') ?? '',
             'description' => $request->payload['description'] ?? '',
             'submitted_at' => $request->submitted_at?->format('d M Y') ?? '',
             default => '',

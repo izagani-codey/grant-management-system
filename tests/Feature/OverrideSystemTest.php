@@ -55,7 +55,7 @@ class OverrideSystemTest extends TestCase
 
     public function test_only_staff2_can_toggle_override_mode(): void
     {
-        $roles = ['admission', 'staff1', 'dean', 'admin'];
+        $roles = ['admission', 'staff1', 'admin'];
         
         foreach ($roles as $role) {
             $user = User::factory()->create(['role' => $role]);
@@ -275,7 +275,7 @@ class OverrideSystemTest extends TestCase
 
     public function test_other_roles_do_not_see_override_ui(): void
     {
-        $roles = ['admission', 'staff1', 'dean', 'admin'];
+        $roles = ['admission', 'staff1', 'admin'];
         
         foreach ($roles as $role) {
             $user = User::factory()->create(['role' => $role]);
@@ -308,7 +308,7 @@ class OverrideSystemTest extends TestCase
 
     public function test_non_staff2_users_cannot_override(): void
     {
-        $roles = ['admission', 'staff1', 'dean', 'admin'];
+        $roles = ['admission', 'staff1', 'admin'];
         
         foreach ($roles as $role) {
             $user = User::factory()->create(['role' => $role]);
@@ -398,7 +398,7 @@ class OverrideSystemTest extends TestCase
     }
 
     // Override Limitation Tests
-    public function test_override_cannot_bypass_dean_approval(): void
+    public function test_override_cannot_bypass_completion_stage(): void
     {
         $request = GrantRequest::factory()->create([
             'status_id' => RequestStatus::STAFF2_APPROVED->value,
@@ -409,11 +409,10 @@ class OverrideSystemTest extends TestCase
             'override_enabled' => true,
         ]);
 
-        // Staff 2 should not be able to override to DEAN_APPROVED
+        // Staff 2 should not be able to override directly to COMPLETED
         $response = $this->actingAs($staff2)->patch("/requests/{$request->id}/status", [
-            'status_id' => RequestStatus::DEAN_APPROVED->value,
+            'status_id' => RequestStatus::COMPLETED->value,
             'notes' => 'Override attempt',
-            'dean_signature_data' => 'data:image/png;base64,CCCC',
         ]);
 
         $response->assertForbidden();

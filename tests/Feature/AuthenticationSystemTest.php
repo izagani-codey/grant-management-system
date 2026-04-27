@@ -24,7 +24,7 @@ class AuthenticationSystemTest extends TestCase
     {
         $userData = [
             'name' => 'Test User',
-            'email' => 'test@unikl.edu.my',
+            'email' => 'test@example.edu',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'staff_id' => 'STAFF001',
@@ -41,7 +41,7 @@ class AuthenticationSystemTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'name' => 'Test User',
-            'email' => 'test@unikl.edu.my',
+            'email' => 'test@example.edu',
             'staff_id' => 'STAFF001',
             'designation' => 'Lecturer',
             'department' => 'Faculty of Engineering',
@@ -73,11 +73,11 @@ class AuthenticationSystemTest extends TestCase
 
     public function test_user_cannot_register_with_duplicate_email(): void
     {
-        User::factory()->create(['email' => 'test@unikl.edu.my']);
+        User::factory()->create(['email' => 'test@example.edu']);
 
         $userData = [
             'name' => 'Test User',
-            'email' => 'test@unikl.edu.my',
+            'email' => 'test@example.edu',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'staff_id' => 'STAFF001',
@@ -97,12 +97,12 @@ class AuthenticationSystemTest extends TestCase
     public function test_user_can_login_with_valid_credentials(): void
     {
         $user = User::factory()->create([
-            'email' => 'test@unikl.edu.my',
+            'email' => 'test@example.edu',
             'password' => Hash::make('password123'),
         ]);
 
         $response = $this->post('/login', [
-            'email' => 'test@unikl.edu.my',
+            'email' => 'test@example.edu',
             'password' => 'password123',
         ]);
 
@@ -113,12 +113,12 @@ class AuthenticationSystemTest extends TestCase
     public function test_user_cannot_login_with_invalid_password(): void
     {
         $user = User::factory()->create([
-            'email' => 'test@unikl.edu.my',
+            'email' => 'test@example.edu',
             'password' => Hash::make('password123'),
         ]);
 
         $response = $this->post('/login', [
-            'email' => 'test@unikl.edu.my',
+            'email' => 'test@example.edu',
             'password' => 'wrongpassword',
         ]);
 
@@ -129,7 +129,7 @@ class AuthenticationSystemTest extends TestCase
     public function test_user_cannot_login_with_nonexistent_email(): void
     {
         $response = $this->post('/login', [
-            'email' => 'nonexistent@unikl.edu.my',
+            'email' => 'nonexistent@example.edu',
             'password' => 'password123',
         ]);
 
@@ -229,10 +229,10 @@ class AuthenticationSystemTest extends TestCase
     // Password Reset Tests
     public function test_user_can_request_password_reset(): void
     {
-        $user = User::factory()->create(['email' => 'test@unikl.edu.my']);
+        $user = User::factory()->create(['email' => 'test@example.edu']);
 
         $response = $this->post('/forgot-password', [
-            'email' => 'test@unikl.edu.my',
+            'email' => 'test@example.edu',
         ]);
 
         $response->assertRedirect('/');
@@ -244,7 +244,7 @@ class AuthenticationSystemTest extends TestCase
     public function test_user_cannot_request_password_reset_with_invalid_email(): void
     {
         $response = $this->post('/forgot-password', [
-            'email' => 'invalid@unikl.edu.my',
+            'email' => 'invalid@example.edu',
         ]);
 
         $response->assertRedirect('/');
@@ -346,21 +346,21 @@ class AuthenticationSystemTest extends TestCase
     public function test_login_is_rate_limited(): void
     {
         $user = User::factory()->create([
-            'email' => 'test@unikl.edu.my',
+            'email' => 'test@example.edu',
             'password' => Hash::make('password123'),
         ]);
 
         // Attempt multiple failed logins
         for ($i = 0; $i < 6; $i++) {
             $this->post('/login', [
-                'email' => 'test@unikl.edu.my',
+                'email' => 'test@example.edu',
                 'password' => 'wrongpassword',
             ]);
         }
 
         // The 6th attempt should be rate limited
         $response = $this->post('/login', [
-            'email' => 'test@unikl.edu.my',
+            'email' => 'test@example.edu',
             'password' => 'password123',
         ]);
 
@@ -372,7 +372,7 @@ class AuthenticationSystemTest extends TestCase
     {
         // Test that missing name causes validation to fail
         $userData = [
-            'email' => 'test@unikl.edu.my',
+            'email' => 'test@example.edu',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'staff_id' => 'STAFF001',
@@ -395,7 +395,7 @@ class AuthenticationSystemTest extends TestCase
     {
         $userData = [
             'name' => 'Test User',
-            'email' => 'test@unikl.edu.my',
+            'email' => 'test@example.edu',
             'password' => 'password123',
             'password_confirmation' => 'differentpassword',
             'staff_id' => 'STAFF001',

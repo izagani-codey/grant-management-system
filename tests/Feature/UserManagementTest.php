@@ -38,7 +38,7 @@ class UserManagementTest extends TestCase
 
         $this->actingAs($user)->patch('/profile', [
             'name' => 'Updated Name',
-            'email' => 'updated@unikl.edu.my',
+            'email' => 'updated@example.edu',
             'staff_id' => 'STAFF002',
             'designation' => 'Senior Lecturer',
             'department' => 'Science',
@@ -50,7 +50,7 @@ class UserManagementTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
-            'email' => 'updated@unikl.edu.my',
+            'email' => 'updated@example.edu',
         ]);
     }
 

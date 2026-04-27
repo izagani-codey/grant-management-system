@@ -173,11 +173,4 @@ class RequestRepository extends BaseRepository
         return $query->with(['requestType', 'user'])->get();
     }
 
-    /**
-     * Get requests approaching deadline.
-     */
-    public function getApproachingDeadline(User $user, int $days = 3): Collection
-    {
-        return collect();
-    }
 }

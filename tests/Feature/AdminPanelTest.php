@@ -39,10 +39,10 @@ class AdminPanelTest extends TestCase
     {
         // Create test data
         GrantRequest::factory()->create(['status_id' => RequestStatus::SUBMITTED->value]);
-        GrantRequest::factory()->create(['status_id' => RequestStatus::STAFF1_APPROVED->value]);
+        GrantRequest::factory()->create(['status_id' => RequestStatus::STAFF1_REVIEWED->value]);
         GrantRequest::factory()->create(['status_id' => RequestStatus::STAFF2_APPROVED->value]);
-        GrantRequest::factory()->create(['status_id' => RequestStatus::DEAN_APPROVED->value]);
-        GrantRequest::factory()->create(['status_id' => RequestStatus::REJECTED->value]);
+        GrantRequest::factory()->create(['status_id' => RequestStatus::COMPLETED->value]);
+        GrantRequest::factory()->create(['status_id' => RequestStatus::DECLINED->value]);
 
         User::factory()->create(['role' => 'admission']);
         User::factory()->create(['role' => 'staff1']);
@@ -92,7 +92,7 @@ class AdminPanelTest extends TestCase
         User::factory()->create(['role' => 'admission', 'name' => 'Admission User']);
         User::factory()->create(['role' => 'staff1', 'name' => 'Staff 1 User']);
         User::factory()->create(['role' => 'staff2', 'name' => 'Staff 2 User']);
-        User::factory()->create(['role' => 'dean', 'name' => 'Dean User']);
+        User::factory()->create(['role' => 'admin', 'name' => 'Second Admin User']);
 
         $admin = User::factory()->create(['role' => 'admin']);
 
@@ -103,7 +103,7 @@ class AdminPanelTest extends TestCase
         $response->assertSee('Admission User');
         $response->assertSee('Staff 1 User');
         $response->assertSee('Staff 2 User');
-        $response->assertSee('Dean User');
+        $response->assertSee('Second Admin User');
     }
 
     public function test_admin_can_search_users(): void
@@ -270,10 +270,10 @@ class AdminPanelTest extends TestCase
     {
         // Create requests with different statuses
         GrantRequest::factory()->count(5)->create(['status_id' => RequestStatus::SUBMITTED->value]);
-        GrantRequest::factory()->count(3)->create(['status_id' => RequestStatus::STAFF1_APPROVED->value]);
+        GrantRequest::factory()->count(3)->create(['status_id' => RequestStatus::STAFF1_REVIEWED->value]);
         GrantRequest::factory()->count(2)->create(['status_id' => RequestStatus::STAFF2_APPROVED->value]);
-        GrantRequest::factory()->count(1)->create(['status_id' => RequestStatus::DEAN_APPROVED->value]);
-        GrantRequest::factory()->count(1)->create(['status_id' => RequestStatus::REJECTED->value]);
+        GrantRequest::factory()->count(1)->create(['status_id' => RequestStatus::COMPLETED->value]);
+        GrantRequest::factory()->count(1)->create(['status_id' => RequestStatus::DECLINED->value]);
 
         $admin = User::factory()->create(['role' => 'admin']);
 
@@ -388,19 +388,17 @@ class AdminPanelTest extends TestCase
     }
 
     // Admin Recent Activity Tests
-    public function test_admin_dashboard_shows_recent_high_priority_requests(): void
+    public function test_admin_dashboard_shows_recent_requests(): void
     {
-        // Create high priority requests
-        GrantRequest::factory()->count(3)->create(['is_priority' => true]);
-        GrantRequest::factory()->create(['is_priority' => false]);
+        GrantRequest::factory()->count(4)->create();
 
         $admin = User::factory()->create(['role' => 'admin']);
 
         $response = $this->actingAs($admin)->get('/admin/dashboard');
 
         $response->assertOk();
-        $response->assertViewHas('recentHighPriority');
-        $this->assertEquals(3, $response->viewData('recentHighPriority')->count());
+        $response->assertViewHas('recentRequests');
+        $this->assertEquals(4, $response->viewData('recentRequests')->count());
     }
 
     public function test_admin_dashboard_shows_recent_templates(): void

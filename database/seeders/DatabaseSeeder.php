@@ -15,83 +15,82 @@ class DatabaseSeeder extends Seeder
             RequestTypeSeeder::class,
         ]);
 
-        // Remove old admission user if exists
-        User::where('email', 'admissions@example.com')->delete();
+        $devPassword = env('DEV_SEED_PASSWORD');
 
-        // Seed Updated Admissions Dev Account with complete profile
-        User::updateOrCreate(
-            ['email' => 'admissions@example.com'],
-            [
-                'name' => 'Admissions Dev User',
-                'password' => Hash::make('password'),
-                'role' => 'admission',
-                'email_verified_at' => now(),
-                // Complete staff profile
-                'staff_id' => 'DEV001',
-                'designation' => 'Admissions Officer',
-                'department' => 'Student Affairs',
-                'phone' => '+60123456789',
-                'employee_level' => 'Executive',
-            ]
-        );
+        if (app()->environment(['local', 'testing']) && $devPassword) {
+            // Remove old admission user if exists
+            User::where('email', 'admissions@example.com')->delete();
 
-        // Staff 1 User
-        User::updateOrCreate(
-            ['email' => 'staff1@example.com'],
-            [
-                'name' => 'Staff One', 
-                'password' => Hash::make('password'), 
-                'role' => 'staff1', 
-                'email_verified_at' => now(),
-                'staff_id' => 'STF001',
-                'designation' => 'Senior Lecturer',
-                'department' => 'Academic Affairs',
-                'phone' => '+60123456780',
-                'employee_level' => 'Senior Executive',
-            ]
-        );
+            User::updateOrCreate(
+                ['email' => 'admissions@example.com'],
+                [
+                    'name' => 'Admissions Dev User',
+                    'password' => Hash::make($devPassword),
+                    'role' => 'admission',
+                    'email_verified_at' => now(),
+                    'staff_id' => 'DEV001',
+                    'designation' => 'Admissions Officer',
+                    'department' => 'Student Affairs',
+                    'phone' => '+60123456789',
+                    'employee_level' => 'Executive',
+                ]
+            );
 
-        // Staff 2 User
-        User::updateOrCreate(
-            ['email' => 'staff2@example.com'],
-            [
-                'name' => 'Staff Two',
-                'password' => Hash::make('password'),
-                'role' => 'staff2',
-                'email_verified_at' => now(),
-                'staff_id' => 'STF002',
-                'designation' => 'Director',
-                'department' => 'Academic Affairs',
-                'phone' => '+60123456781',
-                'employee_level' => 'Management',
-            ]
-        );
+            User::updateOrCreate(
+                ['email' => 'staff1@example.com'],
+                [
+                    'name' => 'Staff One',
+                    'password' => Hash::make($devPassword),
+                    'role' => 'staff1',
+                    'email_verified_at' => now(),
+                    'staff_id' => 'STF001',
+                    'designation' => 'Senior Lecturer',
+                    'department' => 'Academic Affairs',
+                    'phone' => '+60123456780',
+                    'employee_level' => 'Senior Executive',
+                ]
+            );
 
-        // Admin User
-        User::updateOrCreate(
-            ['email' => 'admin@example.com'],
-            [
-                'name' => 'System Administrator', 
-                'password' => Hash::make('password'), 
-                'role' => 'admin', 
-                'email_verified_at' => now(),
-                'staff_id' => 'ADM001',
-                'designation' => 'System Administrator',
-                'department' => 'IT Department',
-                'phone' => '+60123456783',
-                'employee_level' => 'Management',
-            ]
-        );
+            User::updateOrCreate(
+                ['email' => 'staff2@example.com'],
+                [
+                    'name' => 'Staff Two',
+                    'password' => Hash::make($devPassword),
+                    'role' => 'staff2',
+                    'email_verified_at' => now(),
+                    'staff_id' => 'STF002',
+                    'designation' => 'Director',
+                    'department' => 'Academic Affairs',
+                    'phone' => '+60123456781',
+                    'employee_level' => 'Management',
+                ]
+            );
+
+            User::updateOrCreate(
+                ['email' => 'admin@example.com'],
+                [
+                    'name' => 'System Administrator',
+                    'password' => Hash::make($devPassword),
+                    'role' => 'admin',
+                    'email_verified_at' => now(),
+                    'staff_id' => 'ADM001',
+                    'designation' => 'System Administrator',
+                    'department' => 'IT Department',
+                    'phone' => '+60123456783',
+                    'employee_level' => 'Management',
+                ]
+            );
+
+            $this->command->info('Seeded development accounts from DEV_SEED_PASSWORD.');
+        } else {
+            $this->command->info('Skipped development account seeding.');
+        }
 
         // Create templates after users and request types are created
         $this->call([
             TemplateSeeder::class,
         ]);
 
-        $this->command->info('Seeded updated development accounts:');
-        $this->command->info('   admissions@example.com (password) - Admissions Dev User');
-        $this->command->info('   staff1@example.com (password) - Staff One');
-        $this->command->info('   staff2@example.com (password) - Staff Two');
-        $this->command->info('   admin@example.com (password) - System Administrator');
+        $this->command->info('Seeded request types and templates.');
     }
 }

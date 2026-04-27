@@ -3,7 +3,7 @@
         <div class="mb-6">
             <h1 class="text-2xl font-bold text-slate-900">Reset Your Password</h1>
             <p class="mt-1 text-sm text-slate-500">
-                Enter your UniKL email address and we'll send you a reset link.
+                Enter your email address and we'll send you a reset link.
             </p>
         </div>
 
@@ -15,7 +15,7 @@
             <div>
                 <x-input-label for="email" :value="__('Email Address')" />
                 <x-text-input id="email" class="block mt-1 w-full" type="email" name="email"
-                    :value="old('email')" required autofocus placeholder="name@unikl.edu.my" />
+                    :value="old('email')" required autofocus placeholder="name@example.edu" />
                 <x-input-error :messages="$errors->get('email')" class="mt-2" />
             </div>
 

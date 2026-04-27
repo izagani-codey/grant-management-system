@@ -1,20 +1,29 @@
 <nav x-data="{ open: false }" class="bg-white border-b border-gray-200 shadow-sm">
     @php
         $unreadNotifications = auth()->user()->notifications()->where('is_read', false)->count();
+        $appName = $settings['app_name']->value ?? config('app.name', 'Grant Request System');
+        $institutionName = $settings['institution_name']->value ?? config('system.branding.organization', 'Your Organization');
+        $logoPath = $settings['app_logo']->value ?? '';
+        $logoUrl = $logoPath ? asset('storage/' . $logoPath) : null;
+        $brandInitial = mb_strtoupper(mb_substr($institutionName ?: $appName, 0, 1));
     @endphp
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16 md:h-20">
             <div class="flex items-center">
                 <!-- Logo -->
-                {{-- Replace the logo section --}}
 <div class="shrink-0 flex items-center gap-3">
     <a href="{{ route('dashboard') }}" class="flex items-center gap-3">
-        {{-- Placeholder for logo image: replace src with actual logo path --}}
-         <img src="{{ asset('images/miit-logo.png') }}" alt="UniKL MIIT" class="h-10 w-auto">
+        @if($logoUrl)
+            <img src="{{ $logoUrl }}" alt="{{ $institutionName }}" class="h-10 w-auto">
+        @else
+            <div class="h-10 w-10 rounded-lg text-white font-bold flex items-center justify-center" style="background: var(--primary-color);">
+                {{ $brandInitial }}
+            </div>
+        @endif
         <div class="flex flex-col leading-tight">
-            <span class="font-extrabold text-sm tracking-wide" style="color: var(--miit-blue);">UniKL MIIT</span>
-            <span class="text-xs text-gray-500 font-medium">Request Management System</span>
+            <span class="font-extrabold text-sm tracking-wide" style="color: var(--primary-color);">{{ $institutionName }}</span>
+            <span class="text-xs text-gray-500 font-medium">{{ $appName }}</span>
         </div>
     </a>
 </div>
@@ -55,14 +64,6 @@
                             {{ __('Secure Deploy') }}
                         </x-nav-link>
                     @endif
-
-                    {{-- Dean navigation hidden for now
-                    @if(auth()->user()->role === 'dean')
-                        <x-nav-link :href="route('dean.dashboard')" :active="request()->routeIs('dean.*')">
-                            {{ __('Dean Dashboard') }}
-                        </x-nav-link>
-                    @endif
-                    --}}
 
                     @if(in_array(auth()->user()->role, ['staff1', 'staff2', 'admin'], true))
                         <x-nav-link :href="route('form-templates.index')" :active="request()->routeIs('form-templates.*')">

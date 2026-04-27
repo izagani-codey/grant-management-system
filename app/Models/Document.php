@@ -126,8 +126,17 @@ class Document extends Model
         return $this->file_path;
     }
 
+    public function storageDisk(): string
+    {
+        return $this->document_type === DocumentType::SignedDocument ? 'local' : 'public';
+    }
+
     public function getPublicUrl(): string
     {
+        if ($this->storageDisk() !== 'public') {
+            return $this->getDownloadUrl();
+        }
+
         return asset('storage/' . $this->file_path);
     }
 

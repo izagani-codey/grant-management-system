@@ -43,7 +43,7 @@ class NotificationSystemTest extends TestCase
 
         // Staff 1 approves request
         $this->actingAs($staff1)->patch("/requests/{$request->id}/status", [
-            'status_id' => RequestStatus::STAFF1_APPROVED->value,
+            'status_id' => RequestStatus::STAFF1_REVIEWED->value,
             'notes' => 'Verified and approved',
         ]);
 
@@ -66,7 +66,7 @@ class NotificationSystemTest extends TestCase
 
         // Staff 1 approves request
         $this->actingAs($staff1)->patch("/requests/{$request->id}/status", [
-            'status_id' => RequestStatus::STAFF1_APPROVED->value,
+            'status_id' => RequestStatus::STAFF1_REVIEWED->value,
             'notes' => 'Verified and approved',
         ]);
 
@@ -255,7 +255,7 @@ class NotificationSystemTest extends TestCase
         $staff1 = User::factory()->create(['role' => 'staff1']);
         $request = GrantRequest::factory()->create([
             'user_id' => $admission->id,
-            'status_id' => RequestStatus::STAFF1_APPROVED->value,
+            'status_id' => RequestStatus::STAFF1_REVIEWED->value,
         ]);
 
         // Staff 1 returns request
@@ -272,7 +272,7 @@ class NotificationSystemTest extends TestCase
         ]);
     }
 
-    public function test_admission_notified_when_request_rejected(): void
+    public function test_admission_notified_when_request_declined(): void
     {
         $admission = User::factory()->create(['role' => 'admission']);
         $staff1 = User::factory()->create(['role' => 'staff1']);
@@ -281,9 +281,9 @@ class NotificationSystemTest extends TestCase
             'status_id' => RequestStatus::SUBMITTED->value,
         ]);
 
-        // Staff 1 rejects request
+        // Staff 1 declines request
         $this->actingAs($staff1)->patch("/requests/{$request->id}/status", [
-            'status_id' => RequestStatus::REJECTED->value,
+            'status_id' => RequestStatus::DECLINED->value,
             'notes' => 'Does not meet requirements',
         ]);
 
@@ -299,18 +299,16 @@ class NotificationSystemTest extends TestCase
     {
         $admission = User::factory()->create(['role' => 'admission']);
         $staff1 = User::factory()->create(['role' => 'staff1']);
-        $staff2 = User::factory()->create(['role' => 'staff2']);
-        $dean = User::factory()->create(['role' => 'dean']);
         
         $request = GrantRequest::factory()->create([
             'user_id' => $admission->id,
             'status_id' => RequestStatus::STAFF2_APPROVED->value,
         ]);
 
-        // Dean approves request
-        $this->actingAs($dean)->patch("/requests/{$request->id}/status", [
-            'status_id' => RequestStatus::DEAN_APPROVED->value,
-            'notes' => 'Final approval',
+        // Staff 1 completes request after Staff 2 approval
+        $this->actingAs($staff1)->patch("/requests/{$request->id}/status", [
+            'status_id' => RequestStatus::COMPLETED->value,
+            'notes' => 'Final completion',
         ]);
 
         // Check if notification was created for admission user
@@ -326,13 +324,13 @@ class NotificationSystemTest extends TestCase
         $staff1 = User::factory()->create(['role' => 'staff1']);
         $staff2 = User::factory()->create(['role' => 'staff2']);
         $request = GrantRequest::factory()->create([
-            'status_id' => RequestStatus::STAFF1_APPROVED->value,
+            'status_id' => RequestStatus::STAFF1_REVIEWED->value,
             'verified_by' => $staff1->id,
         ]);
 
         // Staff 2 returns request
         $this->actingAs($staff2)->patch("/requests/{$request->id}/status", [
-            'status_id' => RequestStatus::STAFF1_APPROVED->value,
+            'status_id' => RequestStatus::STAFF1_REVIEWED->value,
             'notes' => 'Needs additional verification',
         ]);
 

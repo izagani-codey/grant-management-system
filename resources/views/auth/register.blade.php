@@ -19,12 +19,12 @@
                     </div>
                     <div>
                         <x-input-label for="staff_id" :value="__('Staff ID *')" />
-                        <x-text-input id="staff_id" class="block mt-1 w-full" type="text" name="staff_id" :value="old('staff_id')" required placeholder="e.g. UNIKL123456" />
+                        <x-text-input id="staff_id" class="block mt-1 w-full" type="text" name="staff_id" :value="old('staff_id')" required placeholder="e.g. STF123456" />
                         <x-input-error :messages="$errors->get('staff_id')" class="mt-1" />
                     </div>
                     <div>
-                        <x-input-label for="email" :value="__('UniKL Email *')" />
-                        <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required placeholder="name@unikl.edu.my" />
+                        <x-input-label for="email" :value="__('Organization Email *')" />
+                        <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required placeholder="name@example.edu" />
                         <x-input-error :messages="$errors->get('email')" class="mt-1" />
                     </div>
                     <div>

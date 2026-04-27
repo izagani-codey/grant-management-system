@@ -1,3 +1,7 @@
+@php
+    $appName = $settings['app_name']->value ?? config('app.name', 'Grant Request System');
+    $institutionName = $settings['institution_name']->value ?? config('system.branding.organization', 'Your Organization');
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,8 +33,8 @@
             <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
                 <div class="flex justify-between items-start">
                     <div>
-                        <h1 class="text-3xl font-bold mb-2">UniKL STRG Request Summary</h1>
-                        <p class="text-blue-100">Student Travel Research Grant Application</p>
+                        <h1 class="text-3xl font-bold mb-2">{{ $appName }} Request Summary</h1>
+                        <p class="text-blue-100">{{ $institutionName }}</p>
                     </div>
                     <div class="text-right">
                         <div class="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
@@ -53,15 +57,6 @@
                     <div class="text-right">
                         <p class="text-sm text-gray-500">Submitted on</p>
                         <p class="font-semibold">{{ $grantRequest->created_at->format('d F Y') }}</p>
-                        @if(false)
-                            <p class="text-sm text-gray-500 mt-1">Deadline</p>
-                            <p class="font-semibold {{ $grantRequest->isUrgent() ? 'text-red-600' : 'text-gray-700' }}">
-                                {{ $grantRequest->deadline->format('d F Y') }}
-                                @if($grantRequest->isUrgent())
-                                    <span class="text-xs ml-1">⚠️ URGENT</span>
-                                @endif
-                            </p>
-                        @endif
                     </div>
                 </div>
 
@@ -225,7 +220,7 @@
                 <!-- Footer -->
                 <div class="mt-8 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
                     <p>Generated on {{ now()->format('d F Y, h:i A') }}</p>
-                    <p>UniKL Student Travel Research Grant System</p>
+                    <p>{{ $appName }}</p>
                 </div>
             </div>
         </div>

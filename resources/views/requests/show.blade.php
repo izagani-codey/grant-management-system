@@ -69,7 +69,7 @@
 
             {{-- Request Details --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Request Details</div>
+                <div class="card-header-brand -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Request Details</div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div class="min-w-0">
                         <p class="text-gray-500">Submitted By</p>
@@ -252,7 +252,7 @@
             {{-- Supporting Documents (templates from Staff 2) --}}
             @if($supportingDocuments->isNotEmpty())
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Supporting Documents</div>
+                <div class="card-header-brand -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Supporting Documents</div>
                 <p class="text-xs text-gray-500 mb-4">
                     Reference documents provided for <span class="font-medium">{{ $grantRequest->requestType?->name }}</span>.
                 </p>
@@ -274,7 +274,7 @@
             {{-- Applicant-Uploaded Documents --}}
             @if($userSubmissions->isNotEmpty())
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Applicant Uploaded Documents</div>
+                <div class="card-header-brand -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Applicant Uploaded Documents</div>
                 <p class="text-xs text-gray-500 mb-4">Files submitted by the applicant with this request.</p>
                 <ul class="space-y-3">
                     @foreach($userSubmissions as $doc)
@@ -316,7 +316,7 @@
 
             {{-- Workflow Timeline (status events + internal comments) --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Activity Log</div>
+                <div class="card-header-brand -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Activity Log</div>
 
                 @php
                     $statusLabels = \App\Enums\RequestStatus::getAllCases();
@@ -383,7 +383,7 @@
             {{-- Document Review Panel (Staff only) --}}
             @if($isStaff && ($signedDocument || $userSubmissions->isNotEmpty() || $supportingDocuments->isNotEmpty()))
             <div class="bg-white shadow-sm rounded-lg overflow-hidden" id="doc-review-panel">
-                <div class="card-header-miit px-6 py-3 flex items-center justify-between">
+                <div class="card-header-brand px-6 py-3 flex items-center justify-between">
                     <span>Document Review</span>
                     <button type="button" onclick="toggleDocReview()"
                         class="text-xs text-white/80 hover:text-white font-medium flex items-center gap-1">
@@ -464,7 +464,7 @@
 
             {{-- WORKFLOW ACTIONS --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Actions</div>
+                <div class="card-header-brand -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Actions</div>
 
                 {{-- Signed document download (Staff 1 & Staff 2 only) --}}
                 @if($isStaff && $grantRequest->signed_document_id)
@@ -629,7 +629,7 @@
             {{-- Staff Comments --}}
             @if($isStaff)
             <div class="bg-white shadow-sm rounded-lg p-6">
-                <div class="card-header-miit -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Staff Comments</div>
+                <div class="card-header-brand -mx-6 -mt-6 mb-5 rounded-t-lg px-6 py-3">Staff Comments</div>
 
                 @php
                     $staff1Comments   = $grantRequest->comments->filter(fn($c) => $c->isStaff1Comment());

@@ -14,8 +14,8 @@ class TemplateSeeder extends Seeder
         // Get the Equipment Purchase request type (first available)
         $requestType = RequestType::where('slug', 'equipment-purchase')->first();
         
-        // Get staff2 user
-        $staff2User = User::where('email', 'staff2@unikl.edu.my')->first();
+        // Get any Staff 2 user
+        $staff2User = User::where('role', 'staff2')->first();
         
         if ($requestType && $staff2User) {
             // Check if the file exists before creating template

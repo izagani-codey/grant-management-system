@@ -3,7 +3,7 @@
         <div class="mb-5">
             <h1 class="text-2xl font-bold text-slate-900">Verify Your Email</h1>
             <p class="mt-2 text-sm text-slate-500 leading-relaxed">
-                Thanks for registering! Before continuing, please verify your email address by clicking the link we sent to your UniKL email. If you didn't receive it, click below to resend.
+                Thanks for registering! Before continuing, please verify your email address by clicking the link we sent. If you didn't receive it, click below to resend.
             </p>
         </div>
 

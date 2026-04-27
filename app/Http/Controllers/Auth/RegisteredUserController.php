@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\SettingsService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -43,18 +44,20 @@ class RegisteredUserController extends Controller
                         return;
                     }
 
-                    $allowed = ['@unikl.edu.my', '@s.unikl.edu.my'];
-                    $isAllowed = false;
+                    $allowed = collect(explode(',', SettingsService::get('allowed_email_domains', '')))
+                        ->map(fn ($domain) => strtolower(trim($domain)))
+                        ->filter()
+                        ->map(fn ($domain) => str_starts_with($domain, '@') ? $domain : '@' . $domain)
+                        ->values();
 
-                    foreach ($allowed as $domain) {
-                        if (str_ends_with(strtolower($value), $domain)) {
-                            $isAllowed = true;
-                            break;
-                        }
+                    if ($allowed->isEmpty()) {
+                        return;
                     }
 
+                    $isAllowed = $allowed->contains(fn ($domain) => str_ends_with(strtolower($value), $domain));
+
                     if (! $isAllowed) {
-                        $fail('Only UniKL email addresses are allowed (@unikl.edu.my or @s.unikl.edu.my).');
+                        $fail('Only approved organization email addresses are allowed.');
                     }
                 },
             ],

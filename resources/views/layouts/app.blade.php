@@ -15,10 +15,14 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         
         <!-- Brand Theme -->
+@php
+    $primaryColor = $settings['primary_color']->value ?? '#003087';
+    $accentColor = $settings['accent_color']->value ?? '#C8971E';
+@endphp
 <style>
     :root {
-        --primary-color: #003087;
-        --accent-color: #C8971E;
+        --primary-color: {{ $primaryColor }};
+        --accent-color: {{ $accentColor }};
         --light-accent: #E8F0FB;
     }
 
@@ -46,7 +50,7 @@
     }
 
     /* Card header accent */
-    .card-header-miit {
+    .card-header-brand {
         background: linear-gradient(135deg, var(--primary-color), #1a4fa0);
         color: white;
         border-radius: 0.5rem 0.5rem 0 0;
@@ -67,7 +71,7 @@
     }
 
     /* Primary button override */
-    .btn-miit {
+    .btn-brand {
         background: var(--primary-color);
         color: white;
         border: none;
@@ -78,11 +82,11 @@
         cursor: pointer;
         transition: background 0.15s;
     }
-    .btn-miit:hover { background: #002070; }
+    .btn-brand:hover { background: #002070; }
 
     /* Page section cards — subtle left border */
-    .miit-card {
-        border-left: 4px solid var(--miit-blue);
+    .brand-card {
+        border-left: 4px solid var(--primary-color);
         border-radius: 0 0.5rem 0.5rem 0;
     }
 </style>

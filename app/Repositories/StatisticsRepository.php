@@ -104,7 +104,7 @@ class StatisticsRepository
                     DATE_FORMAT(created_at, "%Y-%m") as month,
                     COUNT(*) as total,
                     SUM(CASE WHEN status_id = ? THEN 1 ELSE 0 END) as approved,
-                    SUM(CASE WHEN status_id = ? THEN 1 ELSE 0 END) as rejected
+                    SUM(CASE WHEN status_id = ? THEN 1 ELSE 0 END) as declined
                 ', [RequestStatus::COMPLETED->value, RequestStatus::DECLINED->value])
                 ->where('created_at', '>=', now()->subMonths($months))
                 ->groupBy('month')

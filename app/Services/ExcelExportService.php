@@ -17,8 +17,8 @@ class ExcelExportService
     {
         $spreadsheet = new Spreadsheet();
         $spreadsheet->getProperties()
-            ->setCreator('UniKL STRG System')
-            ->setTitle('STRG Requests Export')
+            ->setCreator(SettingsService::get('app_name', config('app.name', 'Grant Request System')))
+            ->setTitle('Requests Export')
             ->setSubject('Grant Requests');
 
         // ─── Sheet 1: Summary ───────────────────────────────────────────
@@ -38,8 +38,6 @@ class ExcelExportService
             'Description',
             'Total Amount (RM)',
             'Status',
-            'Priority',
-            'Deadline',
             'Signed At',
             'Verified By',
             'Recommended By',
@@ -63,8 +61,6 @@ class ExcelExportService
                 $req->payload['description'] ?? '',
                 (float) $req->total_amount,
                 $req->statusLabel(),
-                $req->is_priority ? 'High Priority' : 'Normal',
-                $req->deadline?->format('d/m/Y') ?? '',
                 $req->signed_at?->format('d/m/Y H:i:s') ?? '',
                 $req->verifiedBy?->name ?? '',
                 $req->recommendedBy?->name ?? '',
@@ -76,7 +72,7 @@ class ExcelExportService
 
             // Zebra striping
             if ($row % 2 === 0) {
-                $summary->getStyle('A' . $row . ':R' . $row)
+                $summary->getStyle('A' . $row . ':P' . $row)
                     ->getFill()->setFillType(Fill::FILL_SOLID)
                     ->getStartColor()->setRGB('F0F4FF');
             }
@@ -85,7 +81,7 @@ class ExcelExportService
         }
 
         // Auto-size columns
-        foreach (range('A', 'R') as $col) {
+        foreach (range('A', 'P') as $col) {
             $summary->getColumnDimension($col)->setAutoSize(true);
         }
 

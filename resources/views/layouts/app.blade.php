@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2.0, user-scalable=yes">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'UniKL STRG') }}</title>
+        <title>{{ config('app.name', 'Grant Request System') }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -14,12 +14,12 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         
-        <!-- UNIKL MIIT Brand Theme -->
+        <!-- Brand Theme -->
 <style>
     :root {
-        --miit-blue:   #003087;
-        --miit-gold:   #C8971E;
-        --miit-light:  #E8F0FB;
+        --primary-color: #003087;
+        --accent-color: #C8971E;
+        --light-accent: #E8F0FB;
     }
 
     /* Top accent bar */
@@ -27,7 +27,7 @@
         content: '';
         display: block;
         height: 4px;
-        background: linear-gradient(90deg, var(--miit-blue) 70%, var(--miit-gold) 100%);
+        background: linear-gradient(90deg, var(--primary-color) 70%, var(--accent-color) 100%);
         position: fixed;
         top: 0;
         left: 0;
@@ -42,12 +42,12 @@
 
     /* Nav brand override */
     nav {
-        border-bottom: 2px solid var(--miit-blue) !important;
+        border-bottom: 2px solid var(--primary-color) !important;
     }
 
     /* Card header accent */
     .card-header-miit {
-        background: linear-gradient(135deg, var(--miit-blue), #1a4fa0);
+        background: linear-gradient(135deg, var(--primary-color), #1a4fa0);
         color: white;
         border-radius: 0.5rem 0.5rem 0 0;
         padding: 0.75rem 1.25rem;
@@ -58,7 +58,7 @@
 
     /* Status badge gold accent */
     .badge-gold {
-        background: var(--miit-gold);
+        background: var(--accent-color);
         color: #1a1a1a;
         font-weight: 700;
         padding: 2px 10px;
@@ -68,7 +68,7 @@
 
     /* Primary button override */
     .btn-miit {
-        background: var(--miit-blue);
+        background: var(--primary-color);
         color: white;
         border: none;
         border-radius: 6px;

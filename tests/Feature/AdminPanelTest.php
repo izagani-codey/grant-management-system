@@ -57,17 +57,17 @@ class AdminPanelTest extends TestCase
         $response->assertOk();
         $response->assertViewHas('totalRequests', 5);
         $response->assertViewHas('submitted', 1);
-        $response->assertViewHas('staff1Approved', 1);
+        $response->assertViewHas('staff1Reviewed', 1);
         $response->assertViewHas('staff2Approved', 1);
-        $response->assertViewHas('deanApproved', 1);
-        $response->assertViewHas('rejected', 1);
+        $response->assertViewHas('completed', 1);
+        $response->assertViewHas('declined', 1);
         $response->assertViewHas('totalUsers', 4); // 3 staff users + admin
         $response->assertViewHas('totalTemplates', 3);
     }
 
     public function test_non_admin_users_cannot_access_admin_dashboard(): void
     {
-        $roles = ['admission', 'staff1', 'staff2', 'dean'];
+        $roles = ['admission', 'staff1', 'staff2'];
         
         foreach ($roles as $role) {
             $user = User::factory()->create(['role' => $role]);
@@ -282,10 +282,10 @@ class AdminPanelTest extends TestCase
         $response->assertOk();
         $response->assertViewHas('totalRequests', 12);
         $response->assertViewHas('submitted', 5);
-        $response->assertViewHas('staff1Approved', 3);
+        $response->assertViewHas('staff1Reviewed', 3);
         $response->assertViewHas('staff2Approved', 2);
-        $response->assertViewHas('deanApproved', 1);
-        $response->assertViewHas('rejected', 1);
+        $response->assertViewHas('completed', 1);
+        $response->assertViewHas('declined', 1);
     }
 
     public function test_admin_dashboard_shows_user_statistics(): void
@@ -293,14 +293,13 @@ class AdminPanelTest extends TestCase
         User::factory()->count(3)->create(['role' => 'admission']);
         User::factory()->count(2)->create(['role' => 'staff1']);
         User::factory()->count(1)->create(['role' => 'staff2']);
-        User::factory()->count(1)->create(['role' => 'dean']);
 
         $admin = User::factory()->create(['role' => 'admin']);
 
         $response = $this->actingAs($admin)->get('/admin/dashboard');
 
         $response->assertOk();
-        $response->assertViewHas('totalUsers', 8); // 7 staff users + admin
+        $response->assertViewHas('totalUsers', 7); // 6 staff users + admin
         $response->assertViewHas('admissionUsers', 3);
         $response->assertViewHas('staff1Users', 2);
         $response->assertViewHas('staff2Users', 1);

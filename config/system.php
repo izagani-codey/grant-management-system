@@ -2,15 +2,12 @@
 
 return [
     'branding' => [
-        'organization' => env('SYSTEM_ORGANIZATION', 'UniKL'),
-        'product_name' => env('SYSTEM_PRODUCT_NAME', 'STRG Request System'),
+        'organization' => env('SYSTEM_ORGANIZATION', 'Your Organization'),
+        'product_name' => env('SYSTEM_PRODUCT_NAME', 'Grant Request System'),
         'request_label' => env('SYSTEM_REQUEST_LABEL', 'Request'),
     ],
 
     'features' => [
-        // Toggle the dean-specific UI routes without code edits.
-        'dean_interface' => env('FEATURE_DEAN_INTERFACE', false),
-
         // Enable advanced analytics and reporting features
         'advanced_analytics' => env('FEATURE_ADVANCED_ANALYTICS', true),
 
@@ -19,9 +16,6 @@ return [
 
         // Enable strict file upload validation and virus scanning
         'strict_file_validation' => env('FEATURE_STRICT_FILE_VALIDATION', true),
-
-        // Enable automatic priority calculation based on deadlines
-        'auto_priority' => env('FEATURE_AUTO_PRIORITY', true),
 
         // Enable comprehensive audit logging for all system actions
         'audit_logging' => env('FEATURE_AUDIT_LOGGING', true),
@@ -37,9 +31,6 @@ return [
     ],
 
     'settings' => [
-        // Number of days before deadline to automatically set high priority
-        'priority_threshold_days' => env('PRIORITY_THRESHOLD_DAYS', 3),
-
         // Maximum file size for uploads in megabytes
         'max_file_size_mb' => env('MAX_FILE_SIZE_MB', 10),
 

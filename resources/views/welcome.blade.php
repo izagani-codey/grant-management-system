@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>UniKL MIIT — Grant Request Management System</title>
+    <title>{{ config('system.branding.product_name', 'Grant Request Management System') }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,21 +12,21 @@
         body { font-family: 'Inter', sans-serif; }
 
         :root {
-            --miit-blue: #003087;
-            --miit-gold: #C8971E;
+            --primary-color: #003087;
+            --accent-color: #C8971E;
         }
 
         .gradient-text {
-            background: linear-gradient(135deg, var(--miit-blue) 0%, #1a4fa0 100%);
+            background: linear-gradient(135deg, var(--primary-color) 0%, #1a4fa0 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
         .gold-text {
-            color: var(--miit-gold);
+            color: var(--accent-color);
         }
         .hero-gradient {
-            background: linear-gradient(135deg, var(--miit-blue) 0%, #1a4fa0 100%);
+            background: linear-gradient(135deg, var(--primary-color) 0%, #1a4fa0 100%);
         }
         .card-hover {
             transition: all 0.3s ease;
@@ -37,7 +37,7 @@
         }
         .top-bar {
             height: 4px;
-            background: linear-gradient(90deg, var(--miit-blue) 70%, var(--miit-gold) 100%);
+            background: linear-gradient(90deg, var(--primary-color) 70%, var(--accent-color) 100%);
         }
         /* iPad optimizations */
         @media (min-width: 768px) and (max-width: 1024px) {
@@ -52,33 +52,33 @@
     <div class="top-bar"></div>
 
     <!-- Navigation -->
-    <nav class="bg-white shadow-md sticky top-0 z-50" style="border-bottom: 2px solid var(--miit-blue);">
+    <nav class="bg-white shadow-md sticky top-0 z-50" style="border-bottom: 2px solid var(--primary-color);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center gap-3">
-                    <img src="{{ asset('Images/miit-logo.png') }}" alt="UniKL MIIT Logo" class="h-10 w-auto">
+                    <img src="{{ asset('Images/logo.png') }}" alt="{{ config('system.branding.organization') }} Logo" class="h-10 w-auto">
                     <div class="flex flex-col leading-tight">
-                        <span class="font-extrabold text-sm tracking-wide" style="color: var(--miit-blue);">UniKL MIIT</span>
-                        <span class="text-xs text-gray-500 font-medium">Request Management System</span>
+                        <span class="font-extrabold text-sm tracking-wide" style="color: var(--primary-color);">{{ config('system.branding.organization') }}</span>
+                        <span class="text-xs text-gray-500 font-medium">{{ config('system.branding.product_name') }}</span>
                     </div>
                 </div>
                 <div class="flex items-center space-x-3">
                     @auth
                         <a href="{{ route('dashboard') }}"
                            class="text-white px-5 py-2 rounded-lg font-semibold text-sm transition-colors"
-                           style="background: var(--miit-blue);">
+                           style="background: var(--primary-color);">
                             Dashboard
                         </a>
                     @else
                         <a href="{{ route('login') }}"
                            class="font-medium text-sm px-3 py-2 rounded transition-colors"
-                           style="color: var(--miit-blue);">
+                           style="color: var(--primary-color);">
                             Sign In
                         </a>
                         @if (Route::has('register'))
                             <a href="{{ route('register') }}"
                                class="text-white px-5 py-2 rounded-lg font-semibold text-sm transition-colors"
-                               style="background: var(--miit-blue);">
+                               style="background: var(--primary-color);">
                                 Register
                             </a>
                         @endif
@@ -93,14 +93,14 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center">
                 <div class="flex justify-center mb-6">
-                    <img src="{{ asset('Images/miit-logo.png') }}" alt="UniKL MIIT" class="h-20 w-auto opacity-90">
+                    <img src="{{ asset('Images/logo.png') }}" alt="{{ config('system.branding.organization') }}" class="h-20 w-auto opacity-90">
                 </div>
-                <p class="text-sm font-semibold uppercase tracking-widest mb-3" style="color: var(--miit-gold);">
-                    Universiti Kuala Lumpur — MIIT
+                <p class="text-sm font-semibold uppercase tracking-widest mb-3" style="color: var(--accent-color);">
+                    {{ config('system.branding.organization') }}
                 </p>
                 <h1 class="hero-title text-4xl md:text-5xl font-bold mb-6 leading-tight">
-                    Short Term Research Grant<br>
-                    <span style="color: var(--miit-gold);">Request Management System</span>
+                    {{ config('system.branding.request_label', 'Grant Request') }}<br>
+                    <span style="color: var(--accent-color);">Management System</span>
                 </h1>
                 <p class="text-lg md:text-xl mb-10 text-blue-100 max-w-2xl mx-auto">
                     A fully digital workflow for grant request submission, multi-level review, and approval — from initial submission to final completion.
@@ -109,14 +109,14 @@
                     @guest
                         <a href="{{ route('login') }}"
                            class="touch-target font-semibold px-8 py-3 rounded-lg inline-block transition-colors"
-                           style="background: var(--miit-gold); color: #1a1a1a;">
+                           style="background: var(--accent-color); color: #1a1a1a;">
                             Sign In to Continue
                         </a>
                     @endguest
                     @auth
                         <a href="{{ route('dashboard') }}"
                            class="touch-target font-semibold px-8 py-3 rounded-lg inline-block"
-                           style="background: var(--miit-gold); color: #1a1a1a;">
+                           style="background: var(--accent-color); color: #1a1a1a;">
                             Go to Dashboard
                         </a>
                     @endauth
@@ -141,7 +141,7 @@
                 <!-- Request Submission -->
                 <div class="card-hover bg-white p-8 rounded-xl shadow-md border border-gray-100">
                     <div class="w-12 h-12 rounded-lg flex items-center justify-center mb-6" style="background: #E8F0FB;">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--miit-blue);">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--primary-color);">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                     </div>
@@ -324,19 +324,19 @@
                 Ready to Submit Your Request?
             </h2>
             <p class="text-lg mb-8 text-blue-100">
-                Sign in with your UniKL MIIT account to get started with the STRG system.
+                Sign in with your {{ config('system.branding.organization') }} account to get started with the {{ config('system.branding.product_name') }}.
             </p>
             @guest
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
                     <a href="{{ route('login') }}"
                        class="font-semibold px-8 py-3 rounded-lg inline-block transition-colors"
-                       style="background: var(--miit-gold); color: #1a1a1a;">
+                       style="background: var(--accent-color); color: #1a1a1a;">
                         Sign In
                     </a>
                     @if (Route::has('register'))
                         <a href="{{ route('register') }}"
                            class="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white transition-colors inline-block"
-                           style="hover-color: var(--miit-blue);">
+                           style="hover-color: var(--primary-color);">
                             Create Account
                         </a>
                     @endif
@@ -345,7 +345,7 @@
             @auth
                 <a href="{{ route('dashboard') }}"
                    class="font-semibold px-8 py-3 rounded-lg inline-block"
-                   style="background: var(--miit-gold); color: #1a1a1a;">
+                   style="background: var(--accent-color); color: #1a1a1a;">
                     Go to Dashboard
                 </a>
             @endauth
@@ -357,14 +357,14 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col md:flex-row items-center justify-between gap-4">
                 <div class="flex items-center gap-3">
-                    <img src="{{ asset('Images/miit-logo.png') }}" alt="UniKL MIIT" class="h-10 w-auto opacity-80">
+                    <img src="{{ asset('Images/logo.png') }}" alt="{{ config('system.branding.organization') }}" class="h-10 w-auto opacity-80">
                     <div>
-                        <p class="font-bold text-sm" style="color: var(--miit-gold);">UniKL MIIT</p>
-                        <p class="text-gray-400 text-xs">Short Term Research Grant System</p>
+                        <p class="font-bold text-sm" style="color: var(--accent-color);">{{ config('system.branding.organization') }}</p>
+                        <p class="text-gray-400 text-xs">{{ config('system.branding.product_name') }}</p>
                     </div>
                 </div>
                 <p class="text-gray-500 text-sm">
-                    © {{ date('Y') }} Universiti Kuala Lumpur. All rights reserved.
+                    © {{ date('Y') }} {{ config('system.branding.organization') }}. All rights reserved.
                 </p>
             </div>
         </div>

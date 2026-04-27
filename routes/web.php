@@ -10,27 +10,9 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\RequestTypeController;
 use App\Http\Controllers\Staff2AdminController;
-use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('welcome'));
-
-if (app()->environment('local')) {
-    Route::post('/dev-login', function (Request $request) {
-        $request->validate(['email' => ['required', 'email']]);
-
-        $user = User::where('email', $request->input('email'))->first();
-        if (!$user) {
-            return back()->with('error', 'User not found');
-        }
-
-        Auth::login($user);
-
-        return redirect()->intended('dashboard');
-    })->name('dev.login');
-}
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])

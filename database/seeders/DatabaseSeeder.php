@@ -16,11 +16,11 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Remove old admission user if exists
-        User::where('email', 'admissions@unikl.edu.my')->delete();
+        User::where('email', 'admissions@example.com')->delete();
 
         // Seed Updated Admissions Dev Account with complete profile
         User::updateOrCreate(
-            ['email' => 'admissions@unikl.edu.my'],
+            ['email' => 'admissions@example.com'],
             [
                 'name' => 'Admissions Dev User',
                 'password' => Hash::make('password'),
@@ -37,7 +37,7 @@ class DatabaseSeeder extends Seeder
 
         // Staff 1 User
         User::updateOrCreate(
-            ['email' => 'staff1@unikl.edu.my'],
+            ['email' => 'staff1@example.com'],
             [
                 'name' => 'Staff One', 
                 'password' => Hash::make('password'), 
@@ -53,7 +53,7 @@ class DatabaseSeeder extends Seeder
 
         // Staff 2 User
         User::updateOrCreate(
-            ['email' => 'staff2@unikl.edu.my'],
+            ['email' => 'staff2@example.com'],
             [
                 'name' => 'Staff Two',
                 'password' => Hash::make('password'),
@@ -69,7 +69,7 @@ class DatabaseSeeder extends Seeder
 
         // Admin User
         User::updateOrCreate(
-            ['email' => 'admin@unikl.edu.my'],
+            ['email' => 'admin@example.com'],
             [
                 'name' => 'System Administrator', 
                 'password' => Hash::make('password'), 
@@ -89,9 +89,9 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->command->info('Seeded updated development accounts:');
-        $this->command->info('   admissions@unikl.edu.my (password) - Admissions Dev User');
-        $this->command->info('   staff1@unikl.edu.my (password) - Staff One');
-        $this->command->info('   staff2@unikl.edu.my (password) - Staff Two');
-        $this->command->info('   admin@unikl.edu.my (password) - System Administrator');
+        $this->command->info('   admissions@example.com (password) - Admissions Dev User');
+        $this->command->info('   staff1@example.com (password) - Staff One');
+        $this->command->info('   staff2@example.com (password) - Staff Two');
+        $this->command->info('   admin@example.com (password) - System Administrator');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\RequestStatus;
 use App\Models\Request as GrantRequest;
 use App\Models\Signature;
+use App\Models\Signatory;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Auth;
@@ -99,6 +100,18 @@ class WorkflowTransitionService
 
             if ($newStatus === RequestStatus::DECLINED) {
                 $updateData['decline_reason'] = $data['decline_reason'] ?? null;
+            }
+
+            // Handle final signatory selection on STAFF2_APPROVED
+            if (!empty($data['final_signatory_id'])) {
+                $signatory = Signatory::find($data['final_signatory_id']);
+                if ($signatory) {
+                    $updateData['final_signatory_id'] = $signatory->id;
+                    $updateData['final_signatory_name'] = 
+                        $signatory->full_name ?? '';
+                    $updateData['final_signatory_designation'] = 
+                        $signatory->designation ?? '';
+                }
             }
 
             if (!empty($data['checklist_data']) && $user->role === 'staff1') {

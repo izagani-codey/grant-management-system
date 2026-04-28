@@ -504,7 +504,21 @@
                 {{-- Staff1: checklist + review actions --}}
                 @if(auth()->user()->isStaff1() && $staff1Active)
                     <x-checklist-review :request="$grantRequest" />
+                @endif
 
+                {{-- Download Pre-filled Form button --}}
+                @if(auth()->user()->isStaff1() && $staff1Complete && $grantRequest->requestType && $grantRequest->requestType->templates()->where('is_active', true)->exists())
+                    <div class="mt-4">
+                        <a href="{{ route('requests.prefilled.download', $grantRequest->id) }}"
+                           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                            </svg>
+                            Download Pre-filled Form
+                        </a>
+                    </div>
+                @endif
+                    
                     @can('changeStatus', $grantRequest)
                     <form id="staff1-action-form" action="{{ route('requests.updateStatus', $grantRequest->id) }}" method="POST" class="space-y-3 mt-4" onsubmit="return handleFormSubmit(this, 'Submitting...')">
                         @csrf
@@ -560,7 +574,17 @@
                                 <textarea name="decline_reason" id="s2-decline-reason" rows="2" placeholder="Reason for declining (required)" class="w-full border rounded p-2 text-sm hidden"></textarea>
                             </div>
                             <div class="space-y-2">
-                                <label class="block text-sm font-medium text-green-700">Signature (required to approve):</label>
+                                <label class="block text-sm font-medium text-green-700">Final Signatory:</label>
+                                <select name="final_signatory_id" class="w-full border rounded p-2 text-sm">
+                                    <option value="">— Select Final Signatory —</option>
+                                    @foreach($activeSignatories as $sig)
+                                        <option value="{{ $sig->id }}">
+                                            {{ $sig->full_name }} — {{ $sig->designation }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                
+                                <label class="block text-sm font-medium text-green-700 mt-3">Signature (required to approve):</label>
                                 <div class="border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50">
                                     <canvas id="staff2-signature-canvas" width="400" height="150" class="w-full border border-gray-300 rounded bg-white cursor-crosshair"></canvas>
                                 </div>

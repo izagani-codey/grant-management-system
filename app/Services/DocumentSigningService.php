@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\DocumentType;
 use App\Models\Document;
 use App\Models\Request as GrantRequest;
+use App\Traits\ResolvesPresetZones;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -14,6 +15,8 @@ use setasign\Fpdi\Fpdi;
 
 class DocumentSigningService
 {
+    use ResolvesPresetZones;
+
     /**
      * Stamp applicant + staff2 signatures (and field values) onto the user's uploaded PDF.
      * Runs after STAFF2_APPROVED transition. Returns the signed Document or null on any failure.
@@ -102,7 +105,17 @@ class DocumentSigningService
 
                         $tool = $zone['tool'] ?? '';
 
-                        if ($tool === 'applicant_signature' && $tmpApplicant) {
+                        if (str_starts_with($tool, 'preset_')) {
+                            // Handle preset zones with resolved values
+                            $value = $this->resolvePresetValue($tool, $request);
+                            if ($value !== '') {
+                                $fontSize = max(8, $h * 2.8);
+                                $pdf->SetFont('Helvetica', '', $fontSize);
+                                $pdf->SetTextColor(30, 30, 30);
+                                $pdf->SetXY($x, $y);
+                                $pdf->Cell($w, $h, $value, 0, 0, 'L');
+                            }
+                        } elseif ($tool === 'applicant_signature' && $tmpApplicant) {
                             $pdf->Image($tmpApplicant, $x, $y, $w, $h, 'PNG');
                         } elseif ($tool === 'staff2_signature' && $tmpStaff2) {
                             $pdf->Image($tmpStaff2, $x, $y, $w, $h, 'PNG');
@@ -220,7 +233,16 @@ class DocumentSigningService
                 foreach ($allZones as $zone) {
                     $tool = $zone['tool'] ?? '';
 
-                    if ($tool === 'applicant_signature' && $applicantSig) {
+                    if (str_starts_with($tool, 'preset_')) {
+                        // Handle preset zones with resolved values
+                        $value = $this->resolvePresetValue($tool, $request);
+                        if ($value !== '') {
+                            $fontSize = max(8, 20); // Default font size for preset text
+                            $sheet->setCellValue($zone['cell_start'], $value);
+                            $sheet->getStyle($zone['cell_start'])
+                                ->getFont()->setSize($fontSize);
+                        }
+                    } elseif ($tool === 'applicant_signature' && $applicantSig) {
                         $this->placeXlsSignature($sheet, $applicantSig, $zone);
                     } elseif ($tool === 'staff2_signature' && $staff2Sig) {
                         $this->placeXlsSignature($sheet, $staff2Sig, $zone);

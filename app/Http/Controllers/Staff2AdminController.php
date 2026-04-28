@@ -9,7 +9,9 @@ use App\Models\RequestTypeTemplate;
 use App\Models\User;
 use App\Models\Document;
 use App\Models\AuditLog;
+use App\Models\Signatory;
 use App\Services\PdfInfoService;
+use App\Traits\ResolvesPresetZones;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -18,6 +20,8 @@ use Illuminate\Validation\Rule;
 
 class Staff2AdminController extends BaseController
 {
+    use ResolvesPresetZones;
+    
     private const MANAGEABLE_ROLES = ['admission', 'staff1', 'staff2', 'admin'];
 
     public function index()
@@ -309,6 +313,52 @@ class Staff2AdminController extends BaseController
         return view('staff2.deployment-playbook');
     }
 
+    public function settings()
+    {
+        $this->ensureAdminAccess();
+        $settings = \App\Services\SettingsService::all();
+        return view('admin.settings', compact('settings'));
+    }
+
+    public function updateSettings(\Illuminate\Http\Request $request)
+    {
+        $this->ensureAdminAccess();
+
+        $validated = $request->validate([
+            'app_name'              => 'nullable|string|max:255',
+            'institution_name'      => 'nullable|string|max:255',
+            'institution_tagline'   => 'nullable|string|max:255',
+            'primary_color'         => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'accent_color'          => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'footer_text'           => 'nullable|string|max:500',
+            'support_email'         => 'nullable|email|max:255',
+            'allowed_email_domains' => 'nullable|string|max:500',
+        ]);
+
+        foreach ($validated as $key => $value) {
+            \App\Services\SettingsService::set($key, $value ?? '');
+        }
+
+        return redirect()->route('admin.settings')
+            ->with('success', 'Settings saved.');
+    }
+
+    public function uploadSettingsImage(\Illuminate\Http\Request $request)
+    {
+        $this->ensureAdminAccess();
+
+        $request->validate([
+            'type'  => 'required|in:app_logo,app_favicon',
+            'image' => 'required|image|max:2048|mimes:png,jpg,jpeg,svg',
+        ]);
+
+        $path = $request->file('image')->store('branding', 'public');
+        \App\Services\SettingsService::set($request->type, $path);
+
+        return redirect()->route('admin.settings')
+            ->with('success', 'Image uploaded.');
+    }
+
     private function ensureAdminAccess(): void
     {
         if (!auth()->user()?->canAccessAdminPanel()) {
@@ -570,8 +620,37 @@ class Staff2AdminController extends BaseController
             ? app(PdfInfoService::class)->getPageDimensions($document->file_path)
             : ['width' => 210, 'height' => 297];
 
+        // Build preset tools from enabled fields
+        $presetMap = [
+            'applicant_name'               => 'Applicant Name',
+            'applicant_staff_id'           => 'Staff ID',
+            'applicant_designation'        => 'Designation',
+            'applicant_department'         => 'Department',
+            'applicant_phone'              => 'Phone',
+            'applicant_employee_level'     => 'Employee Level',
+            'submission_date'              => 'Submission Date',
+            'reference_number'             => 'Reference Number',
+            'final_signatory_name'         => 'Final Signatory Name',
+            'final_signatory_designation'  => 'Final Signatory Designation',
+            'second_signatory_name'        => 'Second Signatory Name',
+            'second_signatory_designation' => 'Second Signatory Designation',
+        ];
+
+        $presetTools = collect($document->preset_config ?? [])
+            ->filter(fn($enabled) => $enabled)
+            ->map(fn($enabled, $key) => [
+                'tool'  => 'preset_' . $key,
+                'label' => $presetMap[$key] ?? $key,
+            ])
+            ->values();
+
+        // Flash warning if preset not configured
+        if (!$document->preset_config) {
+            session()->flash('warning', 'Preset fields not configured. Configure them first for best results.');
+        }
+
         return view('staff2.zone-designer', compact(
-            'document', 'existingZones', 'fieldSchema', 'pageCount', 'firstPageDimensions', 'isExcel'
+            'document', 'existingZones', 'fieldSchema', 'pageCount', 'firstPageDimensions', 'isExcel', 'presetTools'
         ));
     }
 
@@ -587,7 +666,17 @@ class Staff2AdminController extends BaseController
             'zones.*.*.ny'    => ['numeric', 'between:0,1'],
             'zones.*.*.nw'    => ['numeric', 'between:0.01,1'],
             'zones.*.*.nh'    => ['numeric', 'between:0.01,1'],
-            'zones.*.*.tool'  => ['required', 'string'],
+            'zones.*.*.tool'  => [
+                'required',
+                'string',
+                function ($attribute, $value, $fail) {
+                    $valid = in_array($value, ['applicant_signature', 'staff2_signature'], true)
+                        || str_starts_with($value, 'field_');
+                    if (!$valid) {
+                        $fail("Invalid zone tool: {$value}");
+                    }
+                },
+            ],
         ]);
 
         $document->update(['zones' => $httpRequest->zones]);
@@ -643,5 +732,343 @@ class Staff2AdminController extends BaseController
         $document->update(['field_zones' => empty($zones) ? null : $zones]);
 
         return redirect()->back()->with('success', 'Field zones saved for "' . ($document->name ?: $document->original_name) . '".');
+    }
+
+    // ==========================================
+    // Signatory Management Methods
+    // ==========================================
+
+    public function signatories()
+    {
+        $this->ensureStaff2OrAdminAccess();
+
+        $signatories = Signatory::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        return view('staff2.signatories', compact('signatories'));
+    }
+
+    public function storeSignatory(Request $request)
+    {
+        $this->ensureStaff2OrAdminAccess();
+
+        $validated = $request->validate([
+            'title' => 'nullable|string|max:255',
+            'name' => 'required|string|max:255',
+            'designation' => 'required|string|max:255',
+            'department' => 'nullable|string|max:255',
+            'staff_id' => 'nullable|string|max:255',
+            'is_active' => 'boolean',
+        ]);
+
+        Signatory::create($validated);
+
+        return redirect()->back()->with('success', 'Signatory added successfully.');
+    }
+
+    public function updateSignatory(Request $request, Signatory $signatory)
+    {
+        $this->ensureStaff2OrAdminAccess();
+
+        $validated = $request->validate([
+            'title' => 'nullable|string|max:255',
+            'name' => 'required|string|max:255',
+            'designation' => 'required|string|max:255',
+            'department' => 'nullable|string|max:255',
+            'staff_id' => 'nullable|string|max:255',
+            'is_active' => 'boolean',
+        ]);
+
+        $signatory->update($validated);
+
+        return redirect()->back()->with('success', 'Signatory updated successfully.');
+    }
+
+    public function destroySignatory(Signatory $signatory)
+    {
+        $this->ensureStaff2OrAdminAccess();
+
+        $signatory->delete();
+
+        return redirect()->back()->with('success', 'Signatory deleted successfully.');
+    }
+
+    public function importSignatories(Request $request)
+    {
+        $this->ensureStaff2OrAdminAccess();
+
+        $validated = $request->validate([
+            'file' => 'required|mimes:csv,xlsx,xls|max:2048',
+        ]);
+
+        $file = $request->file('file');
+        $imported = 0;
+
+        if ($file->getClientOriginalExtension() === 'csv') {
+            $csv = array_map('str_getcsv', file($file->getPathname()));
+            $headers = array_shift($csv);
+            
+            foreach ($csv as $row) {
+                if (count($row) < 3) continue; // Need at least name and designation
+                
+                $rowData = array_combine($headers, $row);
+                
+                if (empty($rowData['name']) || empty($rowData['designation'])) continue;
+
+                Signatory::updateOrCreate(
+                    [
+                        'staff_id' => $rowData['staff_id'] ?? null,
+                        'name' => $rowData['name']
+                    ],
+                    [
+                        'designation' => $rowData['designation'],
+                        'title' => $rowData['title'] ?? null,
+                        'department' => $rowData['department'] ?? null,
+                        'is_active' => true
+                    ]
+                );
+                
+                $imported++;
+            }
+        } else {
+            // For Excel files, you would need to install and use a package like maatwebsite/excel
+            return redirect()->back()->with('error', 'Excel import requires additional package. Please use CSV format.');
+        }
+
+        return redirect()->back()->with('success', "Imported {$imported} signatories successfully.");
+    }
+
+    // ==========================================
+    // Preset Configuration Methods
+    // ==========================================
+
+    public function showPresetConfig(Document $document)
+    {
+        abort_if(!auth()->user()->isStaff2() && !auth()->user()->canAccessAdminPanel(), 403);
+
+        $document->load('requestType');
+
+        $defaults = [
+            'applicant_name' => false,
+            'applicant_staff_id' => false,
+            'applicant_designation' => false,
+            'applicant_department' => false,
+            'applicant_phone' => false,
+            'applicant_employee_level' => false,
+            'submission_date' => false,
+            'reference_number' => false,
+            'final_signatory_name' => false,
+            'final_signatory_designation' => false,
+            'second_signatory_name' => false,
+            'second_signatory_designation' => false,
+        ];
+        
+        $config = array_merge($defaults, $document->preset_config ?? []);
+
+        return view('staff2.preset-config', compact('document', 'config'));
+    }
+
+    public function savePresetConfig(Request $request, Document $document)
+    {
+        abort_if(!auth()->user()->isStaff2() && !auth()->user()->canAccessAdminPanel(), 403);
+
+        $validated = $request->validate([
+            'applicant_name' => 'nullable|boolean',
+            'applicant_staff_id' => 'nullable|boolean',
+            'applicant_designation' => 'nullable|boolean',
+            'applicant_department' => 'nullable|boolean',
+            'applicant_phone' => 'nullable|boolean',
+            'applicant_employee_level' => 'nullable|boolean',
+            'submission_date' => 'nullable|boolean',
+            'reference_number' => 'nullable|boolean',
+            'final_signatory_name' => 'nullable|boolean',
+            'final_signatory_designation' => 'nullable|boolean',
+            'second_signatory_name' => 'nullable|boolean',
+            'second_signatory_designation' => 'nullable|boolean',
+        ]);
+
+        $document->update(['preset_config' => $request->only([
+            'applicant_name', 'applicant_staff_id',
+            'applicant_designation', 'applicant_department',
+            'applicant_phone', 'applicant_employee_level',
+            'submission_date', 'reference_number',
+            'final_signatory_name', 'final_signatory_designation',
+            'second_signatory_name', 'second_signatory_designation',
+        ])]);
+
+        if ($request->has('redirect_to_zones')) {
+            return redirect()->route('staff2.zones.edit', $document->id)
+                ->with('success', 'Preset configuration saved successfully.');
+        }
+
+        return redirect()->back()
+            ->with('success', 'Preset configuration saved successfully.');
+    }
+
+    // ==========================================
+    // Pre-filled Download
+    // ==========================================
+
+    public function downloadPrefilled(Request $httpRequest, GrantRequest $grantRequest)
+    {
+        // Gate: staff1 or staff2 only (both can download)
+        abort_if(!auth()->user()->isStaff1() && !auth()->user()->isStaff2(), 403);
+
+        // Load template document for this request type
+        $template = Document::where('request_type_id', $grantRequest->request_type_id)
+            ->where('document_type', DocumentType::Template->value)
+            ->where('is_active', true)
+            ->latest()
+            ->first();
+
+        if (!$template) {
+            \Log::warning('Pre-fill download: no template found', [
+                'request_id' => $grantRequest->id,
+                'request_type_id' => $grantRequest->request_type_id,
+            ]);
+            abort(404, 'No template found for this request type');
+        }
+
+        // Load $grantRequest with user and requestType
+        $grantRequest->load(['user', 'requestType']);
+
+        // If template is PDF
+        if ($template->isPdf()) {
+            return $this->downloadPrefilledPdf($template, $grantRequest);
+        }
+
+        // If template is XLS/XLSX
+        if ($template->isExcelDocument()) {
+            return $this->downloadPrefilledXls($template, $grantRequest);
+        }
+
+        abort(500, 'Unsupported template format');
+    }
+
+    private function downloadPrefilledPdf(Document $template, GrantRequest $grantRequest)
+    {
+        try {
+            $pdf = new Fpdi('P', 'mm');
+            $pdf->SetAutoPageBreak(false);
+            $pageCount = $pdf->setSourceFile(Storage::disk('public')->path($template->file_path));
+
+            for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
+                $tpl  = $pdf->importPage($pageNo);
+                $size = $pdf->getTemplateSize($tpl);
+                $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
+                $pdf->useTemplate($tpl, 0, 0, $size['width'], $size['height']);
+
+                $pageW = (float) $size['width'];
+                $pageH = (float) $size['height'];
+
+                // Stamp preset zones
+                if (!empty($template->zones)) {
+                    $pageIndex = $pageNo - 1;
+                    $pageZones = $template->zones[$pageIndex] ?? [];
+
+                    foreach ($pageZones as $zone) {
+                        if (!str_starts_with($zone['tool'], 'preset_')) continue;
+
+                        $x = (float) $zone['nx'] * $pageW;
+                        $y = (float) $zone['ny'] * $pageH;
+                        $w = (float) $zone['nw'] * $pageW;
+                        $h = (float) $zone['nh'] * $pageH;
+
+                        $value = $this->resolvePresetValue($zone['tool'], $grantRequest);
+                        if ($value !== '') {
+                            $fontSize = max(8, $h * 2.8);
+                            $pdf->SetFont('Helvetica', '', $fontSize);
+                            $pdf->SetTextColor(30, 30, 30);
+                            $pdf->SetXY($x, $y);
+                            $pdf->Cell($w, $h, $value, 0, 0, 'L');
+                        }
+                    }
+                }
+
+                // Stamp field zones
+                foreach ($template->zones[$pageNo - 1] ?? [] as $zone) {
+                    if (!str_starts_with($zone['tool'], 'field_')) continue;
+
+                    $fieldName = substr($zone['tool'], 6);
+                    $value = (string) ($grantRequest->field_values[$fieldName] ?? '');
+                    if ($value !== '') {
+                        $x = (float) $zone['nx'] * $pageW;
+                        $y = (float) $zone['ny'] * $pageH;
+                        $w = (float) $zone['nw'] * $pageW;
+                        $h = (float) $zone['nh'] * $pageH;
+
+                        $fontSize = max(8, $h * 2.8);
+                        $pdf->SetFont('Helvetica', '', $fontSize);
+                        $pdf->SetTextColor(30, 30, 30);
+                        $pdf->SetXY($x, $y);
+                        $pdf->Cell($w, $h, $value, 0, 0, 'L');
+                    }
+                }
+            }
+
+            $filename = 'prefilled_' . $grantRequest->ref_number . '.pdf';
+            $pdf->Output($filename, 'D');
+            exit;
+
+        } catch (\Throwable $e) {
+            report($e);
+            abort(500, 'Failed to generate pre-filled PDF');
+        }
+    }
+
+    private function downloadPrefilledXls(Document $template, GrantRequest $grantRequest)
+    {
+        try {
+            $sourcePath = Storage::disk('public')->path($template->file_path);
+            $spreadsheet = IOFactory::load($sourcePath);
+            $sheet = $spreadsheet->getActiveSheet();
+
+            // Initialize zones array
+            $allZones = [];
+
+            // Stamp preset zones
+            if (!empty($template->zones)) {
+                foreach ($template->zones as $pageZones) {
+                    if (is_array($pageZones)) {
+                        $allZones = array_merge($allZones, $pageZones);
+                    }
+                }
+
+                foreach ($allZones as $zone) {
+                    if (!str_starts_with($zone['tool'], 'preset_')) continue;
+                    if (empty($zone['cell_start'])) continue;
+
+                    $value = $this->resolvePresetValue($zone['tool'], $grantRequest);
+                    if ($value !== '') {
+                        $sheet->setCellValue($zone['cell_start'], $value);
+                        $sheet->getStyle($zone['cell_start'])
+                            ->getFont()->setSize(max(8, 20));
+                    }
+                }
+            }
+
+            // Stamp field zones
+            foreach ($allZones as $zone) {
+                if (!str_starts_with($zone['tool'], 'field_')) continue;
+                if (empty($zone['cell_start'])) continue;
+
+                $fieldName = substr($zone['tool'], 6);
+                $value = (string) ($grantRequest->field_values[$fieldName] ?? '');
+                if ($value !== '') {
+                    $sheet->setCellValue($zone['cell_start'], $value);
+                }
+            }
+
+            $filename = 'prefilled_' . $grantRequest->ref_number . '.xlsx';
+            $writer = new XlsxWriter($spreadsheet);
+            $writer->save($filename);
+            return response()->download($filename)->deleteFileAfterSend(true);
+
+        } catch (\Throwable $e) {
+            report($e);
+            abort(500, 'Failed to generate pre-filled XLSX');
+        }
     }
 }

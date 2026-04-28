@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ChecklistController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DevController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FormTemplateController;
 use App\Http\Controllers\NotificationController;
@@ -10,7 +11,6 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\RequestTypeController;
 use App\Http\Controllers\Staff2AdminController;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('welcome'));
@@ -62,6 +62,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/staff2/templates/{document}/zones', [Staff2AdminController::class, 'showZoneDesigner'])->name('staff2.zones.edit');
         Route::post('/staff2/templates/{document}/zones', [Staff2AdminController::class, 'saveZones'])->name('staff2.zones.save');
         Route::get('/staff2/templates/{document}/pdf', [Staff2AdminController::class, 'servePdf'])->name('staff2.zones.pdf');
+        Route::get('/staff2/signatories', [Staff2AdminController::class, 'signatories'])->name('staff2.signatories');
+        Route::post('/staff2/signatories', [Staff2AdminController::class, 'storeSignatory'])->name('staff2.signatories.store');
+        Route::put('/staff2/signatories/{signatory}', [Staff2AdminController::class, 'updateSignatory'])->name('staff2.signatories.update');
+        Route::delete('/staff2/signatories/{signatory}', [Staff2AdminController::class, 'destroySignatory'])->name('staff2.signatories.destroy');
+        Route::post('/staff2/signatories/import', [Staff2AdminController::class, 'importSignatories'])->name('staff2.signatories.import');
+        Route::get('/staff2/templates/{document}/preset-config', [Staff2AdminController::class, 'showPresetConfig'])->name('staff2.preset.config');
+        Route::post('/staff2/templates/{document}/preset-config', [Staff2AdminController::class, 'savePresetConfig'])->name('staff2.preset.save');
     });
 
     Route::get('/documents/{id}/download', [DocumentController::class, 'download'])->name('documents.download');
@@ -69,7 +76,8 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('role:staff1,staff2,admin')->group(function () {
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
-        Route::get('/form-templates', [FormTemplateController::class, 'index'])->name('form-templates.index');
+        Route::get('/form-templates', fn () => redirect()->route('dashboard'))->name('form-templates.index');
+        Route::get('/requests/{request}/prefilled-download', [Staff2AdminController::class, 'downloadPrefilled'])->name('requests.prefilled.download');
     });
 
     Route::get('/request-types/{id}/template', [RequestTypeController::class, 'getTemplate'])->name('request-types.template');
@@ -90,6 +98,9 @@ Route::middleware('auth')->group(function () {
         Route::delete('/admin/users/{user}', [Staff2AdminController::class, 'destroyUser'])->name('admin.users.destroy');
         Route::patch('/admin/users/{user}/reactivate', [Staff2AdminController::class, 'reactivateUser'])->name('admin.users.reactivate');
         Route::get('/admin/deployment-playbook', [Staff2AdminController::class, 'deploymentPlaybook'])->name('admin.deployment-playbook');
+        Route::get('/admin/settings', [Staff2AdminController::class, 'settings'])->name('admin.settings');
+        Route::post('/admin/settings', [Staff2AdminController::class, 'updateSettings'])->name('admin.settings.update');
+        Route::post('/admin/settings/logo', [Staff2AdminController::class, 'uploadSettingsImage'])->name('admin.settings.logo');
     });
 
     Route::middleware('role:staff1')->group(function () {
@@ -100,13 +111,9 @@ Route::middleware('auth')->group(function () {
 });
 
 if (app()->environment('local')) {
-    Route::post('/dev-login', function (\Illuminate\Http\Request $request) {
-        $user = \App\Models\User::where('email', $request->email)
-            ->where('is_active', true)
-            ->firstOrFail();
-        Auth::login($user);
-        return redirect()->back();
-    })->name('dev.login');
+    Route::post('/dev/switch-role', [DevController::class, 'switchRole'])
+        ->middleware('auth')
+        ->name('dev.switch-role');
 }
 
 require __DIR__ . '/auth.php';

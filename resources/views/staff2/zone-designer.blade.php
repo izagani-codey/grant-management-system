@@ -26,68 +26,117 @@
          x-data="zoneDesigner()"
          x-init="init()">
 
+        {{-- Warning for unconfigured presets --}}
+        @if(session('warning'))
+            <div class="mb-6 bg-amber-50 border border-amber-200 text-amber-800 px-5 py-3 rounded-lg flex items-center gap-3">
+                <svg class="w-5 h-5 text-amber-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2 0v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                </svg>
+                <div>
+                    <p class="text-sm font-medium">{{ session('warning') }}</p>
+                    <a href="{{ route('staff2.preset.config', $document->id) }}" 
+                       class="text-sm text-amber-700 underline hover:text-amber-800 font-medium">
+                        Configure Preset Fields →
+                    </a>
+                </div>
+            </div>
+        @endif
+
         {{-- ── TOOLBAR ─────────────────────────────────────────────── --}}
         <div class="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm mb-4 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3">
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="space-y-4">
 
-                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider mr-1">Place:</span>
+                {{-- SECTION 1: PRESET FIELDS --}}
+                <div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-xs font-semibold text-green-600 uppercase tracking-wider">🔒 System Auto-Fill</span>
+                        <span class="text-xs text-gray-500">Data filled automatically — position only</span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        @foreach($presetTools as $presetTool)
+                        <button type="button"
+                                @click="addPresetZone('{{ $presetTool['tool'] }}')"
+                                class="text-sm px-3 py-1.5 rounded font-medium transition-all bg-green-100 text-green-800 hover:bg-green-200 border border-green-300">
+                            🔒 {{ $presetTool['label'] }}
+                        </button>
+                        @endforeach
+                    </div>
+                </div>
 
-                <button type="button"
-                        @click="activeTool = (activeTool === 'applicant_signature' ? null : 'applicant_signature')"
-                        :class="activeTool === 'applicant_signature'
-                            ? 'bg-blue-700 ring-2 ring-blue-400 text-white'
-                            : 'bg-blue-100 text-blue-800 hover:bg-blue-200'"
-                        class="text-sm px-3 py-1.5 rounded font-medium transition-all">
-                    ✏ Applicant Signature
-                </button>
+                {{-- SECTION 2: FORM FIELDS --}}
+                <div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-xs font-semibold text-blue-600 uppercase tracking-wider">✏ Form Fields</span>
+                        <span class="text-xs text-gray-500">From the applicant's submitted form</span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        @foreach($fieldSchema as $field)
+                        <button type="button"
+                                @click="activeTool = (activeTool === 'field_{{ $field['name'] }}' ? null : 'field_{{ $field['name'] }}')"
+                                :class="activeTool === 'field_{{ $field['name'] }}'
+                                    ? 'bg-blue-700 ring-2 ring-blue-400 text-white'
+                                    : 'bg-blue-100 text-blue-800 hover:bg-blue-200'"
+                                class="text-sm px-3 py-1.5 rounded font-medium transition-all">
+                            ✏ {{ $field['label'] ?? $field['name'] }}
+                        </button>
+                        @endforeach
+                    </div>
+                </div>
 
-                <button type="button"
-                        @click="activeTool = (activeTool === 'staff2_signature' ? null : 'staff2_signature')"
-                        :class="activeTool === 'staff2_signature'
-                            ? 'bg-purple-700 ring-2 ring-purple-400 text-white'
-                            : 'bg-purple-100 text-purple-800 hover:bg-purple-200'"
-                        class="text-sm px-3 py-1.5 rounded font-medium transition-all">
-                    ✏ Staff 2 Signature
-                </button>
+                {{-- SECTION 3: SIGNATURES --}}
+                <div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-xs font-semibold text-purple-600 uppercase tracking-wider">✍ Signatures</span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button"
+                                @click="activeTool = (activeTool === 'applicant_signature' ? null : 'applicant_signature')"
+                                :class="activeTool === 'applicant_signature'
+                                    ? 'bg-purple-700 ring-2 ring-purple-400 text-white'
+                                    : 'bg-purple-100 text-purple-800 hover:bg-purple-200'"
+                                class="text-sm px-3 py-1.5 rounded font-medium transition-all">
+                            ✏ Applicant Signature
+                        </button>
 
-                @foreach($fieldSchema as $field)
-                <button type="button"
-                        @click="activeTool = (activeTool === 'field_{{ $field['name'] }}' ? null : 'field_{{ $field['name'] }}')"
-                        :class="activeTool === 'field_{{ $field['name'] }}'
-                            ? 'bg-green-700 ring-2 ring-green-400 text-white'
-                            : 'bg-green-100 text-green-800 hover:bg-green-200'"
-                        class="text-sm px-3 py-1.5 rounded font-medium transition-all">
-                    ✏ {{ $field['label'] ?? $field['name'] }}
-                </button>
-                @endforeach
+                        <button type="button"
+                                @click="activeTool = (activeTool === 'staff2_signature' ? null : 'staff2_signature')"
+                                :class="activeTool === 'staff2_signature'
+                                    ? 'bg-purple-700 ring-2 ring-purple-400 text-white'
+                                    : 'bg-purple-100 text-purple-800 hover:bg-purple-200'"
+                                class="text-sm px-3 py-1.5 rounded font-medium transition-all">
+                            ✏ Staff 2 Signature
+                        </button>
+                    </div>
+                </div>
 
-                <div class="flex-1"></div>
+                {{-- ACTIONS --}}
+                <div class="flex items-center gap-4 pt-2 border-t border-gray-200">
+                    <button type="button"
+                            x-show="activeTool !== null"
+                            @click="activeTool = null"
+                            class="text-sm px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-all">
+                        Cancel
+                    </button>
 
-                <button type="button"
-                        x-show="activeTool !== null"
-                        @click="activeTool = null"
-                        class="text-sm px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-all">
-                    Cancel
-                </button>
+                    <button type="button"
+                            @click="saveZones()"
+                            :disabled="saving"
+                            class="text-sm px-4 py-1.5 rounded bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-50 transition-all flex items-center gap-1.5">
+                        <svg x-show="saving" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                        </svg>
+                        <span x-text="saving ? 'Saving…' : '💾 Save Zones'"></span>
+                    </button>
 
-                <button type="button"
-                        @click="saveZones()"
-                        :disabled="saving"
-                        class="text-sm px-4 py-1.5 rounded bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-50 transition-all flex items-center gap-1.5">
-                    <svg x-show="saving" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                    </svg>
-                    <span x-text="saving ? 'Saving…' : '💾 Save Zones'"></span>
-                </button>
+                    <span x-show="saved" x-transition class="text-sm font-medium text-green-600">✓ Saved!</span>
+                </div>
 
-                <span x-show="saved" x-transition class="text-sm font-medium text-green-600">✓ Saved!</span>
+                <p x-show="activeTool !== null"
+                   class="text-xs text-amber-600 font-medium"
+                   x-text="'Click and drag on the ' + (isExcel ? 'Excel sheet' : 'PDF') + ' to place: ' + toolLabel(activeTool)">
+                </p>
             </div>
-
-            <p x-show="activeTool !== null"
-               class="mt-1.5 text-xs text-amber-600 font-medium"
-               x-text="'Click and drag on the ' + (isExcel ? 'Excel sheet' : 'PDF') + ' to place: ' + toolLabel(activeTool)">
-            </p>
         </div>
 
         {{-- ── PAGE TABS (PDF only) ─────────────────────────────────── --}}
@@ -107,8 +156,8 @@
         {{-- ── CANVAS AREA ──────────────────────────────────────────── --}}
         <div class="flex gap-6">
 
-            <div class="flex-1 overflow-auto">
-
+            <div class="flex-1 overflow-auto flex-grow">
+                
                 {{-- PDF error --}}
                 <div x-show="!isExcel && pdfError"
                      class="rounded-lg border border-red-200 bg-red-50 p-6 text-red-700 text-sm mb-3">
@@ -121,15 +170,16 @@
                     <strong>Excel load error:</strong> <span x-text="xlsError"></span>
                 </div>
 
-                <div id="canvas-wrap"
-                     x-show="isExcel ? !xlsError : !pdfError"
-                     class="relative inline-block select-none shadow-lg"
-                     style="width:100%; max-width:900px;"
-                     :style="activeTool ? 'cursor:crosshair' : 'cursor:default'"
-                     @mousedown="startDraw($event)"
-                     @mousemove="whileDrawing($event)"
-                     @mouseup="endDraw($event)"
-                     @mouseleave="isDrawing && endDraw($event)">
+                <div class="w-full">
+                    <div id="canvas-wrap"
+                         x-show="isExcel ? !xlsError : !pdfError"
+                         class="relative block select-none shadow-lg"
+                         style="width: 100%; max-width: 860px;"
+                         :style="activeTool ? 'cursor:crosshair' : 'cursor:default'"
+                         @mousedown="startDraw($event)"
+                         @mousemove="whileDrawing($event)"
+                         @mouseup="endDraw($event)"
+                         @mouseleave="isDrawing && endDraw($event)">
 
                     {{-- PDF canvas --}}
                     <canvas id="pdf-canvas" class="block" x-show="!isExcel"></canvas>
@@ -147,21 +197,32 @@
                     </div>
 
                     {{-- XLS rendered table --}}
-                    <div id="xls-content" x-show="isExcel && !xlsLoading" class="w-full overflow-auto"></div>
+                    <div id="xls-content" x-show="isExcel && !xlsLoading" class="w-full overflow-auto" style="width:100%; overflow-x:auto;"></div>
 
                     {{-- Placed zones (both PDF and XLS) --}}
                     <template x-for="zone in currentZones()" :key="zone.id">
                         <div class="absolute border-2 pointer-events-auto"
-                             :class="zoneColorClass(zone.tool)"
+                             :class="[
+                                 zoneColorClass(zone.tool),
+                                 zoneIsPreset(zone) ? 'border-dashed' : 'border-solid'
+                             ]"
                              :style="zoneStyle(zone)">
                             <span class="text-xs font-medium px-1 leading-none truncate block"
                                   x-text="zone.label + (zone.cell_start ? ' [' + zone.cell_start + ']' : '')">
                             </span>
-                            <button type="button"
-                                    @click.stop="removeZone(currentPage - 1, zone.id)"
-                                    class="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center shadow hover:bg-red-600">
-                                &times;
-                            </button>
+                            <!-- Show lock icon for preset zones, delete button for others -->
+                            <template x-if="zoneIsPreset(zone)">
+                                <div class="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-green-600 text-white text-xs font-bold flex items-center justify-center shadow">
+                                    🔒
+                                </div>
+                            </template>
+                            <template x-if="!zoneIsPreset(zone)">
+                                <button type="button"
+                                        @click.stop="removeZone(currentPage - 1, zone.id)"
+                                        class="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center shadow hover:bg-red-600">
+                                    &times;
+                                </button>
+                            </template>
                         </div>
                     </template>
 
@@ -286,6 +347,8 @@
             pdfError:   null,
             xlsError:   null,
             xlsLoading: false,
+            _renderTask: null,
+            _rendering: false,
             templateUrl: "{{ route('staff2.zones.pdf', $document) }}",
             documentId:  {{ $document->id }},
             fieldSchema: @json($fieldSchema),
@@ -326,6 +389,7 @@
                 try {
                     _pdfDoc = await pdfjsLib.getDocument(this.templateUrl).promise;
                     this.pageCount = _pdfDoc.numPages;
+                    await this.$nextTick();
                     await this.renderPage(this.currentPage);
                 } catch (err) {
                     this.pdfError = 'Could not load PDF: ' + err.message;
@@ -334,26 +398,47 @@
             },
 
             async renderPage(num) {
-                this.currentPage = num;
-                const page      = await _pdfDoc.getPage(num);
-                const canvas    = document.getElementById('pdf-canvas');
-                const container = document.getElementById('canvas-wrap');
+  if (this._renderTask) {
+    try { this._renderTask.cancel() } catch(e) {}
+    this._renderTask = null
+  }
+  if (this._rendering) return
+  this._rendering = true
 
-                const baseViewport = page.getViewport({ scale: 1 });
-                const desiredWidth = container.offsetWidth || 900;
-                const scale        = desiredWidth / baseViewport.width;
-                const viewport     = page.getViewport({ scale });
+  try {
+    this.currentPage = num
+    const page = await _pdfDoc.getPage(num)
+    const canvas = document.getElementById('pdf-canvas')
+    const container = document.getElementById('canvas-wrap')
+    const baseViewport = page.getViewport({ scale: 1 })
+    const desiredWidth = Math.max(
+        container.offsetWidth, 
+        container.getBoundingClientRect().width,
+        600
+    );
+    const scale = desiredWidth / baseViewport.width
+    const viewport = page.getViewport({ scale })
+    canvas.width = viewport.width
+    canvas.height = viewport.height
+    this.canvasW = viewport.width
+    this.canvasH = viewport.height
 
-                canvas.width  = viewport.width;
-                canvas.height = viewport.height;
-                this.canvasW  = viewport.width;
-                this.canvasH  = viewport.height;
+    this._renderTask = page.render({
+      canvasContext: canvas.getContext('2d'),
+      viewport: viewport
+    })
 
-                await page.render({
-                    canvasContext: canvas.getContext('2d'),
-                    viewport,
-                }).promise;
-            },
+    await this._renderTask.promise
+  } catch (e) {
+    if (e?.name !== 'RenderingCancelledException') {
+      console.error('PDF render error:', e)
+      this.pdfError = 'Could not render PDF page.'
+    }
+  } finally {
+    this._rendering = false
+    this._renderTask = null
+  }
+},
 
             async switchPage(num) {
                 await this.renderPage(num);
@@ -383,27 +468,38 @@
                     });
                     document.getElementById('xls-content').innerHTML = html;
 
-                    // Apply column widths from workbook metadata
+                    // Apply table and cell styling
                     const table    = document.getElementById('xls-table');
                     const allRows  = table.querySelectorAll('tr');
                     const colInfo  = ws['!cols'] || [];
+                    const rowInfo  = ws['!rows'] || [];
 
-                    if (allRows.length > 0) {
-                        const firstRowCells = allRows[0].querySelectorAll('td, th');
-                        colInfo.forEach((col, i) => {
-                            if (col && col.wpx && firstRowCells[i]) {
-                                firstRowCells[i].style.width    = col.wpx + 'px';
-                                firstRowCells[i].style.minWidth = col.wpx + 'px';
-                            }
-                        });
-                    }
+                    // Set table layout
+                    table.style.borderCollapse = 'collapse';
+                    table.style.tableLayout = 'fixed';
+                    table.style.width = '100%';
 
-                    // Apply row heights from workbook metadata
-                    const rowInfo = ws['!rows'] || [];
+                    // Apply minimum row heights
                     allRows.forEach((row, i) => {
-                        if (rowInfo[i] && rowInfo[i].hpx) {
-                            row.style.height = rowInfo[i].hpx + 'px';
-                        }
+                        const rowHeight = (rowInfo[i] && rowInfo[i].hpx) ? rowInfo[i].hpx : 25;
+                        row.style.minHeight = '28px';
+                        row.style.height = Math.max(rowHeight, 28) + 'px';
+                        
+                        // Apply minimum column widths to all cells in this row
+                        const cells = row.querySelectorAll('td, th');
+                        cells.forEach((cell, j) => {
+                            const colWidth = (colInfo[j] && colInfo[j].wpx) ? colInfo[j].wpx : 80;
+                            const minWidth = j === 0 ? 120 : 80; // First column wider for labels
+                            
+                            cell.style.minWidth = minWidth + 'px';
+                            cell.style.width = Math.max(colWidth, minWidth) + 'px';
+                            cell.style.border = '1px solid #e5e7eb';
+                            cell.style.padding = '4px 6px';
+                            cell.style.overflow = 'hidden';
+                            cell.style.textOverflow = 'ellipsis';
+                            cell.style.whiteSpace = 'nowrap';
+                            cell.style.minHeight = '28px';
+                        });
                     });
 
                     // Capture dimensions for zone normalisation
@@ -458,6 +554,33 @@
             },
 
             // ── Zone drawing (shared) ─────────────────────────────────────
+
+            addPresetZone(tool) {
+                const pageIndex = this.currentPage - 1;
+                if (!this.allZones[pageIndex]) this.allZones[pageIndex] = [];
+
+                // Create a default-sized preset zone (centered)
+                const defaultZone = {
+                    id: Date.now(),
+                    tool: tool,
+                    label: this.toolLabel(tool),
+                    page: pageIndex,
+                    x: 50, // Default position
+                    y: 100,
+                    w: 120, // Default size
+                    h: 20,
+                    nx: 50 / this.canvasW,
+                    ny: 100 / this.canvasH,
+                    nw: 120 / this.canvasW,
+                    nh: 20 / this.canvasH,
+                };
+
+                this.allZones[pageIndex].push(defaultZone);
+            },
+
+            zoneIsPreset(zone) {
+                return zone.tool && zone.tool.startsWith('preset_');
+            },
 
             startDraw(e) {
                 if (!this.activeTool) return;
@@ -547,6 +670,8 @@
             },
 
             zoneColorClass(tool) {
+                if (tool.startsWith('preset_'))
+                    return 'border-green-500 bg-green-100 bg-opacity-50 text-green-800';
                 if (tool === 'applicant_signature')
                     return 'border-blue-500 bg-blue-100 bg-opacity-50 text-blue-800';
                 if (tool === 'staff2_signature')

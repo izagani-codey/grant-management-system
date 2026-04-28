@@ -39,6 +39,7 @@ class UpdateStatusRequest extends FormRequest
             'checklist_data'        => 'nullable|array',
             'checklist_data.*'      => 'string',
             'staff2_signature_data' => 'nullable|string',
+            'final_signatory_id'   => 'nullable|exists:signatories,id',
             'return_reason'         => 'nullable|string|max:1000',
             'decline_reason'        => 'nullable|string|max:1000',
         ];

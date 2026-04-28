@@ -38,3 +38,4 @@ system,
 signature_zones
 user_id,
 value,
+*.code-workspace
